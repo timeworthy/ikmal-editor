@@ -8,7 +8,8 @@
     "start": "electron .",
     "dev": "electron .",
     "check": "node --check main.cjs && node --check preload.cjs && node --check renderer.js && node --check render-assets.cjs",
-    "render-assets": "electron render-assets.cjs"
+    "render-assets": "electron render-assets.cjs",
+    "verify": "node ../tools/verify_desktop.mjs && node --test launch_at_login.test.cjs"
   },
   "devDependencies": {
     "electron": "43.2.0"

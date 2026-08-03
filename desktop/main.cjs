@@ -2,6 +2,7 @@ const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, screen, clipboard 
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
+const { createLaunchAtLoginController } = require('./launch_at_login.cjs');
 
 const QUALITY_PROXY_URL = process.env.IKMAL_DESKTOP_PROXY_URL || 'http://127.0.0.1:8096';
 const STYLE_GUIDE_URL = `${QUALITY_PROXY_URL}/v1/style-guides`;
@@ -15,6 +16,7 @@ let mainWindow;
 let backendProcess;
 let pollTimer;
 let quitting = false;
+let launchAtLogin;
 
 function findManagerBinary() {
   if (process.env.IKMAL_MANAGER_BINARY) {
@@ -238,6 +240,14 @@ function createWindow() {
 }
 
 function registerIPC() {
+	launchAtLogin = createLaunchAtLoginController({
+		platform: process.platform,
+		appDataPath: app.getPath('appData'),
+		executablePath: process.execPath,
+		appPath: app.getAppPath(),
+		isPackaged: app.isPackaged,
+		electron: app,
+	});
   ipcMain.handle('service-state', readServiceState);
   ipcMain.handle('start-services', () => { startManager(); return readServiceState(); });
   ipcMain.handle('stop-services', () => { stopManager(); return readServiceState(); });
@@ -275,11 +285,10 @@ function registerIPC() {
     }
     return response.json();
   });
-  ipcMain.handle('set-launch-at-login', (_, enabled) => {
-    app.setLoginItemSettings({ openAtLogin: Boolean(enabled) });
-    return app.getLoginItemSettings().openAtLogin;
-  });
-  ipcMain.handle('get-launch-at-login', () => app.getLoginItemSettings().openAtLogin);
+	ipcMain.handle('set-launch-at-login', (_, enabled) => {
+		return launchAtLogin.set(Boolean(enabled));
+	});
+	ipcMain.handle('get-launch-at-login', () => launchAtLogin.get());
 }
 
 app.whenReady().then(() => {

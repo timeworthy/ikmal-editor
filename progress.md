@@ -20,6 +20,8 @@ Last updated: 2026-08-03
   history in the desktop writing tester.
 - Grouped overlapping findings retain source provenance and supporting messages
   across LanguageTool, quality, style-guide, and transformer checks.
+- Desktop package manifest verification and platform-safe launch-at-login
+  support for macOS, Windows, and Linux XDG autostart.
 - First desktop UI pass with separate LanguageTool/quality health indicators,
   full replacement suggestions, one-click apply actions, clear/reset control,
   and Cmd/Ctrl+Enter checking.
@@ -44,6 +46,5 @@ Last updated: 2026-08-03
 
 ## Next
 
-- Add desktop packaging and launch-at-login verification for each platform.
 - Expand regression fixtures for subject/verb agreement, pronoun agreement,
   repeats, echoes, and contextual style-guide rules.

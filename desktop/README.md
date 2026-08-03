@@ -19,3 +19,13 @@ The manager binary can be overridden for development or packaging:
 ```bash
 IKMAL_MANAGER_BINARY=/path/to/ikmal-editor npm start
 ```
+
+Verify the desktop package manifest and launch-at-login behavior for all
+supported platforms without changing the current machine's login settings:
+
+```bash
+npm run verify
+```
+
+macOS and Windows use Electron's native login-item registration. Linux uses a
+per-user XDG autostart entry under the standard application-data directory.
