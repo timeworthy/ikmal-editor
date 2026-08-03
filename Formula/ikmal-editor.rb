@@ -6,7 +6,7 @@ class IkmalEditor < Formula
 
   if OS.mac? && Hardware::CPU.arm?
     url "https://github.com/timeworthymedia/ikmal-editor/releases/download/v0.9.0-beta/ikmal-editor-v0.9.0-beta-darwin-arm64.tar.gz"
-    sha256 "b0a0dfc88d0adf26f3c7546ea7933742d8819e4d6e301e7a80ee59dc91e77c10"
+    sha256 "b0a0dfc88d0adf26f772052ecce595cd06253cbd3c559590e42774cb69caad96"
   elsif OS.mac? && Hardware::CPU.intel?
     url "https://github.com/timeworthymedia/ikmal-editor/releases/download/v0.9.0-beta/ikmal-editor-v0.9.0-beta-darwin-amd64.tar.gz"
     sha256 "3e98295b376d0aedf3c7546ea7933742d8819e4d6e301e7a80ee59dc91e77c10"
