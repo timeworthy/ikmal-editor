@@ -3,6 +3,7 @@
   "productName": "Ikmal Editor",
   "version": "0.9.0-beta",
   "private": true,
+  "author": "Time Worthy Media",
   "description": "Ikmal Editor menubar and writing tester",
   "main": "main.cjs",
   "scripts": {
