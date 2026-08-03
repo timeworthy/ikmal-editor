@@ -202,9 +202,12 @@ cases such as “The report was sent to the editor after it was revised,” wher
 the relationship requires wider context and may genuinely be ambiguous.
 
 The initial regression corpus is stored in [`quality-regression.json`](quality-regression.json)
-and can be run against the gateway with `node quality_eval.mjs`. It contains
-both required corrections and clean/ambiguous examples so false positives are
-measured before model suggestions are enabled by default.
+and can be run against the transformer gateway with `node quality_eval.mjs`.
+The deterministic local expectations in the same corpus run with
+`go test -run TestQualityRegressionFixtures ./...`. It contains required
+corrections, clean/ambiguous examples, repeat/echo cases, and an approved
+style-guide case so false positives are measured before model suggestions are
+enabled by default.
 
 ## Delivery phases
 

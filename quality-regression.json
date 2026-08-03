@@ -12,21 +12,41 @@
   {
     "id": "plural-pronoun",
     "text": "Plants produce its own food.",
-    "expectReplacement": "their"
+    "expectReplacement": "their",
+    "localExpectCategory": "pronoun-antecedent",
+    "localExpectReplacement": "their",
+    "localExpectAntecedent": "Plants"
   },
   {
     "id": "clean-agreement",
     "text": "Plants, by comparison, produce their own food.",
-    "expectNoSuggestions": true
+    "expectNoSuggestions": true,
+    "localExpectNoSuggestions": true
   },
   {
     "id": "ambiguous-pronoun",
     "text": "The report was sent to the editor after it was revised.",
-    "expectNoSuggestions": true
+    "expectNoSuggestions": true,
+    "localExpectNoSuggestions": true
   },
   {
     "id": "nearby-repeat-is-text-level",
     "text": "The approach is innovative. The result is innovative.",
-    "expectNoCategory": "transformer-grammar"
+    "expectNoCategory": "transformer-grammar",
+    "localExpectCategory": "repetition"
+  },
+  {
+    "id": "word-family-echo",
+    "text": "The method is different. The result shows a difference.",
+    "localExpectCategory": "word-family-echo"
+  },
+  {
+    "id": "approved-style-guide-context",
+    "text": "The videogame is popular.",
+    "styleGuideSource": "Terminology\nPrefer video game over videogame.\n",
+    "styleGuideMatch": "videogame",
+    "styleGuideReplacement": "video game",
+    "localExpectCategory": "style-guide",
+    "localExpectReplacement": "video game"
   }
 ]

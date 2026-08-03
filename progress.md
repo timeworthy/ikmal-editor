@@ -22,6 +22,8 @@ Last updated: 2026-08-03
   across LanguageTool, quality, style-guide, and transformer checks.
 - Desktop package manifest verification and platform-safe launch-at-login
   support for macOS, Windows, and Linux XDG autostart.
+- Data-driven regression fixtures now cover subject/verb, pronoun/antecedent,
+  repeats, word-family echoes, clean text, ambiguity, and approved style rules.
 - First desktop UI pass with separate LanguageTool/quality health indicators,
   full replacement suggestions, one-click apply actions, clear/reset control,
   and Cmd/Ctrl+Enter checking.
@@ -45,6 +47,3 @@ Last updated: 2026-08-03
 - Antecedent links should be visible in the writing tester and extension UI.
 
 ## Next
-
-- Expand regression fixtures for subject/verb agreement, pronoun agreement,
-  repeats, echoes, and contextual style-guide rules.
