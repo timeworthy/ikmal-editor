@@ -1,4 +1,4 @@
-# Ikmal Editor desktop app
+# ikmal editor desktop app
 
 This is the first Electron shell for the local manager. It provides a tray
 menu, starts the Go manager with `--integrated`, and includes a small writing
@@ -14,10 +14,15 @@ npm install
 npm start
 ```
 
+`npm start` builds and opens the packaged app. This is also the recommended
+local development path on macOS because it launches the real ikmal editor app
+bundle instead of Electron's generic development bundle. Use
+`npm run dev:electron` only when debugging Electron itself.
+
 The manager binary can be overridden for development or packaging:
 
 ```bash
-IKMAL_MANAGER_BINARY=/path/to/ikmal-editor npm start
+IKMAL_MANAGER_BINARY=/path/to/ikmal-editor npm run dev:electron
 ```
 
 Verify the desktop package manifest and launch-at-login behavior for all

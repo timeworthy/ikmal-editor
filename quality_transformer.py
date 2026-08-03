@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Optional local T5 grammar-correction adapter for the Ikmal sidecar.
+"""Optional local T5 grammar-correction adapter for the ikmal sidecar.
 
 The Go sidecar remains fully functional without this process. When this adapter
 is running, set IKMAL_TRANSFORMER_URL to its /v1/analyze endpoint.
@@ -251,5 +251,5 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    print(f"Ikmal transformer adapter listening on http://127.0.0.1:{PORT}")
+    print(f"ikmal transformer adapter listening on http://127.0.0.1:{PORT}")
     server.serve_forever()

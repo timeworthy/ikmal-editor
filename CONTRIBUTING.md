@@ -1,4 +1,4 @@
-# Contributing to Ikmal Editor
+# Contributing to ikmal editor
 
 We welcome open-source contributions to `ikmal-editor`!
 

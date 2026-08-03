@@ -126,7 +126,7 @@ function startManager() {
   backendProcess.on('error', (error) => send('service-error', error.message));
   backendProcess.on('exit', (code, signal) => {
     if (!quitting) {
-      send('service-error', `Ikmal services stopped${code === null ? ` (${signal})` : ` (exit ${code})`}.`);
+      send('service-error', `ikmal services stopped${code === null ? ` (${signal})` : ` (exit ${code})`}.`);
       publishServiceState();
     }
   });
@@ -188,7 +188,7 @@ function createTray() {
     icon.setTemplateImage(true);
   }
   tray = new Tray(icon);
-  tray.setToolTip('Ikmal Editor');
+  tray.setToolTip('ikmal editor');
   tray.on('click', toggleWindow);
   tray.on('right-click', () => {
     const menu = Menu.buildFromTemplate([
@@ -199,7 +199,7 @@ function createTray() {
       { label: 'Start services', click: startManager },
       { label: 'Stop services', click: stopManager },
       { type: 'separator' },
-      { label: 'Quit Ikmal Editor', click: () => { quitting = true; app.quit(); } },
+      { label: 'Quit ikmal editor', click: () => { quitting = true; app.quit(); } },
     ]);
     tray.popUpContextMenu(menu);
   });
@@ -233,7 +233,7 @@ function createWindow() {
     minHeight: 560,
     show: false,
     resizable: true,
-    title: 'Ikmal Editor',
+    title: 'ikmal editor',
     backgroundColor: '#101318',
     vibrancy: process.platform === 'darwin' ? 'under-window' : undefined,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',

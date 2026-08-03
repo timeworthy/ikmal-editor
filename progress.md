@@ -1,4 +1,4 @@
-# Ikmal Editor progress
+# ikmal editor progress
 
 Last updated: 2026-08-03
 
@@ -22,6 +22,8 @@ Last updated: 2026-08-03
   across LanguageTool, quality, style-guide, and transformer checks.
 - Real Electron desktop bundles embed the matching Go manager and assets;
   launch-at-login is platform-safe for macOS, Windows, and Linux XDG autostart.
+- Normal desktop development now builds and opens the real packaged app bundle,
+  avoiding the generic Electron launcher crash seen on this macOS installation.
 - Release automation now builds and uploads macOS, Linux, and Windows desktop
   bundles with per-artifact SHA256 files.
 - Data-driven regression fixtures now cover subject/verb, pronoun/antecedent,
@@ -31,7 +33,7 @@ Last updated: 2026-08-03
 - First desktop UI pass with separate LanguageTool/quality health indicators,
   full replacement suggestions, one-click apply actions, clear/reset control,
   and Cmd/Ctrl+Enter checking.
-- Ikmal Editor rebrand across source, binaries, assets, packaging, and docs.
+- ikmal editor rebrand across source, binaries, assets, packaging, and docs.
 - Rewritten Git history and branch split: initial release on `main`, ongoing
   work on `dev`.
 - Repository sweep confirmed no legacy guide-name references remain in the

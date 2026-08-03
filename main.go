@@ -162,7 +162,7 @@ func main() {
 		return
 	}
 
-	fmt.Println("Ikmal Editor - Launch Manager for LanguageTool")
+	fmt.Println("ikmal editor - Launch Manager for LanguageTool")
 	fmt.Println("=========================================")
 
 	// 1. Detect existing installations (Homebrew, APT, Docker, Standalone)
@@ -565,7 +565,7 @@ func installLinuxDaemonForJar(javaPath, jarPath, configPath, logsDir string) {
 
 	servicePath := filepath.Join(systemdDir, "ikmal-editor.service")
 	serviceContent := fmt.Sprintf(`[Unit]
-Description=Ikmal Editor LanguageTool Server
+Description=ikmal editor LanguageTool Server
 After=network.target
 
 [Service]
@@ -625,7 +625,7 @@ func verifyServerHealth() {
 }
 
 func performUninstall() {
-	fmt.Println("Ikmal Editor Uninstaller")
+	fmt.Println("ikmal editor Uninstaller")
 	fmt.Println("=================================")
 
 	homeDir, err := os.UserHomeDir()
@@ -690,7 +690,7 @@ func performUninstall() {
 }
 
 func autoConfigureApps() {
-	fmt.Println("\nAuto-Configuring Popular Products for Ikmal Editor")
+	fmt.Println("\nAuto-Configuring Popular Products for ikmal editor")
 	fmt.Println("==========================================================")
 	fmt.Println("Note: ikmal-editor configures settings for installed plugins/extensions,")
 	fmt.Println("      but does NOT download extensions automatically. Download official extensions at:")
@@ -726,7 +726,7 @@ func autoConfigureApps() {
 	firefoxConfigPath := filepath.Join(firefoxDir, "languagetool-webextension@languagetool.org.json")
 	firefoxJson := fmt.Sprintf(`{
   "name": "languagetool-webextension@languagetool.org",
-  "description": "Auto-configuration for Ikmal Editor local server",
+  "description": "Auto-configuration for ikmal editor local server",
   "type": "storage",
   "data": {
     "serverUrl": "%s/check",

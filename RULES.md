@@ -1,8 +1,8 @@
-# Ikmal Editor Conciseness & Plain English Rules
+# ikmal editor Conciseness & Plain English Rules
 
 Complete rule reference catalog for [`rules/style_conciseness.xml`](rules/style_conciseness.xml), compiled from [PlainLanguage.gov](https://www.plainlanguage.gov), Vale, proselint, and write-good.
 
-The rule pack also includes a Ikmal agreement category for high-confidence
+The rule pack also includes an ikmal agreement category for high-confidence
 subject–verb and pronoun–antecedent checks. The planned contextual model and
 antecedent tracker are documented in [`QUALITY.md`](QUALITY.md).
 

@@ -1,5 +1,5 @@
 {
-  description = "Ikmal Editor - Launch Manager for LanguageTool";
+  description = "ikmal editor - Launch Manager for LanguageTool";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";

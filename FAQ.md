@@ -18,7 +18,7 @@
 
 ## Sister Repositories & Integrations
 
-- **[Ikmal Editor repository](https://github.com/timeworthymedia/ikmal-editor)**: Source code, releases, and project documentation.
+- **[ikmal editor repository](https://github.com/timeworthymedia/ikmal-editor)**: Source code, releases, and project documentation.
 - **[Trilium Notes Plugin (`iansherr/trilium-languagetool`)](https://github.com/iansherr/trilium-languagetool)** `[Coming Soon]`: Connects Trilium Notes' CKEditor body editor to your local `ikmal-editor` server.
 - **[Ikmal Tools for Trilium (`iansherr/ikmal_tools`)](https://github.com/iansherr/ikmal_tools)**: Dashboard, automation engine, template studio, and FleetSync integration suite.
 

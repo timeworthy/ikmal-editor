@@ -24,7 +24,7 @@ Priority: optional
 Architecture: amd64
 Maintainer: Ian Sherr <ian@timeworthymedia.com>
 Description: Standalone LanguageTool manager, background service supervisor, and app auto-configurator
- Ikmal Editor automates local LanguageTool server setup on port 8097,
+ ikmal editor automates local LanguageTool server setup on port 8097,
  embeds Plain English conciseness rule packs, and configures web extensions.
 `;
 

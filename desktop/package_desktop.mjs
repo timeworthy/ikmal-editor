@@ -26,7 +26,7 @@ const managerPath = path.join(tempDir, platform === 'win32' ? 'ikmal-editor.exe'
 const outputDir = path.join(root, 'bin', 'desktop');
 
 try {
-  console.log(`Building Ikmal Editor desktop bundle for ${platform}/${arch}…`);
+  console.log(`Building ikmal editor desktop bundle for ${platform}/${arch}…`);
   execFileSync('go', ['build', '-o', managerPath, '.'], {
     cwd: root,
     stdio: 'inherit',
@@ -35,7 +35,7 @@ try {
 
   const bundles = await packager({
     dir: desktopRoot,
-    name: 'Ikmal Editor',
+    name: 'ikmal editor',
     out: outputDir,
     platform,
     arch,

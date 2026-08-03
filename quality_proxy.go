@@ -77,7 +77,7 @@ func runQualityProxy() {
 		port = defaultQualityProxyPort
 	}
 	addr := "127.0.0.1:" + port
-	fmt.Printf("Ikmal LanguageTool quality proxy listening on http://%s\n", addr)
+	fmt.Printf("ikmal LanguageTool quality proxy listening on http://%s\n", addr)
 	if err := http.ListenAndServe(addr, qualityCORS(mux)); err != nil {
 		fmt.Printf("Quality proxy stopped: %v\n", err)
 	}

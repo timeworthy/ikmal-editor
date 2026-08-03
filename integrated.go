@@ -36,7 +36,7 @@ func runIntegrated() {
 
 	os.Setenv("IKMAL_EDITOR_SERVER_URL", integratedProxyURL)
 	autoConfigureApps()
-	fmt.Println("Integrated Ikmal services are running:")
+	fmt.Println("Integrated ikmal services are running:")
 	fmt.Println("  LanguageTool: http://127.0.0.1:8097")
 	fmt.Println("  Browser proxy: http://127.0.0.1:8096/v2")
 	if proxyProcess == nil {
@@ -52,7 +52,7 @@ func languageToolReady() bool {
 
 func startIntegratedProxy() *exec.Cmd {
 	if httpReady("http://127.0.0.1:8096/health") {
-		fmt.Println("Using the existing Ikmal quality proxy on port 8096.")
+		fmt.Println("Using the existing ikmal quality proxy on port 8096.")
 		return nil
 	}
 	command := exec.Command(os.Args[0], "--quality-proxy", "--quality-transformer")

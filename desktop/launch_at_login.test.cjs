@@ -11,8 +11,8 @@ test('Linux uses an XDG autostart entry and removes it when disabled', () => {
   const controller = createLaunchAtLoginController({
     platform: 'linux',
     appDataPath,
-    executablePath: '/opt/Ikmal Editor/ikmal-editor-desktop',
-    appPath: '/opt/Ikmal Editor/resources/app',
+    executablePath: '/opt/ikmal editor/ikmal-editor-desktop',
+    appPath: '/opt/ikmal editor/resources/app',
     isPackaged: true,
   });
 
@@ -21,8 +21,8 @@ test('Linux uses an XDG autostart entry and removes it when disabled', () => {
   assert.equal(controller.set(true), true);
   const entryPath = desktopEntryPath(appDataPath);
   const entry = fs.readFileSync(entryPath, 'utf8');
-  assert.match(entry, /Name=Ikmal Editor/);
-  assert.match(entry, /Exec="\/opt\/Ikmal Editor\/ikmal-editor-desktop" --hidden/);
+  assert.match(entry, /Name=ikmal editor/);
+  assert.match(entry, /Exec="\/opt\/ikmal editor\/ikmal-editor-desktop" --hidden/);
   assert.equal(controller.get(), true);
   assert.equal(controller.set(false), false);
   assert.equal(fs.existsSync(entryPath), false);

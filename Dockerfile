@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for Ikmal Editor
+# Multi-stage Dockerfile for ikmal editor
 FROM golang:1.22-alpine AS builder
 
 WORKDIR /app

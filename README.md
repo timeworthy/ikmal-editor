@@ -1,13 +1,13 @@
-# Ikmal Editor — Launch Manager for LanguageTool
+# ikmal editor — Launch Manager for LanguageTool
 
 <p align="center">
-  <img src="assets/ikmal_languagetool_banner.png" alt="Ikmal Editor — Launch Manager for LanguageTool" width="100%" />
+  <img src="assets/ikmal_languagetool_banner.png" alt="ikmal editor — Launch Manager for LanguageTool" width="100%" />
 </p>
 
 <p align="center">
   <a href="https://go.dev"><img src="https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go" alt="Go Version" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
-  <a href="https://github.com/timeworthymedia/ikmal-editor"><img src="https://img.shields.io/badge/Ikmal-Editor-7B2CBF?style=flat" alt="Ikmal Editor repository" /></a>
+  <a href="https://github.com/timeworthymedia/ikmal-editor"><img src="https://img.shields.io/badge/ikmal-editor-7B2CBF?style=flat" alt="ikmal editor repository" /></a>
   <a href="https://dev.languagetool.org/"><img src="https://img.shields.io/badge/LanguageTool-Official--Docs-blue" alt="LanguageTool Official" /></a>
 </p>
 
@@ -18,7 +18,7 @@
 
 It automates environment detection, embeds custom **Plain English & Syntactic Conciseness XML Rule Packs**, auto-downloads Meta's FastText language identification models, and configures persistent background daemons on macOS, Linux, and Windows.
 
-> *Ikmal Editor is an independent third-party tool. It is not affiliated with, endorsed by, or sponsored by LanguageTooler GmbH. LanguageTool is a registered trademark of LanguageTooler GmbH. ([full disclaimer](#acknowledgements--open-source-attribution))*
+> *ikmal editor is an independent third-party tool. It is not affiliated with, endorsed by, or sponsored by LanguageTooler GmbH. LanguageTool is a registered trademark of LanguageTooler GmbH. ([full disclaimer](#acknowledgements--open-source-attribution))*
 
 ---
 
@@ -34,13 +34,13 @@ The `ikmal-editor` binary itself is built from the Go standard library only and 
 
 ---
 
-## Why Ikmal Editor?
+## Why ikmal editor?
 
 While LanguageTool provides powerful HTTP server capabilities, setting up a local server requires managing Java JREs, long command-line flags, CORS headers, FastText model paths, and manual background daemons.
 
 `ikmal-editor` operates as an independent supervisor that detects your local environment and launches a fully configured, production-ready LanguageTool server on port `8097`.
 
-| Feature | Standard Manual Setup | Ikmal Editor |
+| Feature | Standard Manual Setup | ikmal editor |
 |---|---|---|
 | **One-Command Launch** | Manual `java -jar` commands or Docker YAML | **Single binary** auto-detects Homebrew, Docker, or Java |
 | **Plain English Conciseness** | Stock grammar rules only | **Embedded XML Rule Pack** (30+ rules from PlainLanguage.gov & Vale) |
@@ -92,7 +92,7 @@ Aggregate download counts come from the GitHub Releases API, not from the binary
 # 1. Tap the official Time Worthy Media repository
 brew tap timeworthymedia/tap
 
-# 2. Install Ikmal Editor
+# 2. Install ikmal editor
 brew install timeworthymedia/tap/ikmal-editor
 
 # 3. Auto-configure Chrome, Firefox, Safari, Apple Mail, Word, & VSCode
@@ -365,13 +365,13 @@ The manager embeds [`rules/style_conciseness.xml`](rules/style_conciseness.xml),
 
 ## What is Time Worthy Media?
 
-Time Worthy Media is the studio behind Ikmal Editor. This project grew out of
+Time Worthy Media is the studio behind ikmal editor. This project grew out of
 my work building tools that make complicated systems easier to use in everyday
 life. I design with a human-centered philosophy: software should be easy to
 start, personalizable as people develop their own workflows, and helpful
 without demanding that everyone become an expert first.
 
-I believe everyone benefits from a little help. Ikmal Editor is one expression
+I believe everyone benefits from a little help. ikmal editor is one expression
 of that belief—a local writing companion that gives people more clarity,
 confidence, and control over their work.
 

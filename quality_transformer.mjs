@@ -231,6 +231,6 @@ if (process.argv.includes('--preload')) {
     .catch(() => process.exit(1));
 } else {
   server.listen(PORT, '127.0.0.1', () => {
-    console.log(`Ikmal transformer adapter listening on http://127.0.0.1:${PORT}`);
+    console.log(`ikmal transformer adapter listening on http://127.0.0.1:${PORT}`);
   });
 }

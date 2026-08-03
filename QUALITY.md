@@ -1,4 +1,4 @@
-# Ikmal Writing Quality Layer
+# ikmal writing quality layer
 
 This document describes the planned machine-learning layer that will sit beside
 LanguageTool. It is deliberately separate from the XML rule pack: XML rules
@@ -8,7 +8,7 @@ edits and broader writing-quality judgments.
 ## Current state
 
 - LanguageTool performs the base spelling, grammar, and POS analysis.
-- `rules/style_conciseness.xml` contains the embedded Ikmal rules.
+- `rules/style_conciseness.xml` contains the embedded ikmal rules.
 - Agreement rules now cover the sentence-initial pattern in which a short
   parenthetical separates a subject from its verb.
 - The pronoun rule reports the detected pronoun and antecedent when that
@@ -28,16 +28,16 @@ is not a writing-quality or grammatical-error-correction transformer.
 
 ## Packaging the model runtime
 
-The preferred adapter follows the JavaScript runtime path used by Ikmal Editor:
+The preferred adapter follows the JavaScript runtime path used by ikmal editor:
 Transformers.js provides the model API and uses ONNX Runtime underneath. This
-keeps the Ikmal release statically buildable while making Node.js/npm and the
+keeps the ikmal release statically buildable while making Node.js/npm and the
 model explicit, managed downloads rather than hidden Go build dependencies.
 
 There are three realistic packaging choices:
 
 | Approach | Result | Tradeoff |
 | --- | --- | --- |
-| Transformers.js + ONNX | Separate local Node process | Reuses Ikmal Editor’s runtime pattern; easy quantized model downloads |
+| Transformers.js + ONNX | Separate local Node process | Reuses ikmal editor’s runtime pattern; easy quantized model downloads |
 | ONNX + native runtime | Go gateway with a native inference backend | Requires CGO/native libraries and per-OS/architecture packaging |
 | Pure-Go inference runtime | One statically linked binary | Requires adopting or building a sufficiently capable Go transformer runtime |
 

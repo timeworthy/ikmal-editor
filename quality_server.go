@@ -176,7 +176,7 @@ func runQualityServer() {
 	mux.HandleFunc("/v1/analyze", qualityAnalyzeHandler)
 
 	addr := "127.0.0.1:" + port
-	fmt.Println("Ikmal quality sidecar listening on http://" + addr)
+	fmt.Println("ikmal quality sidecar listening on http://" + addr)
 	if err := http.ListenAndServe(addr, qualityCORS(mux)); err != nil {
 		fmt.Printf("Quality sidecar stopped: %v\n", err)
 	}

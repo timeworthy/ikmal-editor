@@ -22,7 +22,7 @@ function createLaunchAtLoginController(options) {
     const desktopEntry = [
       '[Desktop Entry]',
       'Type=Application',
-      'Name=Ikmal Editor',
+      'Name=ikmal editor',
       'Comment=Local-first writing quality',
       `Exec=${command.join(' ')}`,
       'Terminal=false',

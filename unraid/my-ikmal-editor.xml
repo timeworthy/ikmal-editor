@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <Container version="2">
-  <Name>Ikmal-Editor</Name>
+  <Name>ikmal-editor</Name>
   <Repository>timeworthymedia/ikmal-editor:latest</Repository>
   <Registry>https://hub.docker.com/r/timeworthymedia/ikmal-editor</Registry>
   <Network>bridge</Network>
@@ -10,7 +10,7 @@
   <Support>https://github.com/timeworthymedia/ikmal-editor/issues</Support>
   <Project>https://github.com/timeworthymedia/ikmal-editor</Project>
   <Overview>
-    Ikmal Editor: Launch Manager for LanguageTool with embedded Plain English conciseness rule packs, FastText auto-downloader, and 1-click app auto-configurator.
+    ikmal editor: Launch Manager for LanguageTool with embedded Plain English conciseness rule packs, FastText auto-downloader, and 1-click app auto-configurator.
   </Overview>
   <Category>Tools:Utilities Productivity:</Category>
   <WebUI>http://[IP]:[PORT:8097]/v2/check</WebUI>
@@ -23,7 +23,7 @@
   <DonateText/>
   <DonateLink/>
   <Description>
-    Ikmal Editor automates local LanguageTool server setup on port 8097, embeds custom Plain English XML rule packs, and provides local HTTP grammar checking for Unraid home servers.
+    ikmal editor automates local LanguageTool server setup on port 8097, embeds custom Plain English XML rule packs, and provides local HTTP grammar checking for Unraid home servers.
   </Description>
   <Networking>
     <Mode>bridge</Mode>

@@ -16,6 +16,7 @@ const requiredFiles = [
   'renderer.js',
   'styles.css',
   'launch_at_login.cjs',
+  'launch_packaged.mjs',
   'package_desktop.mjs',
 ];
 const missing = requiredFiles.filter((file) => !fs.existsSync(path.join(desktop, file)));
@@ -26,13 +27,17 @@ if (!fs.existsSync(path.join(root, 'assets', 'ikmal_languagetool_tray.svg'))) {
 if (!version || packageJSON.version !== version || packageLock.version !== version) {
   throw new Error(`Desktop version mismatch: app=${version}, package=${packageJSON.version}, lock=${packageLock.version}`);
 }
-if (packageJSON.main !== 'main.cjs' || packageJSON.name !== 'ikmal-editor-desktop' || packageJSON.productName !== 'Ikmal Editor') {
+if (packageJSON.main !== 'main.cjs' || packageJSON.name !== 'ikmal-editor-desktop' || packageJSON.productName !== 'ikmal editor') {
   throw new Error('Desktop package metadata does not identify the expected app entry point.');
 }
 
 const mainSource = fs.readFileSync(path.join(desktop, 'main.cjs'), 'utf8');
 for (const requiredText of ['--integrated', 'app.isPackaged', 'launch_at_login.cjs']) {
   if (!mainSource.includes(requiredText)) throw new Error(`Desktop main is missing ${requiredText}.`);
+}
+const launcherSource = fs.readFileSync(path.join(desktop, 'launch_packaged.mjs'), 'utf8');
+for (const requiredText of ['run', 'package', 'ikmal editor.app', 'ikmal editor.exe']) {
+  if (!launcherSource.includes(requiredText)) throw new Error(`Packaged launcher is missing ${requiredText}.`);
 }
 if (!packageJSON.devDependencies?.['@electron/packager']) {
   throw new Error('Desktop package is missing @electron/packager.');
@@ -42,7 +47,7 @@ for (const requiredText of ['setLoginItemSettings', 'autostart', 'darwin', 'win3
   if (!launchSource.includes(requiredText)) throw new Error(`Launch-at-login helper is missing ${requiredText}.`);
 }
 
-console.log(`Desktop package manifest verified for Ikmal Editor v${version}.`);
+console.log(`Desktop package manifest verified for ikmal editor v${version}.`);
 console.log(`  Entry point: desktop/${packageJSON.main}`);
 console.log(`  Required files: ${requiredFiles.length}`);
 console.log('  Bundle command: npm run package');

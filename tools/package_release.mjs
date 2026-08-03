@@ -16,7 +16,7 @@ if (!versionMatch) {
 }
 const version = versionMatch[1];
 
-console.log(`Building Cross-Platform Release Binaries for Ikmal Editor v${version}...`);
+console.log(`Building Cross-Platform Release Binaries for ikmal editor v${version}...`);
 
 const targets = [
     { os: 'darwin', arch: 'arm64', name: 'ikmal-editor-darwin-arm64' },

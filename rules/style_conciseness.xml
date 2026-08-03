@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Ikmal Editor: Battle-Tested Plain English & Conciseness Rule Pack -->
+<!-- ikmal editor: Battle-Tested Plain English & Conciseness Rule Pack -->
 <rules lang="en" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:noNamespaceSchemaLocation="../rules.xsd">
 
-  <category id="IKMAL_CONCISENESS" name="Ikmal Conciseness &amp; Plain English">
+  <category id="IKMAL_CONCISENESS" name="ikmal Conciseness &amp; Plain English">
     <rule id="IKMAL_WORDINESS_IN_ORDER_TO" name="Simplify &quot;in order to&quot;">
       <pattern>
         <token>in</token><token>order</token><token>to</token>
@@ -216,7 +216,7 @@
     </rule>
   </category>
 
-  <category id="IKMAL_AGREEMENT" name="Ikmal Grammar: Agreement" type="grammar">
+  <category id="IKMAL_AGREEMENT" name="ikmal Grammar: Agreement" type="grammar">
     <!--
       These rules cover agreement errors that can be missed when a short
       adverbial or parenthetical phrase separates a sentence-initial subject
@@ -265,7 +265,7 @@
     </rule>
   </category>
 
-  <category id="IKMAL_REPETITION" name="Ikmal Style: Repetition" type="style">
+  <category id="IKMAL_REPETITION" name="ikmal Style: Repetition" type="style">
     <!--
       Match a repeated non-noun content word within a 20-token window. Nouns
       are intentionally excluded: repeating a topic noun is often necessary,

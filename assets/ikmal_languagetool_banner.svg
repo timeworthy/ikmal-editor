@@ -19,7 +19,7 @@
       <stop offset="100%" stop-color="#ff4d4d"/>
     </linearGradient>
 
-    <!-- Ikmal Door Soft Shadow -->
+    <!-- ikmal door soft shadow -->
     <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
       <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#000000" flood-opacity="0.5"/>
     </filter>
@@ -29,12 +29,12 @@
   <rect width="1280" height="640" fill="url(#bg)"/>
   <rect width="1280" height="640" fill="url(#halo)"/>
 
-  <!-- Centered text stack. The Ikmal product name is the headline;
+  <!-- Centered text stack. The ikmal product name is the headline;
        LanguageTool appears only in the descriptive "for LanguageTool" support line,
        so the banner reads as a third-party tool rather than an official edition. -->
   <g transform="translate(320, 0)" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
     <!-- Headline: the product wordmark -->
-    <text x="0" y="314" font-size="96" font-weight="700" fill="#ffffff" letter-spacing="-0.03em">Ikmal<tspan dx="16">Editor</tspan></text>
+    <text x="0" y="314" font-size="96" font-weight="700" fill="#ffffff" letter-spacing="-0.03em">ikmal editor</text>
 
     <!-- LanguageTool signature squiggle, fitted to the measured wordmark width. -->
     <path d="M0 346 Q19.6 361.0 39.1 346 T78.3 346 T117.4 346 T156.5 346 T195.7 346 T234.8 346 T273.9 346 T313.1 346 T352.2 346 T391.3 346 T430.5 346 T469.6 346" fill="none" stroke="url(#lt-squiggly)" stroke-width="6" stroke-linecap="round"/>

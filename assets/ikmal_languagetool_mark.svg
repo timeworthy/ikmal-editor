@@ -15,7 +15,7 @@
   <!-- Rounded App Icon Base -->
   <rect width="512" height="512" rx="112" fill="url(#mark-bg)"/>
 
-  <!-- Center Door, bare: the Ikmal Editor mark. -->
+  <!-- Center Door, bare: the ikmal editor mark. -->
   <g transform="translate(256, 256)" filter="url(#mark-shadow)">
     <!-- Arched Door Silhouette (Indigo #5f6ad3) -->
     <path d="M-130 160 L-130 -40 A130 130 0 0 1 130 -40 L130 160 Z" fill="#5f6ad3"/>
