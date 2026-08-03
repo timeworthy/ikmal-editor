@@ -20,6 +20,9 @@ const requiredFiles = [
 ];
 const missing = requiredFiles.filter((file) => !fs.existsSync(path.join(desktop, file)));
 if (missing.length) throw new Error(`Missing desktop files: ${missing.join(', ')}`);
+if (!fs.existsSync(path.join(root, 'assets', 'ikmal_languagetool_tray.svg'))) {
+  throw new Error('Missing compact menubar tray asset.');
+}
 if (!version || packageJSON.version !== version || packageLock.version !== version) {
   throw new Error(`Desktop version mismatch: app=${version}, package=${packageJSON.version}, lock=${packageLock.version}`);
 }

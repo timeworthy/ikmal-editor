@@ -182,8 +182,11 @@ function quickCheckClipboard() {
 }
 
 function createTray() {
-  const iconPath = assetPath('ikmal_languagetool_icon.png');
+  const iconPath = assetPath('ikmal_languagetool_tray.svg');
   const icon = nativeImage.createFromPath(iconPath);
+  if (process.platform === 'darwin') {
+    icon.setTemplateImage(true);
+  }
   tray = new Tray(icon);
   tray.setToolTip('Ikmal Editor');
   tray.on('click', toggleWindow);

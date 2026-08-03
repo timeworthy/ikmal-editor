@@ -62,3 +62,22 @@ textarea { display: block; width: 100%; min-height: 190px; resize: vertical; bor
 .mini-status-dot.is-ready { background: var(--accent); box-shadow: 0 0 0 3px rgba(121, 201, 164, .13); }
 .mini-status-dot.is-unavailable { background: var(--danger); box-shadow: 0 0 0 3px rgba(237, 141, 135, .12); }
 @media (max-width: 420px) { .service-status-grid { grid-template-columns: 1fr; } .button-shortcut { display: none; } }
+
+/* Keep labels, headings, and supporting copy from collapsing into one another. */
+.brand-lockup > div,
+.panel-heading > div,
+.style-guide-heading > div,
+.setting-card > div:first-child,
+.setting-row > span {
+  display: grid;
+  gap: 5px;
+}
+.brand-lockup > div { gap: 3px; }
+.panel-heading { align-items: center; margin-bottom: 16px; }
+.panel-heading h2 { line-height: 1.15; }
+.section-kicker, .eyebrow { line-height: 1.2; }
+.setting-card p, .setting-row small, .endpoint-card small { margin-top: 0; }
+.style-guide-heading { align-items: flex-start; }
+.style-guide-select-row { margin-top: 2px; padding-top: 13px; }
+.setting-row { gap: 16px; line-height: 1.35; }
+.service-status-grid { margin-top: 14px; }
