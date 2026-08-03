@@ -6,7 +6,7 @@
   "architecture": {
     "64bit": {
       "url": "https://github.com/timeworthymedia/ikmal-editor/releases/download/v0.9.0-beta/ikmal-editor-v0.9.0-beta-windows-amd64.zip",
-      "hash": "466f0dfa303471b6b33b8fd42af1ccb20fb421b725b036f06733313bdd580951",
+      "hash": "c216461dd3b13395e124338025a7e2c2e0e24105b57b4638e0d27d44833fe3de",
       "bin": [
         [
           "ikmal-editor-windows-amd64.exe",
