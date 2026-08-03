@@ -52,3 +52,7 @@ Last updated: 2026-08-03
   and make suggestions easier to review and apply.
 
 ## Next
+
+- Generalize the enhancer review/action notice pattern to service and writing
+  failures so every error offers clear retry, continue, details, or cancel
+  choices.
