@@ -162,7 +162,12 @@ func main() {
 		return
 	}
 
-	fmt.Println("ikmal editor - Launch Manager for LanguageTool")
+	if len(os.Args) > 1 && (os.Args[1] == "-integration-status" || os.Args[1] == "--integration-status" || os.Args[1] == "integration-status") {
+		printIntegrationStatus()
+		return
+	}
+
+	fmt.Println("ikmal editor - Local Writing Enhancer for LanguageTool")
 	fmt.Println("=========================================")
 
 	// 1. Detect existing installations (Homebrew, APT, Docker, Standalone)
@@ -635,7 +640,7 @@ func performUninstall() {
 	}
 
 	// 1. Unload & remove macOS / Linux / Windows background daemons
-	if runtime.GOOS == "darwin" {
+	if runtime.GOOS == "darwin" && integrationTargetEnabled("macos") {
 		plistPath := filepath.Join(homeDir, "Library", "LaunchAgents", "com.ikmal.editor.plist")
 		if _, err := os.Stat(plistPath); err == nil {
 			fmt.Println("Stopping and unloading macOS LaunchAgent daemon...")
@@ -718,13 +723,14 @@ func autoConfigureApps() {
 	}
 
 	// 2. Mozilla Firefox Managed Storage
-	firefoxDir := filepath.Join(homeDir, "Library", "Application Support", "Mozilla", "ManagedStorage")
-	if runtime.GOOS == "linux" {
-		firefoxDir = filepath.Join(homeDir, ".mozilla", "managed-storage")
-	}
-	os.MkdirAll(firefoxDir, 0755)
-	firefoxConfigPath := filepath.Join(firefoxDir, "languagetool-webextension@languagetool.org.json")
-	firefoxJson := fmt.Sprintf(`{
+	if integrationTargetEnabled("firefox") {
+		firefoxDir := filepath.Join(homeDir, "Library", "Application Support", "Mozilla", "ManagedStorage")
+		if runtime.GOOS == "linux" {
+			firefoxDir = filepath.Join(homeDir, ".mozilla", "managed-storage")
+		}
+		os.MkdirAll(firefoxDir, 0755)
+		firefoxConfigPath := filepath.Join(firefoxDir, "languagetool-webextension@languagetool.org.json")
+		firefoxJson := fmt.Sprintf(`{
   "name": "languagetool-webextension@languagetool.org",
   "description": "Auto-configuration for ikmal editor local server",
   "type": "storage",
@@ -734,50 +740,55 @@ func autoConfigureApps() {
     "useLocalServer": true
   }
 }`, serverUrl, serverUrl)
-	if err := os.WriteFile(firefoxConfigPath, []byte(firefoxJson), 0644); err == nil {
-		fmt.Println("  Configured Mozilla Firefox managed storage:", firefoxConfigPath)
+		if err := os.WriteFile(firefoxConfigPath, []byte(firefoxJson), 0644); err == nil {
+			fmt.Println("  Configured Mozilla Firefox managed storage:", firefoxConfigPath)
+		}
 	}
 
 	// 3. Google Chrome & Chromium Managed Extension Policies (Arc, Brave, Edge)
-	chromePolicyDirs := []string{
-		filepath.Join(homeDir, "Library", "Application Support", "Google", "Chrome", "External Extensions"),
-		filepath.Join(homeDir, "Library", "Application Support", "Google", "Chrome", "NativeMessagingHosts"),
-	}
-	if runtime.GOOS == "linux" {
-		chromePolicyDirs = []string{
-			filepath.Join(homeDir, ".config", "google-chrome", "External Extensions"),
-			filepath.Join(homeDir, ".config", "google-chrome", "NativeMessagingHosts"),
+	if integrationTargetEnabled("chrome") {
+		chromePolicyDirs := []string{
+			filepath.Join(homeDir, "Library", "Application Support", "Google", "Chrome", "External Extensions"),
+			filepath.Join(homeDir, "Library", "Application Support", "Google", "Chrome", "NativeMessagingHosts"),
 		}
-	}
-	for _, dir := range chromePolicyDirs {
-		os.MkdirAll(dir, 0755)
-		chromePolicyPath := filepath.Join(dir, "lhgkgpnhbakdcadgobkbbkoicdikgadj.json")
-		chromeJson := fmt.Sprintf(`{
+		if runtime.GOOS == "linux" {
+			chromePolicyDirs = []string{
+				filepath.Join(homeDir, ".config", "google-chrome", "External Extensions"),
+				filepath.Join(homeDir, ".config", "google-chrome", "NativeMessagingHosts"),
+			}
+		}
+		for _, dir := range chromePolicyDirs {
+			os.MkdirAll(dir, 0755)
+			chromePolicyPath := filepath.Join(dir, "lhgkgpnhbakdcadgobkbbkoicdikgadj.json")
+			chromeJson := fmt.Sprintf(`{
   "external_update_url": "https://clients2.google.com/service/update2/crx",
   "server_url": "%s/check"
 }`, serverUrl)
-		if err := os.WriteFile(chromePolicyPath, []byte(chromeJson), 0644); err == nil {
-			fmt.Println("  Configured Chrome & Chromium policy:", chromePolicyPath)
+			if err := os.WriteFile(chromePolicyPath, []byte(chromeJson), 0644); err == nil {
+				fmt.Println("  Configured Chrome & Chromium policy:", chromePolicyPath)
+			}
 		}
 	}
 
 	// 4. VSCode User Settings Integration
-	vscodeSettingsPath := filepath.Join(homeDir, "Library", "Application Support", "Code", "User", "settings.json")
-	if runtime.GOOS == "linux" {
-		vscodeSettingsPath = filepath.Join(homeDir, ".config", "Code", "User", "settings.json")
-	}
-	if _, err := os.Stat(vscodeSettingsPath); err == nil {
-		content, readErr := os.ReadFile(vscodeSettingsPath)
-		if readErr == nil && !strings.Contains(string(content), "languageTool.serverUrl") {
-			str := string(content)
-			if strings.HasSuffix(strings.TrimSpace(str), "}") {
-				trimmed := strings.TrimRight(strings.TrimSpace(str), "}\n\r\t ")
-				updated := fmt.Sprintf("%s,\n  \"languageTool.serverUrl\": \"%s\"\n}", trimmed, serverUrl)
-				os.WriteFile(vscodeSettingsPath, []byte(updated), 0644)
-				fmt.Println("  Configured VSCode user settings:", vscodeSettingsPath)
+	if integrationTargetEnabled("vscode") {
+		vscodeSettingsPath := filepath.Join(homeDir, "Library", "Application Support", "Code", "User", "settings.json")
+		if runtime.GOOS == "linux" {
+			vscodeSettingsPath = filepath.Join(homeDir, ".config", "Code", "User", "settings.json")
+		}
+		if _, err := os.Stat(vscodeSettingsPath); err == nil {
+			content, readErr := os.ReadFile(vscodeSettingsPath)
+			if readErr == nil && !strings.Contains(string(content), "languageTool.serverUrl") {
+				str := string(content)
+				if strings.HasSuffix(strings.TrimSpace(str), "}") {
+					trimmed := strings.TrimRight(strings.TrimSpace(str), "}\n\r\t ")
+					updated := fmt.Sprintf("%s,\n  \"languageTool.serverUrl\": \"%s\"\n}", trimmed, serverUrl)
+					os.WriteFile(vscodeSettingsPath, []byte(updated), 0644)
+					fmt.Println("  Configured VSCode user settings:", vscodeSettingsPath)
+				}
+			} else {
+				fmt.Println("  VSCode user settings already configured:", vscodeSettingsPath)
 			}
-		} else {
-			fmt.Println("  VSCode user settings already configured:", vscodeSettingsPath)
 		}
 	}
 

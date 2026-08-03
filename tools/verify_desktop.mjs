@@ -32,8 +32,12 @@ if (packageJSON.main !== 'main.cjs' || packageJSON.name !== 'ikmal-editor-deskto
 }
 
 const mainSource = fs.readFileSync(path.join(desktop, 'main.cjs'), 'utf8');
-for (const requiredText of ['--integrated', 'app.isPackaged', 'launch_at_login.cjs']) {
+for (const requiredText of ['--integrated', 'app.isPackaged', 'launch_at_login.cjs', 'integration-status', 'configure-integrations']) {
   if (!mainSource.includes(requiredText)) throw new Error(`Desktop main is missing ${requiredText}.`);
+}
+const preloadSource = fs.readFileSync(path.join(desktop, 'preload.cjs'), 'utf8');
+for (const requiredText of ['getIntegrationStatus', 'configureIntegrations']) {
+  if (!preloadSource.includes(requiredText)) throw new Error(`Desktop preload is missing ${requiredText}.`);
 }
 const launcherSource = fs.readFileSync(path.join(desktop, 'launch_packaged.mjs'), 'utf8');
 for (const requiredText of ['run', 'package', 'ikmal editor.app', 'ikmal editor.exe']) {

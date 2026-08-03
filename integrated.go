@@ -35,7 +35,7 @@ func runIntegrated() {
 	}
 
 	os.Setenv("IKMAL_EDITOR_SERVER_URL", integratedProxyURL)
-	autoConfigureApps()
+	fmt.Println("Existing app integrations were left unchanged. Use the ikmal editor enhancer settings to configure selected integrations.")
 	fmt.Println("Integrated ikmal services are running:")
 	fmt.Println("  LanguageTool: http://127.0.0.1:8097")
 	fmt.Println("  Browser proxy: http://127.0.0.1:8096/v2")

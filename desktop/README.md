@@ -1,9 +1,10 @@
 # ikmal editor desktop app
 
-This is the first Electron shell for the local manager. It provides a tray
+This is the Electron shell for the local writing enhancer. It provides a tray
 menu, starts the Go manager with `--integrated`, and includes a small writing
 tester that checks against the same `http://127.0.0.1:8096/v2/check` endpoint
-used by the browser extension.
+used by the browser extension. Existing LanguageTool integrations are detected
+and shown before any local-server settings are changed.
 
 From the repository root:
 

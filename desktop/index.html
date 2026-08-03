@@ -104,6 +104,29 @@
           <span><strong>Quality checks</strong><small id="quality-status-label">Checking…</small></span>
         </div>
       </div>
+      <div class="setting-card integration-card">
+        <div class="style-guide-heading">
+          <div>
+            <strong>LanguageTool enhancer</strong>
+            <p>Use ikmal editor’s quality checks with detected LanguageTool integrations. Nothing changes until you approve it.</p>
+          </div>
+          <div class="setting-actions">
+            <button class="button button-quiet" id="refresh-integrations" type="button">Refresh</button>
+            <button class="button button-primary" id="configure-integrations" type="button" disabled>Review</button>
+          </div>
+        </div>
+        <div class="integration-list" id="integration-list" aria-live="polite">
+          <small>Checking installed integrations…</small>
+        </div>
+        <div class="integration-action is-hidden" id="integration-action">
+          <strong id="integration-action-title">Ready to configure</strong>
+          <p id="integration-action-description"></p>
+          <div class="setting-actions">
+            <button class="button button-primary" id="apply-integrations" type="button">Configure selected</button>
+            <button class="button button-quiet" id="cancel-integrations" type="button">Leave unchanged</button>
+          </div>
+        </div>
+      </div>
       <div class="setting-card style-guide-card">
         <div class="style-guide-heading">
           <div>

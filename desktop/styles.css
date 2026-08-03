@@ -61,6 +61,18 @@ textarea { display: block; width: 100%; min-height: 190px; resize: vertical; bor
 .mini-status-dot { width: 7px; height: 7px; flex: 0 0 auto; margin-top: 4px; border-radius: 50%; background: var(--warning); box-shadow: 0 0 0 3px rgba(227, 183, 108, .12); }
 .mini-status-dot.is-ready { background: var(--accent); box-shadow: 0 0 0 3px rgba(121, 201, 164, .13); }
 .mini-status-dot.is-unavailable { background: var(--danger); box-shadow: 0 0 0 3px rgba(237, 141, 135, .12); }
+.integration-card { gap: 11px; }
+.integration-list { display: grid; gap: 7px; }
+.integration-target { display: flex; align-items: flex-start; gap: 8px; padding: 8px 9px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-soft); }
+.integration-target strong, .integration-target small { display: block; }
+.integration-target strong { font-size: 11px; }
+.integration-target small { margin-top: 3px; color: var(--muted); font-size: 10px; line-height: 1.35; }
+.integration-list > small { color: var(--muted); font-size: 11px; line-height: 1.4; }
+.integration-list > small.is-error { color: var(--danger); }
+.integration-action { display: grid; gap: 6px; padding: 10px; border: 1px solid rgba(227, 183, 108, .24); border-radius: 9px; background: rgba(227, 183, 108, .08); }
+.integration-action.is-hidden { display: none; }
+.integration-action strong { color: var(--warning); font-size: 11px; }
+.integration-action p { color: var(--muted); font-size: 11px; line-height: 1.45; }
 @media (max-width: 420px) { .service-status-grid { grid-template-columns: 1fr; } .button-shortcut { display: none; } }
 
 /* Keep labels, headings, and supporting copy from collapsing into one another. */

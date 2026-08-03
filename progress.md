@@ -24,6 +24,9 @@ Last updated: 2026-08-03
   launch-at-login is platform-safe for macOS, Windows, and Linux XDG autostart.
 - Normal desktop development now builds and opens the real packaged app bundle,
   avoiding the generic Electron launcher crash seen on this macOS installation.
+- LanguageTool enhancer startup now detects known integrations without changing
+  them; the desktop UI explains each target and offers configure, retry, or
+  leave-unchanged choices before writing local-server settings.
 - Release automation now builds and uploads macOS, Linux, and Windows desktop
   bundles with per-artifact SHA256 files.
 - Data-driven regression fixtures now cover subject/verb, pronoun/antecedent,

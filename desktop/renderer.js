@@ -21,6 +21,14 @@ const styleGuideToggle = document.querySelector('#style-guide-toggle');
 const styleGuideCount = document.querySelector('#style-guide-count');
 const styleGuideStatus = document.querySelector('#style-guide-status');
 const refreshStyleGuidesButton = document.querySelector('#refresh-style-guides');
+const integrationList = document.querySelector('#integration-list');
+const refreshIntegrationsButton = document.querySelector('#refresh-integrations');
+const configureIntegrationsButton = document.querySelector('#configure-integrations');
+const integrationAction = document.querySelector('#integration-action');
+const integrationActionTitle = document.querySelector('#integration-action-title');
+const integrationActionDescription = document.querySelector('#integration-action-description');
+const applyIntegrationsButton = document.querySelector('#apply-integrations');
+const cancelIntegrationsButton = document.querySelector('#cancel-integrations');
 const historyList = document.querySelector('#history-list');
 const historyEmptyState = document.querySelector('#history-empty-state');
 const historyNotice = document.querySelector('#history-notice');
@@ -29,6 +37,7 @@ const clearHistoryButton = document.querySelector('#clear-history-button');
 const sampleText = 'Plants, by comparison, produce their own food. The method is different. The result shows a difference.';
 let lastResponse = { matches: [] };
 let styleGuideState;
+let integrationState;
 let recentChecks = [];
 
 function escapeHTML(value) {
@@ -162,6 +171,70 @@ async function loadStyleGuideState() {
     renderStyleGuideState(await window.ikmal.getStyleGuideState());
   } catch (error) {
     setStyleGuideStatus(error.message || 'Style-guide settings are unavailable.', true);
+  }
+}
+
+function integrationCandidates() {
+  return (integrationState?.targets || []).filter((target) => target.detected && !target.configured);
+}
+
+function renderIntegrationStatus(state) {
+  integrationState = state || { endpoint: '', targets: [] };
+  const targets = Array.isArray(integrationState.targets) ? integrationState.targets : [];
+  integrationList.replaceChildren();
+  if (!targets.some((target) => target.detected)) {
+    integrationList.innerHTML = '<small>No supported LanguageTool integrations detected. The desktop writing tester remains available.</small>';
+  } else {
+    targets.forEach((target) => {
+      const row = document.createElement('div');
+      row.className = 'integration-target';
+      const status = target.detected ? (target.configured ? 'Using enhancer' : 'Detected · not connected') : 'Not detected';
+      row.innerHTML = `<span class="mini-status-dot ${target.configured ? 'is-ready' : target.detected ? '' : 'is-unavailable'}"></span><span><strong>${escapeHTML(target.name)}</strong><small>${escapeHTML(status)} · ${escapeHTML(target.details || '')}</small></span>`;
+      integrationList.appendChild(row);
+    });
+  }
+  const candidates = integrationCandidates();
+  configureIntegrationsButton.disabled = candidates.length === 0;
+  configureIntegrationsButton.textContent = candidates.length ? 'Review' : 'Configured';
+  if (!candidates.length) integrationAction.classList.add('is-hidden');
+}
+
+async function loadIntegrationStatus() {
+  integrationList.innerHTML = '<small>Checking installed integrations…</small>';
+  try {
+    renderIntegrationStatus(await window.ikmal.getIntegrationStatus());
+  } catch (error) {
+    integrationList.innerHTML = `<small class="is-error">Could not inspect integrations: ${escapeHTML(error.message || 'unknown error')}.</small>`;
+    configureIntegrationsButton.disabled = true;
+  }
+}
+
+function reviewIntegrations() {
+  const candidates = integrationCandidates();
+  if (!candidates.length) return;
+  integrationActionTitle.textContent = 'Review before changing anything';
+  integrationActionDescription.textContent = `This will point ${candidates.map((target) => target.name).join(', ')} at ${integrationState.endpoint}. It will not install extensions or modify your writing. Some apps may need to restart. Choose Configure selected to apply this, or Leave unchanged to keep current settings.`;
+  applyIntegrationsButton.textContent = 'Configure selected';
+  integrationAction.classList.remove('is-hidden');
+}
+
+async function applyIntegrations() {
+  const candidates = integrationCandidates();
+  if (!candidates.length) return;
+  applyIntegrationsButton.disabled = true;
+  integrationActionTitle.textContent = 'Configuring selected integrations…';
+  integrationActionDescription.textContent = 'Writing only the approved local-server settings. Your existing LanguageTool service will remain running.';
+  try {
+    await window.ikmal.configureIntegrations(candidates.map((target) => target.id));
+    integrationActionTitle.textContent = 'Enhancer connected';
+    integrationActionDescription.textContent = 'The selected integrations now use the local ikmal enhancer. Restart the affected browser or editor if it does not pick up the setting immediately.';
+    await loadIntegrationStatus();
+  } catch (error) {
+    integrationActionTitle.textContent = 'Could not configure integrations';
+    integrationActionDescription.textContent = `${error.message || 'The configuration command failed.'} You can Retry configuration or Leave unchanged.`;
+    applyIntegrationsButton.textContent = 'Retry configuration';
+  } finally {
+    applyIntegrationsButton.disabled = false;
   }
 }
 
@@ -324,6 +397,10 @@ clearHistoryButton.addEventListener('click', async () => {
 });
 document.querySelector('#launch-toggle').addEventListener('change', (event) => window.ikmal.setLaunchAtLogin(event.target.checked));
 refreshStyleGuidesButton.addEventListener('click', loadStyleGuideState);
+refreshIntegrationsButton.addEventListener('click', loadIntegrationStatus);
+configureIntegrationsButton.addEventListener('click', reviewIntegrations);
+applyIntegrationsButton.addEventListener('click', applyIntegrations);
+cancelIntegrationsButton.addEventListener('click', () => integrationAction.classList.add('is-hidden'));
 styleGuideSelect.addEventListener('change', async (event) => {
   if (!event.target.value) return;
   styleGuideSelect.disabled = true;
@@ -363,5 +440,6 @@ window.ikmal.onShowHistory(() => selectPanel('history-panel'));
 window.ikmal.getServiceState().then(updateServiceState);
 window.ikmal.getLaunchAtLogin().then((enabled) => { document.querySelector('#launch-toggle').checked = enabled; });
 loadStyleGuideState();
+loadIntegrationStatus();
 loadRecentChecks();
 updateWordCount();

@@ -4,6 +4,8 @@ contextBridge.exposeInMainWorld('ikmal', {
   getServiceState: () => ipcRenderer.invoke('service-state'),
   startServices: () => ipcRenderer.invoke('start-services'),
   stopServices: () => ipcRenderer.invoke('stop-services'),
+  getIntegrationStatus: () => ipcRenderer.invoke('integration-status'),
+  configureIntegrations: (targetIDs) => ipcRenderer.invoke('configure-integrations', targetIDs),
   checkText: (text) => ipcRenderer.invoke('check-text', text),
   getRecentChecks: () => ipcRenderer.invoke('recent-checks'),
   clearRecentChecks: () => ipcRenderer.invoke('clear-recent-checks'),

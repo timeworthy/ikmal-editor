@@ -1,4 +1,4 @@
-# ikmal editor — Launch Manager for LanguageTool
+# ikmal editor — Local Writing Enhancer for LanguageTool
 
 <p align="center">
   <img src="assets/ikmal_languagetool_banner.png" alt="ikmal editor — Launch Manager for LanguageTool" width="100%" />
@@ -14,7 +14,7 @@
 * **GitHub Repository**: [https://github.com/timeworthymedia/ikmal-editor](https://github.com/timeworthymedia/ikmal-editor)
 * **Official LanguageTool Documentation**: [https://dev.languagetool.org/](https://dev.languagetool.org/)
 
-**`ikmal-editor`** is a standalone, single-binary Go CLI supervisor, manager, and 1-click background server installer for [LanguageTool](https://dev.languagetool.org/).
+**`ikmal-editor`** is a local writing enhancer built on [LanguageTool](https://dev.languagetool.org/). It can add quality checks and style guidance to an existing local LanguageTool service or manage a local instance when you choose.
 
 It automates environment detection, embeds custom **Plain English & Syntactic Conciseness XML Rule Packs**, auto-downloads Meta's FastText language identification models, and configures persistent background daemons on macOS, Linux, and Windows.
 

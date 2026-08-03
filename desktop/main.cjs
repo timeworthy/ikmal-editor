@@ -1,5 +1,5 @@
 const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, screen, clipboard } = require('electron');
-const { spawn } = require('node:child_process');
+const { spawn, execFile } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const { createLaunchAtLoginController } = require('./launch_at_login.cjs');
@@ -8,6 +8,7 @@ const QUALITY_PROXY_URL = process.env.IKMAL_DESKTOP_PROXY_URL || 'http://127.0.0
 const STYLE_GUIDE_URL = `${QUALITY_PROXY_URL}/v1/style-guides`;
 const QUALITY_HEALTH_URL = process.env.IKMAL_DESKTOP_QUALITY_URL || 'http://127.0.0.1:8098/health';
 const LANGUAGE_TOOL_URL = process.env.IKMAL_DESKTOP_LANGUAGETOOL_URL || 'http://127.0.0.1:8097';
+const INTEGRATION_ENDPOINT = `${QUALITY_PROXY_URL}/v2`;
 const SERVICE_POLL_MS = 3000;
 const RECENT_CHECK_LIMIT = 10;
 
@@ -142,6 +143,28 @@ function stopManager() {
   publishServiceState();
 }
 
+function runManagerCommand(args, extraEnv = {}) {
+  return new Promise((resolve, reject) => {
+    const binary = findManagerBinary();
+    if (!fs.existsSync(binary)) {
+      reject(new Error(`Manager binary not found at ${binary}. Build the desktop bundle first.`));
+      return;
+    }
+    execFile(binary, args, {
+      cwd: path.dirname(binary),
+      env: { ...process.env, ...extraEnv },
+      timeout: 10000,
+      maxBuffer: 1024 * 1024,
+    }, (error, stdout, stderr) => {
+      if (error) {
+        reject(new Error((stderr || stdout || error.message).trim()));
+        return;
+      }
+      resolve(stdout.trim());
+    });
+  });
+}
+
 function positionWindow() {
   const point = screen.getCursorScreenPoint();
   const display = screen.getDisplayNearestPoint(point);
@@ -260,6 +283,20 @@ function registerIPC() {
   ipcMain.handle('service-state', readServiceState);
   ipcMain.handle('start-services', () => { startManager(); return readServiceState(); });
   ipcMain.handle('stop-services', () => { stopManager(); return readServiceState(); });
+  ipcMain.handle('integration-status', async () => {
+    const output = await runManagerCommand(['--integration-status'], { IKMAL_EDITOR_SERVER_URL: INTEGRATION_ENDPOINT });
+    return JSON.parse(output);
+  });
+  ipcMain.handle('configure-integrations', async (_, targetIDs) => {
+    const allowed = new Set(['macos', 'firefox', 'chrome', 'vscode']);
+    const targets = Array.isArray(targetIDs) ? targetIDs.filter((id) => allowed.has(id)) : [];
+    if (!targets.length) throw new Error('No detected integrations were selected. Choose at least one integration to configure.');
+    const output = await runManagerCommand(['--configure-apps'], {
+      IKMAL_EDITOR_SERVER_URL: INTEGRATION_ENDPOINT,
+      IKMAL_EDITOR_CONFIGURE_APPS: targets.join(','),
+    });
+    return { targets, output };
+  });
   ipcMain.handle('check-text', (_, text) => checkText(text));
   ipcMain.handle('recent-checks', () => readRecentChecks());
   ipcMain.handle('clear-recent-checks', () => clearRecentChecks());
