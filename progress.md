@@ -16,6 +16,8 @@ Last updated: 2026-08-03
 - Electron menubar shell with a writing tester and service controls.
 - Desktop style-guide settings with imported-guide selection, persisted default,
   and enable/disable controls backed by the local management API.
+- Menubar quick-check action for clipboard text and capped, local recent-check
+  history in the desktop writing tester.
 - First desktop UI pass with separate LanguageTool/quality health indicators,
   full replacement suggestions, one-click apply actions, clear/reset control,
   and Cmd/Ctrl+Enter checking.
@@ -40,7 +42,6 @@ Last updated: 2026-08-03
 
 ## Next
 
-- Add a menubar quick-check flow and recent-check history.
 - Improve result grouping for grammar, quality, style-guide, and transformer
   findings when multiple systems flag the same text.
 - Add desktop packaging and launch-at-login verification for each platform.

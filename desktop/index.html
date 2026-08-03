@@ -24,6 +24,7 @@
 
     <nav class="tabs" aria-label="Application sections">
       <button class="tab is-active" data-panel="writing-panel">Writing test</button>
+      <button class="tab" data-panel="history-panel">Recent</button>
       <button class="tab" data-panel="settings-panel">Settings</button>
     </nav>
 
@@ -49,6 +50,24 @@
         <div class="empty-state" id="empty-state">
           <span class="empty-mark">✦</span>
           <p>Suggestions will appear here.</p>
+          <small>Checks stay on this computer.</small>
+        </div>
+      </section>
+    </section>
+
+    <section class="panel" id="history-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="section-kicker">LOCAL HISTORY</p>
+          <h2>Recent checks</h2>
+        </div>
+        <button class="button button-quiet" id="clear-history-button" type="button">Clear</button>
+      </div>
+      <div class="notice is-hidden" id="history-notice"></div>
+      <section class="history-list" id="history-list" aria-live="polite">
+        <div class="empty-state" id="history-empty-state">
+          <span class="empty-mark">◷</span>
+          <p>No recent checks.</p>
           <small>Checks stay on this computer.</small>
         </div>
       </section>

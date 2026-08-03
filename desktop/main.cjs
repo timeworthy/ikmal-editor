@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, screen, clipboard } = require('electron');
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -8,6 +8,7 @@ const STYLE_GUIDE_URL = `${QUALITY_PROXY_URL}/v1/style-guides`;
 const QUALITY_HEALTH_URL = process.env.IKMAL_DESKTOP_QUALITY_URL || 'http://127.0.0.1:8098/health';
 const LANGUAGE_TOOL_URL = process.env.IKMAL_DESKTOP_LANGUAGETOOL_URL || 'http://127.0.0.1:8097';
 const SERVICE_POLL_MS = 3000;
+const RECENT_CHECK_LIMIT = 10;
 
 let tray;
 let mainWindow;
@@ -32,6 +33,46 @@ async function endpointReady(url) {
   } catch (_) {
     return false;
   }
+}
+
+function recentChecksPath() {
+  return path.join(app.getPath('userData'), 'recent-checks.json');
+}
+
+function readRecentChecks() {
+  try {
+    const entries = JSON.parse(fs.readFileSync(recentChecksPath(), 'utf8'));
+    return Array.isArray(entries) ? entries.slice(0, RECENT_CHECK_LIMIT) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function recordRecentCheck(text, response) {
+  const normalized = String(text || '').trim();
+  if (!normalized) return;
+  const entries = readRecentChecks().filter((entry) => entry.text !== normalized);
+  entries.unshift({
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    text: normalized,
+    checkedAt: new Date().toISOString(),
+    matchCount: Array.isArray(response.matches) ? response.matches.length : 0,
+  });
+  try {
+    fs.mkdirSync(path.dirname(recentChecksPath()), { recursive: true });
+    fs.writeFileSync(recentChecksPath(), `${JSON.stringify(entries.slice(0, RECENT_CHECK_LIMIT), null, 2)}\n`);
+  } catch (error) {
+    console.warn(`Could not save recent check: ${error.message}`);
+  }
+}
+
+function clearRecentChecks() {
+  try {
+    fs.rmSync(recentChecksPath(), { force: true });
+  } catch (error) {
+    console.warn(`Could not clear recent checks: ${error.message}`);
+  }
+  return [];
 }
 
 async function readServiceState() {
@@ -114,6 +155,24 @@ function toggleWindow() {
   publishServiceState();
 }
 
+function showWindow() {
+  if (!mainWindow) return;
+  positionWindow();
+  mainWindow.show();
+  mainWindow.focus();
+  publishServiceState();
+}
+
+function quickCheckClipboard() {
+  const text = clipboard.readText();
+  if (!text.trim()) {
+    send('service-error', 'The clipboard does not contain any text to check.');
+    return;
+  }
+  showWindow();
+  send('quick-check', text);
+}
+
 function createTray() {
   const iconPath = path.resolve(__dirname, '..', 'assets', 'ikmal_languagetool_icon.png');
   const icon = nativeImage.createFromPath(iconPath);
@@ -122,7 +181,9 @@ function createTray() {
   tray.on('click', toggleWindow);
   tray.on('right-click', () => {
     const menu = Menu.buildFromTemplate([
-      { label: 'Open writing tester', click: () => { if (!mainWindow.isVisible()) toggleWindow(); } },
+      { label: 'Quick check clipboard', click: quickCheckClipboard },
+      { label: 'Open writing tester', click: showWindow },
+      { label: `Recent checks (${readRecentChecks().length})`, click: () => { showWindow(); send('show-history'); } },
       { type: 'separator' },
       { label: 'Start services', click: startManager },
       { label: 'Stop services', click: stopManager },
@@ -131,6 +192,26 @@ function createTray() {
     ]);
     tray.popUpContextMenu(menu);
   });
+}
+
+async function checkText(text) {
+  const body = new URLSearchParams({
+    text,
+    language: 'en-US',
+    enabledOnly: 'false',
+  });
+  const response = await fetch(`${QUALITY_PROXY_URL}/v2/check`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body,
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!response.ok) {
+    throw new Error(`Writing check failed with HTTP ${response.status}`);
+  }
+  const result = await response.json();
+  recordRecentCheck(text, result);
+  return result;
 }
 
 function createWindow() {
@@ -160,23 +241,9 @@ function registerIPC() {
   ipcMain.handle('service-state', readServiceState);
   ipcMain.handle('start-services', () => { startManager(); return readServiceState(); });
   ipcMain.handle('stop-services', () => { stopManager(); return readServiceState(); });
-  ipcMain.handle('check-text', async (_, text) => {
-    const body = new URLSearchParams({
-      text,
-      language: 'en-US',
-      enabledOnly: 'false',
-    });
-    const response = await fetch(`${QUALITY_PROXY_URL}/v2/check`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body,
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!response.ok) {
-      throw new Error(`Writing check failed with HTTP ${response.status}`);
-    }
-    return response.json();
-  });
+  ipcMain.handle('check-text', (_, text) => checkText(text));
+  ipcMain.handle('recent-checks', () => readRecentChecks());
+  ipcMain.handle('clear-recent-checks', () => clearRecentChecks());
   ipcMain.handle('style-guide-state', async () => {
     const response = await fetch(STYLE_GUIDE_URL, { signal: AbortSignal.timeout(3000) });
     if (!response.ok) throw new Error(`Style-guide state failed with HTTP ${response.status}`);

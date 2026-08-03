@@ -19,10 +19,15 @@ const styleGuideToggle = document.querySelector('#style-guide-toggle');
 const styleGuideCount = document.querySelector('#style-guide-count');
 const styleGuideStatus = document.querySelector('#style-guide-status');
 const refreshStyleGuidesButton = document.querySelector('#refresh-style-guides');
+const historyList = document.querySelector('#history-list');
+const historyEmptyState = document.querySelector('#history-empty-state');
+const historyNotice = document.querySelector('#history-notice');
+const clearHistoryButton = document.querySelector('#clear-history-button');
 
 const sampleText = 'Plants, by comparison, produce their own food. The method is different. The result shows a difference.';
 let lastResponse = { matches: [] };
 let styleGuideState;
+let recentChecks = [];
 
 function escapeHTML(value) {
   return String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
@@ -36,6 +41,61 @@ function updateWordCount() {
 function setNotice(message, visible = true) {
   notice.textContent = message;
   notice.classList.toggle('is-hidden', !visible);
+}
+
+function selectPanel(panelId) {
+  document.querySelectorAll('.tab').forEach((tab) => tab.classList.toggle('is-active', tab.dataset.panel === panelId));
+  document.querySelectorAll('.panel').forEach((panel) => panel.classList.toggle('is-active', panel.id === panelId));
+  if (panelId === 'history-panel') loadRecentChecks();
+}
+
+function setHistoryNotice(message, visible = true) {
+  historyNotice.textContent = message;
+  historyNotice.classList.toggle('is-hidden', !visible);
+}
+
+function formatHistoryDate(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Earlier' : date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function renderRecentChecks(entries) {
+  recentChecks = Array.isArray(entries) ? entries : [];
+  historyList.querySelectorAll('.history-card').forEach((node) => node.remove());
+  historyEmptyState.classList.toggle('is-hidden', recentChecks.length > 0);
+  recentChecks.forEach((entry, index) => {
+    const card = document.createElement('article');
+    card.className = 'history-card';
+    const preview = String(entry.text || '').replace(/\s+/g, ' ').trim();
+    const matchCount = Number(entry.matchCount) || 0;
+    card.innerHTML = `
+      <div class="history-topline">
+        <span>${escapeHTML(formatHistoryDate(entry.checkedAt))}</span>
+        <span>${matchCount} suggestion${matchCount === 1 ? '' : 's'}</span>
+      </div>
+      <p>${escapeHTML(preview.length > 140 ? `${preview.slice(0, 137)}…` : preview)}</p>
+      <button class="history-open" type="button" data-history-index="${index}">Open and check again</button>`;
+    historyList.appendChild(card);
+  });
+  historyList.querySelectorAll('.history-open').forEach((button) => {
+    button.addEventListener('click', () => {
+      const entry = recentChecks[Number(button.dataset.historyIndex)];
+      if (!entry) return;
+      input.value = entry.text;
+      updateWordCount();
+      selectPanel('writing-panel');
+      checkWriting();
+    });
+  });
+}
+
+async function loadRecentChecks() {
+  try {
+    renderRecentChecks(await window.ikmal.getRecentChecks());
+    setHistoryNotice('', false);
+  } catch (error) {
+    setHistoryNotice(error.message || 'Recent checks are unavailable.');
+  }
 }
 
 function setHealth(element, label, ready) {
@@ -166,10 +226,7 @@ async function checkWriting() {
 }
 
 document.querySelectorAll('.tab').forEach((tab) => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach((candidate) => candidate.classList.toggle('is-active', candidate === tab));
-    document.querySelectorAll('.panel').forEach((panel) => panel.classList.toggle('is-active', panel.id === tab.dataset.panel));
-  });
+  tab.addEventListener('click', () => selectPanel(tab.dataset.panel));
 });
 
 input.addEventListener('input', updateWordCount);
@@ -185,6 +242,14 @@ clearButton.addEventListener('click', () => {
 document.querySelector('#sample-button').addEventListener('click', () => { input.value = sampleText; updateWordCount(); input.focus(); });
 startButton.addEventListener('click', () => window.ikmal.startServices().then(updateServiceState));
 stopButton.addEventListener('click', () => window.ikmal.stopServices().then(updateServiceState));
+clearHistoryButton.addEventListener('click', async () => {
+  try {
+    renderRecentChecks(await window.ikmal.clearRecentChecks());
+    setHistoryNotice('Recent checks cleared.');
+  } catch (error) {
+    setHistoryNotice(error.message || 'Could not clear recent checks.');
+  }
+});
 document.querySelector('#launch-toggle').addEventListener('change', (event) => window.ikmal.setLaunchAtLogin(event.target.checked));
 refreshStyleGuidesButton.addEventListener('click', loadStyleGuideState);
 styleGuideSelect.addEventListener('change', async (event) => {
@@ -216,7 +281,15 @@ input.addEventListener('keydown', (event) => {
 });
 window.ikmal.onServiceState(updateServiceState);
 window.ikmal.onServiceError((message) => setNotice(message));
+window.ikmal.onQuickCheck((text) => {
+  input.value = text;
+  updateWordCount();
+  selectPanel('writing-panel');
+  checkWriting();
+});
+window.ikmal.onShowHistory(() => selectPanel('history-panel'));
 window.ikmal.getServiceState().then(updateServiceState);
 window.ikmal.getLaunchAtLogin().then((enabled) => { document.querySelector('#launch-toggle').checked = enabled; });
 loadStyleGuideState();
+loadRecentChecks();
 updateWordCount();
