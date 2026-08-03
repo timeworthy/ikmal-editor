@@ -22,6 +22,10 @@ Last updated: 2026-08-03
   work on `dev`.
 - Repository sweep confirmed no legacy guide-name references remain in the
   working tree, reachable history, reflog, or tracked filenames.
+- Rebuilt and published the `v0.9.0-beta` cross-platform archives under the
+  `ikmal-editor-*` names, with verified SHA256 checksums.
+- Updated Homebrew and Scoop metadata on both branches and renamed the
+  separate Homebrew tap formula to `ikmal-editor`.
 
 ## In progress
 
