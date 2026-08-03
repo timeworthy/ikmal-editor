@@ -22,6 +22,8 @@ Last updated: 2026-08-03
   across LanguageTool, quality, style-guide, and transformer checks.
 - Real Electron desktop bundles embed the matching Go manager and assets;
   launch-at-login is platform-safe for macOS, Windows, and Linux XDG autostart.
+- Release automation now builds and uploads macOS, Linux, and Windows desktop
+  bundles with per-artifact SHA256 files.
 - Data-driven regression fixtures now cover subject/verb, pronoun/antecedent,
   repeats, word-family echoes, clean text, ambiguity, and approved style rules.
 - Desktop repeat/echo findings now show all related occurrences, and

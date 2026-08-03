@@ -1,0 +1,99 @@
+name: Build desktop release bundles
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing GitHub release tag to receive the desktop bundles
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-release-${{ github.event.release.tag_name || inputs.release_tag }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: ${{ matrix.platform }}/${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14
+            platform: darwin
+            arch: arm64
+          - runner: macos-13
+            platform: darwin
+            arch: x64
+          - runner: ubuntu-22.04
+            platform: linux
+            arch: x64
+          - runner: windows-2022
+            platform: win32
+            arch: x64
+    runs-on: ${{ matrix.runner }}
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+      IKMAL_DESKTOP_PLATFORM: ${{ matrix.platform }}
+      IKMAL_DESKTOP_ARCH: ${{ matrix.arch }}
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.release_tag }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Verify desktop package
+        working-directory: desktop
+        run: npm run verify
+
+      - name: Build desktop bundle
+        working-directory: desktop
+        run: npm run package
+
+      - name: Archive Unix bundle
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="Ikmal Editor-${IKMAL_DESKTOP_PLATFORM}-${IKMAL_DESKTOP_ARCH}"
+          archive="ikmal-editor-${RELEASE_TAG}-desktop-${IKMAL_DESKTOP_PLATFORM}-${IKMAL_DESKTOP_ARCH}.tar.gz"
+          tar -czf "$archive" -C "bin/desktop" "$bundle"
+          shasum -a 256 "$archive" > "$archive.sha256"
+          echo "ARCHIVE=$archive" >> "$GITHUB_ENV"
+
+      - name: Archive Windows bundle
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $bundle = "Ikmal Editor-$env:IKMAL_DESKTOP_PLATFORM-$env:IKMAL_DESKTOP_ARCH"
+          $archive = "ikmal-editor-$env:RELEASE_TAG-desktop-$env:IKMAL_DESKTOP_PLATFORM-$env:IKMAL_DESKTOP_ARCH.zip"
+          Compress-Archive -Path "bin/desktop/$bundle" -DestinationPath $archive -Force
+          (Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() + "  $archive" | Set-Content "$archive.sha256"
+          "ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Upload desktop bundle to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$RELEASE_TAG" "$ARCHIVE" "$ARCHIVE.sha256" --repo "$GITHUB_REPOSITORY" --clobber
