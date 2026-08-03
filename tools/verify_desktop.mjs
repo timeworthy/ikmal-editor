@@ -16,19 +16,23 @@ const requiredFiles = [
   'renderer.js',
   'styles.css',
   'launch_at_login.cjs',
+  'package_desktop.mjs',
 ];
 const missing = requiredFiles.filter((file) => !fs.existsSync(path.join(desktop, file)));
 if (missing.length) throw new Error(`Missing desktop files: ${missing.join(', ')}`);
 if (!version || packageJSON.version !== version || packageLock.version !== version) {
   throw new Error(`Desktop version mismatch: app=${version}, package=${packageJSON.version}, lock=${packageLock.version}`);
 }
-if (packageJSON.main !== 'main.cjs' || packageJSON.name !== 'ikmal-editor-desktop') {
+if (packageJSON.main !== 'main.cjs' || packageJSON.name !== 'ikmal-editor-desktop' || packageJSON.productName !== 'Ikmal Editor') {
   throw new Error('Desktop package metadata does not identify the expected app entry point.');
 }
 
 const mainSource = fs.readFileSync(path.join(desktop, 'main.cjs'), 'utf8');
 for (const requiredText of ['--integrated', 'app.isPackaged', 'launch_at_login.cjs']) {
   if (!mainSource.includes(requiredText)) throw new Error(`Desktop main is missing ${requiredText}.`);
+}
+if (!packageJSON.devDependencies?.['@electron/packager']) {
+  throw new Error('Desktop package is missing @electron/packager.');
 }
 const launchSource = fs.readFileSync(path.join(desktop, 'launch_at_login.cjs'), 'utf8');
 for (const requiredText of ['setLoginItemSettings', 'autostart', 'darwin', 'win32', 'linux']) {
@@ -38,4 +42,5 @@ for (const requiredText of ['setLoginItemSettings', 'autostart', 'darwin', 'win3
 console.log(`Desktop package manifest verified for Ikmal Editor v${version}.`);
 console.log(`  Entry point: desktop/${packageJSON.main}`);
 console.log(`  Required files: ${requiredFiles.length}`);
+console.log('  Bundle command: npm run package');
 console.log('  Launch-at-login coverage: macOS, Windows, Linux XDG autostart');

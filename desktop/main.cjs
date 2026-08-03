@@ -22,10 +22,16 @@ function findManagerBinary() {
   if (process.env.IKMAL_MANAGER_BINARY) {
     return process.env.IKMAL_MANAGER_BINARY;
   }
-  const candidates = process.env.IKMAL_DESKTOP_PACKAGED === '1'
-    ? [path.join(process.resourcesPath, 'ikmal-editor')]
+  const candidates = process.env.IKMAL_DESKTOP_PACKAGED === '1' || app.isPackaged
+    ? [path.join(process.resourcesPath, 'ikmal-editor'), path.join(process.resourcesPath, 'ikmal-editor.exe')]
     : [path.resolve(__dirname, '..', 'ikmal-editor'), path.resolve(process.cwd(), 'ikmal-editor')];
   return candidates.find((candidate) => fs.existsSync(candidate)) || candidates[0];
+}
+
+function assetPath(name) {
+  return process.env.IKMAL_DESKTOP_PACKAGED === '1' || app.isPackaged
+    ? path.join(process.resourcesPath, 'assets', name)
+    : path.resolve(__dirname, '..', 'assets', name);
 }
 
 async function endpointReady(url) {
@@ -176,7 +182,7 @@ function quickCheckClipboard() {
 }
 
 function createTray() {
-  const iconPath = path.resolve(__dirname, '..', 'assets', 'ikmal_languagetool_icon.png');
+  const iconPath = assetPath('ikmal_languagetool_icon.png');
   const icon = nativeImage.createFromPath(iconPath);
   tray = new Tray(icon);
   tray.setToolTip('Ikmal Editor');

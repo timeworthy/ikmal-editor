@@ -27,5 +27,16 @@ supported platforms without changing the current machine's login settings:
 npm run verify
 ```
 
+Build a distributable Electron bundle for the current platform and
+architecture. The command cross-compiles and embeds the matching Go manager:
+
+```bash
+npm run package
+```
+
+Targets can be selected for release automation with
+`IKMAL_DESKTOP_PLATFORM=darwin|linux|win32` and
+`IKMAL_DESKTOP_ARCH=x64|arm64|armv7l`.
+
 macOS and Windows use Electron's native login-item registration. Linux uses a
 per-user XDG autostart entry under the standard application-data directory.

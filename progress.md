@@ -20,8 +20,8 @@ Last updated: 2026-08-03
   history in the desktop writing tester.
 - Grouped overlapping findings retain source provenance and supporting messages
   across LanguageTool, quality, style-guide, and transformer checks.
-- Desktop package manifest verification and platform-safe launch-at-login
-  support for macOS, Windows, and Linux XDG autostart.
+- Real Electron desktop bundles embed the matching Go manager and assets;
+  launch-at-login is platform-safe for macOS, Windows, and Linux XDG autostart.
 - Data-driven regression fixtures now cover subject/verb, pronoun/antecedent,
   repeats, word-family echoes, clean text, ambiguity, and approved style rules.
 - Desktop repeat/echo findings now show all related occurrences, and

@@ -304,9 +304,9 @@ npm start
 ```
 
 The tray menu can start or stop the manager, and the writing panel shows full
-suggested replacement text rather than truncating it to a single word. The
-desktop shell is intentionally dependency-light for now; packaging and richer
-settings will be added after the first interaction pass.
+suggested replacement text, related occurrences, and antecedent links. Build a
+platform bundle with `npm run package`; release automation can select targets
+with `IKMAL_DESKTOP_PLATFORM` and `IKMAL_DESKTOP_ARCH`.
 
 ---
 
