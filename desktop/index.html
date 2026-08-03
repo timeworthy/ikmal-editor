@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ikmal Editor</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="app-header">
+      <div class="brand-lockup">
+        <img src="../assets/ikmal_languagetool_icon.png" alt="" class="brand-icon">
+        <div>
+          <div class="eyebrow">IKMAL</div>
+          <h1>EDITOR</h1>
+        </div>
+      </div>
+      <div class="service-summary" id="service-summary" title="Service status">
+        <span class="status-dot"></span>
+        <span id="service-label">Starting</span>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="Application sections">
+      <button class="tab is-active" data-panel="writing-panel">Writing test</button>
+      <button class="tab" data-panel="settings-panel">Settings</button>
+    </nav>
+
+    <section class="panel is-active" id="writing-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="section-kicker">LOCAL CHECK</p>
+          <h2>Try a passage</h2>
+        </div>
+        <button class="button button-quiet" id="sample-button">Load sample</button>
+      </div>
+      <textarea id="writing-input" spellcheck="true" placeholder="Paste or write a short passage here…">Plants, by comparison, produces its own light.</textarea>
+      <div class="editor-footer">
+        <span id="word-count">0 words</span>
+        <button class="button button-primary" id="check-button">Check writing</button>
+      </div>
+      <div class="notice is-hidden" id="writing-notice"></div>
+      <section class="results" id="results" aria-live="polite">
+        <div class="empty-state" id="empty-state">
+          <span class="empty-mark">✦</span>
+          <p>Suggestions will appear here.</p>
+          <small>Checks stay on this computer.</small>
+        </div>
+      </section>
+    </section>
+
+    <section class="panel" id="settings-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="section-kicker">APP CONTROL</p>
+          <h2>Service settings</h2>
+        </div>
+      </div>
+      <div class="setting-card">
+        <div>
+          <strong>Ikmal services</strong>
+          <p>Runs LanguageTool and the quality proxy for browser extensions.</p>
+        </div>
+        <div class="setting-actions">
+          <button class="button button-primary" id="start-button">Start</button>
+          <button class="button button-quiet" id="stop-button">Stop</button>
+        </div>
+      </div>
+      <label class="setting-row">
+        <span>
+          <strong>Start at login</strong>
+          <small>Keep the local checker ready in the background.</small>
+        </span>
+        <input type="checkbox" id="launch-toggle">
+      </label>
+      <div class="endpoint-card">
+        <span class="section-kicker">ENDPOINTS</span>
+        <code id="proxy-endpoint">http://127.0.0.1:8096</code>
+        <small>Use <code>http://127.0.0.1:8096/v2</code> in the LanguageTool extension.</small>
+      </div>
+    </section>
+
+    <footer class="app-footer">
+      <span>Local-first writing quality</span>
+      <span class="footer-version">0.9 beta</span>
+    </footer>
+  </main>
+  <script src="renderer.js"></script>
+</body>
+</html>

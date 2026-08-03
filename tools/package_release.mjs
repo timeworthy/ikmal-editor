@@ -30,7 +30,7 @@ const targets = [
 for (const target of targets) {
     const targetPath = path.join(binDir, target.name);
     console.log(`  -> Compiling ${target.os}/${target.arch} -> ${target.name}...`);
-    execSync(`CGO_ENABLED=0 GOOS=${target.os} GOARCH=${target.arch} go build -o "${targetPath}" main.go`, { stdio: 'inherit' });
+    execSync(`CGO_ENABLED=0 GOOS=${target.os} GOARCH=${target.arch} go build -o "${targetPath}" .`, { stdio: 'inherit' });
 }
 
 console.log('All cross-platform binaries (including Raspberry Pi ARM64/ARMv7) built successfully in bin/');

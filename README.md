@@ -26,8 +26,11 @@ It automates environment detection, embeds custom **Plain English & Syntactic Co
 
 - **Java 17+ or Docker** — LanguageTool itself runs on the JVM. `ikmal-editor` auto-detects a Homebrew, Docker, or system Java install and will not start a server without one.
 - **~350MB of disk** — the LanguageTool distribution and Meta's FastText `lid.176.bin` model are downloaded to `~/.ikmal-editor/` on first run.
+- **Optional quality model** — `--quality-setup` adds roughly 310MB for the
+  quantized grammar model and about 340MB for the managed Node.js runtime/cache.
+  It is opt-in.
 
-The `ikmal-editor` binary itself is built from the Go standard library only and has no third-party module dependencies.
+The `ikmal-editor` binary itself is built from the Go standard library only and has no third-party module dependencies. The optional transformer adapter is a separately managed Node.js/ONNX process.
 
 ---
 
@@ -104,8 +107,11 @@ git clone https://github.com/timeworthymedia/ikmal-editor.git
 cd ikmal-editor
 
 # 2. Build & launch server manager (auto-configures background server & apps)
-go build -o ikmal-editor main.go
+go build -o ikmal-editor .
 ./ikmal-editor
+
+# Optional: start LanguageTool, the local quality model, and the browser proxy together
+./ikmal-editor --integrated
 
 # 3. Auto-configure Chrome, Firefox, Safari, Apple Mail, Word, & VSCode
 ./ikmal-editor -configure-apps
@@ -113,6 +119,194 @@ go build -o ikmal-editor main.go
 # 4. Clean 1-click uninstall (purges daemon, stops services, clears data)
 ./ikmal-editor -uninstall
 ```
+
+---
+
+## Optional Writing Quality Sidecar
+
+The opt-in quality sidecar runs locally on port `8098` and currently provides
+deterministic paragraph-window repetition, word-family echo, and conservative
+pronoun–antecedent analysis. It does not send text anywhere. A separate,
+optional Transformers.js/ONNX adapter can add local transformer suggestions
+through the same sidecar.
+
+```bash
+./ikmal-editor --quality-server
+```
+
+Check it with:
+
+```bash
+curl http://127.0.0.1:8098/health
+curl -X POST http://127.0.0.1:8098/v1/analyze \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"Plants produce its own food."}'
+```
+
+The response includes inline suggestions and antecedent links. To enable the
+optional transformer adapter, use the managed setup command:
+
+The Go launcher installs the Transformers.js/ONNX adapter under
+`~/.ikmal-editor/quality/`, caches the model under `~/.ikmal-editor/models/`,
+and preloads the model when Node.js and npm are available:
+
+```bash
+./ikmal-editor --quality-setup
+```
+
+The setup downloads the quantized `Xenova/t5-base-grammar-correction` model
+only when explicitly run; it is not downloaded during normal LanguageTool
+startup.
+
+Transformer analysis is chunked locally instead of sending whole pages to the
+model. It groups sentences up to 80 words by default and preserves document
+offsets. Adjust with `IKMAL_TRANSFORMER_MAX_CHUNK_WORDS` if needed.
+
+Then start the Go sidecar in another terminal:
+
+```bash
+./ikmal-editor --quality-server --quality-transformer
+```
+
+To expose both LanguageTool and the quality checks through the API used by
+browser extensions, start the compatibility proxy:
+
+```bash
+./ikmal-editor --quality-proxy --quality-transformer
+```
+
+Configure the Chrome LanguageTool extension to use:
+
+```text
+http://127.0.0.1:8096/v2
+```
+
+The proxy forwards native LanguageTool matches from port `8097`, adds quality
+matches from port `8098`, removes duplicate edits, and resolves overlaps by
+preferring native LanguageTool results or a broader quality correction that
+contains a narrower one.
+
+That command starts the managed Transformers.js adapter automatically and
+shuts it down with the Go sidecar. Set `IKMAL_QUALITY_FORCE_SETUP=1` to
+refresh the managed installation before starting it.
+
+Run the regression corpus against the gateway with:
+
+```bash
+node quality_eval.mjs
+```
+
+The model remains local after download. See [`QUALITY.md`](QUALITY.md) for the
+model-sidecar contract and rollout roadmap.
+
+## Style Guides
+
+Import a local PDF, basic HTML page, Markdown file, or text list into the
+managed style-guide catalog:
+
+```bash
+./ikmal-editor --style-guide-import ./company-style-guide.pdf
+./ikmal-editor --style-guide-import https://example.com/your-style-guide/
+./ikmal-editor --style-guide-list
+./ikmal-editor --style-guide-use company-style-guide
+./ikmal-editor --style-guide-enable
+./ikmal-editor --style-guide-disable
+./ikmal-editor --style-guide-current
+```
+
+PDF import uses the optional `pdftotext` command from Poppler. Imported
+guidance remains local under `~/.ikmal-editor/style-guides/`. Selecting a guide
+sets the default, while `--style-guide-enable` activates its generated XML
+rules as an optional extra layer on the next LanguageTool restart. Disable it
+again when you want baseline checking only.
+
+An `http://` or `https://` source is crawled across same-site links within the
+guide path and merged into one catalog. External links, assets, and unrelated
+site paths are skipped. Use a guide’s canonical landing page when importing a
+multi-page HTML guide.
+
+Each PDF import also creates a human-review CSV beside the guide. It includes
+the extracted source text, page number, inferred rule type, optional
+replacement pair, confidence, notes, and a `draft` status. Open that file in a
+spreadsheet editor, correct or complete the rows, change approved rules to
+`approved`, and import it with `--style-guide-rules-import` below. Re-importing
+the PDF preserves an existing review file so editorial changes are not lost.
+If the source PDF changes and the review file should be regenerated, use
+`--style-guide-review-refresh <source>` explicitly.
+
+Before activating an edited review file, run the deterministic lint pass:
+
+```bash
+./ikmal-editor --style-guide-review-lint <guide-id>
+```
+
+If the edited file is a separate draft (including the CSV produced by the
+optional enrichment step), install it as the guide's canonical review file
+only after it passes lint:
+
+```bash
+./ikmal-editor --style-guide-review-activate <guide-id> ./review.csv
+```
+
+Explicit rules can be reviewed or generated with an LLM as CSV, then imported
+for a particular guide:
+
+```bash
+./ikmal-editor --style-guide-rules-import <guide-id> ./rules.csv
+```
+
+The basic CSV columns are `id`, `kind`, `match`, `replacement`, and `status`;
+optional columns include `name`, `confidence`, `alternatives`, `scope`,
+`message`, `example`, and `correction`:
+
+```csv
+id,kind,match,replacement,status
+spell-out-us,hard_replacement,United States,U.S.,approved
+prefer-video-game,contextual_preference,games,video games,approved
+```
+
+Only `approved` `hard_replacement` rows become LanguageTool XML. When the
+guide is enabled, the quality sidecar also reads approved
+`contextual_preference` and `do_not_equate` rows from the canonical review CSV.
+Draft and disabled rows are ignored, and near-synonyms are not silently
+treated as interchangeable. Rules and generated XML are stored under
+`~/.ikmal-editor/style-guides/`, outside the repository.
+
+For optional LLM assistance, export a JSONL work queue and a strict prompt:
+
+```bash
+./ikmal-editor --style-guide-review-export <guide-id>
+```
+
+Give the generated `*.enrichment-input.jsonl` and `*.enrichment-prompt.md` to
+the model, save its one-JSON-object-per-line response, and merge it into a new
+draft review CSV:
+
+```bash
+./ikmal-editor --style-guide-review-enrichment-import <guide-id> ./model-output.jsonl
+```
+
+The merge never accepts model approval; every enriched row remains `draft`.
+
+---
+
+## Desktop app
+
+The repository now includes a small Electron menubar shell under `desktop/`.
+It manages the integrated Go services and provides a local writing tester
+against the same endpoint used by the browser extension:
+
+```bash
+go build -o ikmal-editor .
+cd desktop
+npm install
+npm start
+```
+
+The tray menu can start or stop the manager, and the writing panel shows full
+suggested replacement text rather than truncating it to a single word. The
+desktop shell is intentionally dependency-light for now; packaging and richer
+settings will be added after the first interaction pass.
 
 ---
 

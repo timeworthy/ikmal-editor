@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <Container version="2">
-  <Name>Ikmal-EDITOR</Name>
+  <Name>Ikmal-Editor</Name>
   <Repository>timeworthymedia/ikmal-editor:latest</Repository>
   <Registry>https://hub.docker.com/r/timeworthymedia/ikmal-editor</Registry>
   <Network>bridge</Network>

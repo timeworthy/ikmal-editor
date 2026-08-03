@@ -2,6 +2,20 @@
 
 Complete rule reference catalog for [`rules/style_conciseness.xml`](rules/style_conciseness.xml), compiled from [PlainLanguage.gov](https://www.plainlanguage.gov), Vale, proselint, and write-good.
 
+The rule pack also includes a Ikmal agreement category for high-confidence
+subject–verb and pronoun–antecedent checks. The planned contextual model and
+antecedent tracker are documented in [`QUALITY.md`](QUALITY.md).
+
+The repetition category currently includes:
+
+- nearby repeated non-noun content words within a sentence;
+- `different` / `difference` echoes within a 30-token window;
+- noun repetition intentionally excluded from the generic content-word rule.
+
+Paragraph-wide tracking of arbitrary repeated words requires the text-level
+quality sidecar, because a LanguageTool XML token rule cannot reliably compare
+an arbitrary word across sentence boundaries.
+
 ---
 
 ## Rule Categories

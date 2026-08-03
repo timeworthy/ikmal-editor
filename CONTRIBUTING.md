@@ -17,7 +17,7 @@ We welcome open-source contributions to `ikmal-editor`!
      <example correction="now">We should <marker>at this point</marker> simplify.</example>
    </rule>
    ```
-3. Run `go build -o ikmal-editor main.go` to test execution.
+3. Run `go build -o ikmal-editor .` to test execution.
 4. Submit a Pull Request on GitHub!
 
 ---
@@ -26,17 +26,17 @@ We welcome open-source contributions to `ikmal-editor`!
 
 ```bash
 # macOS ARM64
-GOOS=darwin GOARCH=arm64 go build -o bin/ikmal-editor-darwin-arm64 main.go
+GOOS=darwin GOARCH=arm64 go build -o bin/ikmal-editor-darwin-arm64 .
 
 # macOS Intel
-GOOS=darwin GOARCH=amd64 go build -o bin/ikmal-editor-darwin-amd64 main.go
+GOOS=darwin GOARCH=amd64 go build -o bin/ikmal-editor-darwin-amd64 .
 
 # Linux x86_64
-GOOS=linux GOARCH=amd64 go build -o bin/ikmal-editor-linux-amd64 main.go
+GOOS=linux GOARCH=amd64 go build -o bin/ikmal-editor-linux-amd64 .
 
 # Raspberry Pi ARM64
-GOOS=linux GOARCH=arm64 go build -o bin/ikmal-editor-linux-arm64 main.go
+GOOS=linux GOARCH=arm64 go build -o bin/ikmal-editor-linux-arm64 .
 
 # Windows x64
-GOOS=windows GOARCH=amd64 go build -o bin/ikmal-editor-windows-amd64.exe main.go
+GOOS=windows GOARCH=amd64 go build -o bin/ikmal-editor-windows-amd64.exe .
 ```

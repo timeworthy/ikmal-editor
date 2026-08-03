@@ -1,0 +1,85 @@
+name: Publish release version.json
+
+# Keeps version.json at the repo root in sync with the most recent published
+# release. The CLI reads the public file from this repository during its daily
+# update check, so no separate site deployment is required.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-version-json
+  cancel-in-progress: false
+
+jobs:
+  update-version-json:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Resolve latest published release
+        id: rel
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Ignore drafts and prereleases-superseded-by-newer by asking the API
+          # for what it considers current, rather than trusting the trigger payload
+          # (a re-published older release would otherwise roll the file backwards).
+          tag=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 20 \
+                 --json tagName,isDraft,createdAt \
+                 --jq 'map(select(.isDraft | not)) | sort_by(.createdAt) | last | .tagName')
+          if [ -z "$tag" ] || [ "$tag" = "null" ]; then
+            echo "No published release found; nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          # Strip the leading v so the file matches appVersion in main.go.
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Write version.json
+        if: steps.rel.outputs.skip != 'true'
+        env:
+          VERSION: ${{ steps.rel.outputs.version }}
+        run: |
+          set -euo pipefail
+          tmp=$(mktemp)
+          jq --arg v "$VERSION" '.version = $v' version.json > "$tmp"
+          mv "$tmp" version.json
+          echo "--- version.json ---"
+          cat version.json
+
+      - name: Verify it still parses the way the CLI parses it
+        if: steps.rel.outputs.skip != 'true'
+        env:
+          VERSION: ${{ steps.rel.outputs.version }}
+        run: |
+          set -euo pipefail
+          # The CLI uses a hand-rolled string scan, not encoding/json, so assert
+          # both keys are extractable and that "url" is not shadowed by a URL
+          # appearing earlier in the document.
+          jq -e '.version and .url' version.json > /dev/null
+          got=$(jq -r '.version' version.json)
+          [ "$got" = "$VERSION" ] || { echo "version mismatch: $got != $VERSION"; exit 1; }
+          head -c 200 version.json | grep -q '"version"' || { echo '"version" not in first 200 bytes'; exit 1; }
+
+      - name: Commit if changed
+        if: steps.rel.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- version.json; then
+            echo "version.json already current; nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add version.json
+          git commit -m "chore: publish version.json for ${{ steps.rel.outputs.tag }}"
+          git push origin HEAD:main

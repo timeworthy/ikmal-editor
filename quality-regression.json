@@ -1,0 +1,32 @@
+[
+  {
+    "id": "plural-subject-verb",
+    "text": "Plants, by comparison, produces their own food.",
+    "expectReplacement": "produce"
+  },
+  {
+    "id": "singular-subject-verb",
+    "text": "The plant, by comparison, produce its own food.",
+    "expectReplacement": "produces"
+  },
+  {
+    "id": "plural-pronoun",
+    "text": "Plants produce its own food.",
+    "expectReplacement": "their"
+  },
+  {
+    "id": "clean-agreement",
+    "text": "Plants, by comparison, produce their own food.",
+    "expectNoSuggestions": true
+  },
+  {
+    "id": "ambiguous-pronoun",
+    "text": "The report was sent to the editor after it was revised.",
+    "expectNoSuggestions": true
+  },
+  {
+    "id": "nearby-repeat-is-text-level",
+    "text": "The approach is innovative. The result is innovative.",
+    "expectNoCategory": "transformer-grammar"
+  }
+]

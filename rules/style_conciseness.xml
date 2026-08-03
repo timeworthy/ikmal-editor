@@ -215,4 +215,92 @@
       <example correction="end">We should <marker>terminate</marker> simplify our writing.</example>
     </rule>
   </category>
+
+  <category id="IKMAL_AGREEMENT" name="Ikmal Grammar: Agreement" type="grammar">
+    <!--
+      These rules cover agreement errors that can be missed when a short
+      adverbial or parenthetical phrase separates a sentence-initial subject
+      from its verb. The sentence-start and chunk constraints are important:
+      they keep an incidental noun inside the phrase from being treated as
+      the subject.
+    -->
+    <rule id="IKMAL_PLURAL_SUBJECT_SINGULAR_VERB" name="Plural subject with singular verb">
+      <pattern>
+        <token postag="SENT_START"/>
+        <token postag="NNS|NNPS|PRP_S.*" postag_regexp="yes" chunk_re="B-NP-plural" skip="4"/>
+        <marker>
+          <token postag="VBZ" chunk_re="B-VP"/>
+        </marker>
+      </pattern>
+      <message>A plural subject usually takes a plural verb: <suggestion><match no="3" postag="VBP"/></suggestion>.</message>
+      <short>Subject–verb agreement</short>
+      <example correction="Plants, by comparison, produce their own food.">Plants, by comparison, <marker>produces</marker> their own food.</example>
+    </rule>
+
+    <rule id="IKMAL_SINGULAR_SUBJECT_PLURAL_VERB" name="Singular subject with plural verb">
+      <pattern>
+        <token postag="SENT_START"/>
+        <token postag="DT|PRP\$" postag_regexp="yes" chunk_re="B-NP-singular" skip="5"/>
+        <marker>
+          <token postag="VBP" chunk_re="B-VP"/>
+        </marker>
+      </pattern>
+      <message>A singular subject usually takes a singular verb: <suggestion><match no="3" postag="VBZ"/></suggestion>.</message>
+      <short>Subject–verb agreement</short>
+      <example correction="The plant, by comparison, produces its own food.">The plant, by comparison, <marker>produce</marker> its own food.</example>
+    </rule>
+
+    <rule id="IKMAL_PLURAL_SUBJECT_SINGULAR_POSSESSIVE" name="Plural antecedent with singular possessive pronoun">
+      <pattern>
+        <token postag="SENT_START"/>
+        <token postag="NNS|NNPS|PRP_S.*" postag_regexp="yes" chunk_re="B-NP-plural" skip="4"/>
+        <token postag="VB.*" postag_regexp="yes" chunk_re="B-VP"/>
+        <marker>
+          <token>its</token>
+        </marker>
+      </pattern>
+      <message>The pronoun <match no="4"/> does not agree with the plural antecedent <match no="2"/>. Use <suggestion>their</suggestion>.</message>
+      <short>Pronoun–antecedent agreement</short>
+      <example correction="Plants, by comparison, produce their own food.">Plants, by comparison, produce <marker>its</marker> own food.</example>
+    </rule>
+  </category>
+
+  <category id="IKMAL_REPETITION" name="Ikmal Style: Repetition" type="style">
+    <!--
+      Match a repeated non-noun content word within a 20-token window. Nouns
+      are intentionally excluded: repeating a topic noun is often necessary,
+      while repeating an adjective, adverb, or lexical verb is more likely to
+      make nearby prose feel mechanical. The second occurrence is marked.
+    -->
+    <rule id="IKMAL_NEARBY_CONTENT_WORD_REPEAT" name="Nearby repeated content word">
+      <pattern>
+        <token postag="JJ.*|RB.*|VB.*" postag_regexp="yes" skip="20">
+          <exception regexp="yes">be|do|have|get|make|use|say|go|come</exception>
+          <exception postag="NN.*|NNP.*" postag_regexp="yes"/>
+        </token>
+        <marker>
+          <token><match no="0"/></token>
+        </marker>
+      </pattern>
+      <message>You repeat the content word '\1' nearby. Consider varying the wording if the repetition is not intentional.</message>
+      <short>Nearby repeated word</short>
+      <example correction="">The method is different from the earlier approach. The result is <marker>different</marker> as well.</example>
+      <example>The method is different from the earlier approach. The result shows a clear difference as well.</example>
+      <example>The system is fast. The system is reliable.</example>
+    </rule>
+
+    <rule id="IKMAL_DIFFERENT_DIFFERENCE_ECHO" name="Different/difference echo" min_prev_matches="1" distance_tokens="30">
+        <pattern>
+          <marker>
+            <token regexp="yes">different|difference</token>
+          </marker>
+        </pattern>
+        <message>The word '\1' echoes a nearby word from the same word family. Consider varying the wording.</message>
+        <short>Repeated word family</short>
+        <example correction="">The method is different from the earlier approach. The result is a <marker>difference</marker> as well.</example>
+    </rule>
+
+    <!-- Generic cross-sentence exact repetition needs the text-level quality
+         sidecar; this XML rule handles the sentence-local case above. -->
+  </category>
 </rules>

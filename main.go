@@ -34,6 +34,124 @@ func main() {
 		return
 	}
 
+	if len(os.Args) > 1 && (os.Args[1] == "-quality-server" || os.Args[1] == "--quality-server" || os.Args[1] == "quality-server") {
+		runQualityServer()
+		return
+	}
+
+	if len(os.Args) > 1 && (os.Args[1] == "-integrated" || os.Args[1] == "--integrated" || os.Args[1] == "integrated") {
+		runIntegrated()
+		return
+	}
+
+	if len(os.Args) > 1 && (os.Args[1] == "-quality-proxy" || os.Args[1] == "--quality-proxy" || os.Args[1] == "quality-proxy") {
+		runQualityProxy()
+		return
+	}
+
+	if len(os.Args) > 1 && (os.Args[1] == "-quality-setup" || os.Args[1] == "--quality-setup" || os.Args[1] == "quality-setup") {
+		runQualitySetup()
+		return
+	}
+
+	if len(os.Args) > 1 && (os.Args[1] == "-style-guide-import" || os.Args[1] == "--style-guide-import" || os.Args[1] == "style-guide-import") {
+		if len(os.Args) < 3 {
+			fmt.Println("Usage: ikmal-editor --style-guide-import <file.pdf|file.html|file.md|file.txt>")
+			return
+		}
+		runStyleGuideImport(os.Args[2])
+		return
+	}
+
+	if len(os.Args) > 1 && (os.Args[1] == "-style-guide-rules-import" || os.Args[1] == "--style-guide-rules-import" || os.Args[1] == "style-guide-rules-import") {
+		if len(os.Args) < 4 {
+			fmt.Println("Usage: ikmal-editor --style-guide-rules-import <guide-id> <rules.csv>")
+			return
+		}
+		runStyleGuideRulesImport(os.Args[2], os.Args[3])
+		return
+	}
+
+	if len(os.Args) > 1 && (os.Args[1] == "-style-guide-review-refresh" || os.Args[1] == "--style-guide-review-refresh" || os.Args[1] == "style-guide-review-refresh") {
+		if len(os.Args) < 3 {
+			fmt.Println("Usage: ikmal-editor --style-guide-review-refresh <file.pdf|file.html|file.md|file.txt>")
+			return
+		}
+		runStyleGuideReviewRefresh(os.Args[2])
+		return
+	}
+
+	if len(os.Args) > 1 && (os.Args[1] == "-style-guide-review-export" || os.Args[1] == "--style-guide-review-export" || os.Args[1] == "style-guide-review-export") {
+		if len(os.Args) < 3 {
+			fmt.Println("Usage: ikmal-editor --style-guide-review-export <guide-id>")
+			return
+		}
+		runStyleGuideReviewExport(os.Args[2])
+		return
+	}
+
+	if len(os.Args) > 1 && (os.Args[1] == "-style-guide-review-enrichment-import" || os.Args[1] == "--style-guide-review-enrichment-import" || os.Args[1] == "style-guide-review-enrichment-import") {
+		if len(os.Args) < 4 {
+			fmt.Println("Usage: ikmal-editor --style-guide-review-enrichment-import <guide-id> <enrichment.jsonl>")
+			return
+		}
+		runStyleGuideReviewEnrichmentImport(os.Args[2], os.Args[3])
+		return
+	}
+
+	if len(os.Args) > 1 && (os.Args[1] == "-style-guide-review-lint" || os.Args[1] == "--style-guide-review-lint" || os.Args[1] == "style-guide-review-lint") {
+		if len(os.Args) < 3 {
+			fmt.Println("Usage: ikmal-editor --style-guide-review-lint <guide-id>")
+			return
+		}
+		runStyleGuideReviewLint(os.Args[2])
+		return
+	}
+
+	if len(os.Args) > 1 && (os.Args[1] == "-style-guide-review-activate" || os.Args[1] == "--style-guide-review-activate" || os.Args[1] == "style-guide-review-activate") {
+		if len(os.Args) < 4 {
+			fmt.Println("Usage: ikmal-editor --style-guide-review-activate <guide-id> <review.csv>")
+			return
+		}
+		runStyleGuideReviewActivate(os.Args[2], os.Args[3])
+		return
+	}
+
+	if len(os.Args) > 1 && (os.Args[1] == "-style-guide-list" || os.Args[1] == "--style-guide-list" || os.Args[1] == "style-guide-list") {
+		runStyleGuideList()
+		return
+	}
+
+	if len(os.Args) > 1 && (os.Args[1] == "-style-guide-use" || os.Args[1] == "--style-guide-use" || os.Args[1] == "style-guide-use") {
+		if len(os.Args) < 3 {
+			fmt.Println("Usage: ikmal-editor --style-guide-use <guide-id>")
+			return
+		}
+		if err := selectStyleGuide(os.Args[2]); err != nil {
+			fmt.Printf("Could not select style guide: %v\n", err)
+		}
+		return
+	}
+
+	if len(os.Args) > 1 && (os.Args[1] == "-style-guide-current" || os.Args[1] == "--style-guide-current" || os.Args[1] == "style-guide-current") {
+		runStyleGuideCurrent()
+		return
+	}
+
+	if len(os.Args) > 1 && (os.Args[1] == "-style-guide-enable" || os.Args[1] == "--style-guide-enable" || os.Args[1] == "style-guide-enable") {
+		if err := setStyleGuideEnabled(true); err != nil {
+			fmt.Printf("Could not enable style guide: %v\n", err)
+		}
+		return
+	}
+
+	if len(os.Args) > 1 && (os.Args[1] == "-style-guide-disable" || os.Args[1] == "--style-guide-disable" || os.Args[1] == "style-guide-disable") {
+		if err := setStyleGuideEnabled(false); err != nil {
+			fmt.Printf("Could not disable style guide: %v\n", err)
+		}
+		return
+	}
+
 	if len(os.Args) > 1 && (os.Args[1] == "-uninstall" || os.Args[1] == "--uninstall" || os.Args[1] == "uninstall") {
 		performUninstall()
 		return
@@ -82,7 +200,15 @@ func main() {
 
 	// 2b. Write server.properties configuration file
 	configPath := filepath.Join(appDir, "server.properties")
-	configContent := fmt.Sprintf("rulesFile=%s\n", rulePath)
+	rulesFilePath, styleGuideEnabled, err := buildCombinedStyleGuideRules(rulePath)
+	if err != nil {
+		fmt.Printf("Warning: Could not apply active style guide rules: %v\n", err)
+		rulesFilePath = rulePath
+	}
+	if styleGuideEnabled {
+		fmt.Println("Enabled optional style-guide XML rules for the active guide.")
+	}
+	configContent := fmt.Sprintf("rulesFile=%s\n", rulesFilePath)
 	if fastTextPath != "" {
 		configContent += fmt.Sprintf("fasttextModel=%s\n", fastTextPath)
 	}
@@ -353,13 +479,13 @@ func installMacDaemon(binPath, configPath, fastTextPath, logsDir string) {
 	logPath := filepath.Join(logsDir, "server.log")
 	errLogPath := filepath.Join(logsDir, "server-error.log")
 
-	plistPath := filepath.Join(launchDir, "com.ikmal.languagetool.plist")
+	plistPath := filepath.Join(launchDir, "com.ikmal.editor.plist")
 	plistContent := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.ikmal.languagetool</string>
+    <string>com.ikmal.editor</string>
     <key>ProgramArguments</key>
     <array>
         <string>%s</string>
@@ -395,13 +521,13 @@ func installMacDaemonForJar(javaPath, jarPath, configPath, fastTextPath, logsDir
 	logPath := filepath.Join(logsDir, "server.log")
 	errLogPath := filepath.Join(logsDir, "server-error.log")
 
-	plistPath := filepath.Join(launchDir, "com.ikmal.languagetool.plist")
+	plistPath := filepath.Join(launchDir, "com.ikmal.editor.plist")
 	plistContent := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.ikmal.languagetool</string>
+    <string>com.ikmal.editor</string>
     <key>ProgramArguments</key>
     <array>
         <string>%s</string>
@@ -510,7 +636,7 @@ func performUninstall() {
 
 	// 1. Unload & remove macOS / Linux / Windows background daemons
 	if runtime.GOOS == "darwin" {
-		plistPath := filepath.Join(homeDir, "Library", "LaunchAgents", "com.ikmal.languagetool.plist")
+		plistPath := filepath.Join(homeDir, "Library", "LaunchAgents", "com.ikmal.editor.plist")
 		if _, err := os.Stat(plistPath); err == nil {
 			fmt.Println("Stopping and unloading macOS LaunchAgent daemon...")
 			exec.Command("launchctl", "unload", plistPath).Run()
@@ -577,7 +703,10 @@ func autoConfigureApps() {
 		return
 	}
 
-	serverUrl := "http://127.0.0.1:" + defaultPort + "/v2"
+	serverUrl := os.Getenv("IKMAL_EDITOR_SERVER_URL")
+	if serverUrl == "" {
+		serverUrl = "http://127.0.0.1:" + defaultPort + "/v2"
+	}
 
 	// 1. LanguageTool for Mac (Safari, Apple Mail, System-wide TextEdit/Messages)
 	if runtime.GOOS == "darwin" {
@@ -652,5 +781,5 @@ func autoConfigureApps() {
 		}
 	}
 
-	fmt.Println("Product auto-configuration complete! Local server URL (http://127.0.0.1:8097/v2) is active across browsers and office suites.")
+	fmt.Printf("Product auto-configuration complete! Local server URL (%s) is active across browsers and office suites.\n", serverUrl)
 }
