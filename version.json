@@ -1,0 +1,5 @@
+{
+  "version": "0.9.0-beta",
+  "url": "https://github.com/timeworthymedia/ikmal-editor/releases/latest",
+  "notes": "Latest released version of Ikmal Editor. This file is read from the public GitHub repository by the binary's daily update check. Updated automatically by .github/workflows/release.yml on every published release."
+}

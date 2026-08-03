@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640">
+  <defs>
+    <!-- Dark Midnight Background Gradient -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0e1118"/>
+      <stop offset="100%" stop-color="#181d2a"/>
+    </linearGradient>
+
+    <!-- Glowing Indigo Radial Halo -->
+    <radialGradient id="halo" cx="30%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#5f6ad3" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#5f6ad3" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- LanguageTool Signature Red-Yellow Wavy Squiggly Gradient -->
+    <linearGradient id="lt-squiggly" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ff4d4d"/>
+      <stop offset="50%" stop-color="#ffa600"/>
+      <stop offset="100%" stop-color="#ff4d4d"/>
+    </linearGradient>
+
+    <!-- Ikmal Door Soft Shadow -->
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <rect width="1280" height="640" fill="url(#halo)"/>
+
+  <!-- Centered text stack. The Ikmal product name is the headline;
+       LanguageTool appears only in the descriptive "for LanguageTool" support line,
+       so the banner reads as a third-party tool rather than an official edition. -->
+  <g transform="translate(320, 0)" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+    <!-- Headline: the product wordmark -->
+    <text x="0" y="314" font-size="96" font-weight="700" fill="#ffffff" letter-spacing="-0.03em">Ikmal<tspan dx="16">Editor</tspan></text>
+
+    <!-- LanguageTool signature squiggle, fitted to the measured wordmark width. -->
+    <path d="M0 346 Q19.6 361.0 39.1 346 T78.3 346 T117.4 346 T156.5 346 T195.7 346 T234.8 346 T273.9 346 T313.1 346 T352.2 346 T391.3 346 T430.5 346 T469.6 346" fill="none" stroke="url(#lt-squiggly)" stroke-width="6" stroke-linecap="round"/>
+
+    <!-- Support line: what it is -->
+    <text x="0" y="406" font-size="38" font-weight="600" fill="#c7cede" letter-spacing="-0.01em">Your writing companion built on LanguageTool</text>
+
+    <!-- Sub-line -->
+    <text x="0" y="454" font-size="25" font-weight="400" fill="#8994ab">Private desktop tools &#183; No subscription required</text>
+  </g>
+</svg>

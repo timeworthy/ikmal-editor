@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>Ikmal-EDITOR</Name>
+  <Repository>timeworthymedia/ikmal-editor:latest</Repository>
+  <Registry>https://hub.docker.com/r/timeworthymedia/ikmal-editor</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/timeworthymedia/ikmal-editor/issues</Support>
+  <Project>https://github.com/timeworthymedia/ikmal-editor</Project>
+  <Overview>
+    Ikmal Editor: Launch Manager for LanguageTool with embedded Plain English conciseness rule packs, FastText auto-downloader, and 1-click app auto-configurator.
+  </Overview>
+  <Category>Tools:Utilities Productivity:</Category>
+  <WebUI>http://[IP]:[PORT:8097]/v2/check</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/timeworthymedia/ikmal-editor/main/unraid/my-ikmal-editor.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/timeworthymedia/ikmal-editor/main/assets/ikmal_languagetool_icon.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Description>
+    Ikmal Editor automates local LanguageTool server setup on port 8097, embeds custom Plain English XML rule packs, and provides local HTTP grammar checking for Unraid home servers.
+  </Description>
+  <Networking>
+    <Mode>bridge</Mode>
+    <Publish>
+      <Port>
+        <HostPort>8097</HostPort>
+        <ContainerPort>8097</ContainerPort>
+        <Protocol>tcp</Protocol>
+      </Port>
+    </Publish>
+  </Networking>
+  <Data>
+    <Volume>
+      <HostDir>/mnt/user/appdata/ikmal-editor</HostDir>
+      <ContainerDir>/root/.ikmal-editor</ContainerDir>
+      <Mode>rw</Mode>
+    </Volume>
+  </Data>
+  <Environment/>
+  <Config Name="Server Port" Target="8097" Default="8097" Mode="tcp" Description="LanguageTool Local Server Port" Type="Port" Display="always" Required="true" Mask="false">8097</Config>
+  <Config Name="AppData Storage" Target="/root/.ikmal-editor" Default="/mnt/user/appdata/ikmal-editor" Mode="rw" Description="Persistent rules, models, and server logs" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/ikmal-editor</Config>
+</Container>

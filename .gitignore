@@ -1,0 +1,11 @@
+# Locally compiled Go binaries (current name + historical names kept so
+# stale artifacts in existing working copies stay untracked)
+ikmal-editor
+ikmal-ltml
+ikmal-languagetool
+ikmal-languagetool
+
+# Cross-platform release output
+bin/
+
+.DS_Store

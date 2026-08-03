@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Ikmal Editor: Battle-Tested Plain English & Conciseness Rule Pack -->
+<rules lang="en" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="../rules.xsd">
+
+  <category id="IKMAL_CONCISENESS" name="Ikmal Conciseness &amp; Plain English">
+    <rule id="IKMAL_WORDINESS_IN_ORDER_TO" name="Simplify &quot;in order to&quot;">
+      <pattern>
+        <token>in</token><token>order</token><token>to</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>to</suggestion></message>
+      <example correction="to">We should <marker>in order to</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_WORDINESS_DUE_TO_FACT" name="Simplify &quot;due to the fact that&quot;">
+      <pattern>
+        <token>due</token><token>to</token><token>the</token><token>fact</token><token>that</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>because</suggestion></message>
+      <example correction="because">We should <marker>due to the fact that</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_WORDINESS_AT_THIS_POINT" name="Simplify &quot;at this point in time&quot;">
+      <pattern>
+        <token>at</token><token>this</token><token>point</token><token>in</token><token>time</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>now</suggestion></message>
+      <example correction="now">We should <marker>at this point in time</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_WORDINESS_FOR_THE_PURPOSE_OF" name="Simplify &quot;for the purpose of&quot;">
+      <pattern>
+        <token>for</token><token>the</token><token>purpose</token><token>of</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>to</suggestion></message>
+      <example correction="to">We should <marker>for the purpose of</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_WORDINESS_IN_THE_EVENT_THAT" name="Simplify &quot;in the event that&quot;">
+      <pattern>
+        <token>in</token><token>the</token><token>event</token><token>that</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>if</suggestion></message>
+      <example correction="if">We should <marker>in the event that</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_WORDINESS_A_LARGE_NUMBER_OF" name="Simplify &quot;a large number of&quot;">
+      <pattern>
+        <token>a</token><token>large</token><token>number</token><token>of</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>many</suggestion></message>
+      <example correction="many">We should <marker>a large number of</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_WORDINESS_IN_CLOSE_PROXIMITY" name="Simplify &quot;in close proximity to&quot;">
+      <pattern>
+        <token>in</token><token>close</token><token>proximity</token><token>to</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>near</suggestion></message>
+      <example correction="near">We should <marker>in close proximity to</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_WORDINESS_WITH_THE_EXCEPTION_OF" name="Simplify &quot;with the exception of&quot;">
+      <pattern>
+        <token>with</token><token>the</token><token>exception</token><token>of</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>except</suggestion></message>
+      <example correction="except">We should <marker>with the exception of</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_WORDINESS_PRIOR_TO" name="Simplify &quot;prior to&quot;">
+      <pattern>
+        <token>prior</token><token>to</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>before</suggestion></message>
+      <example correction="before">We should <marker>prior to</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_WORDINESS_SUBSEQUENT_TO" name="Simplify &quot;subsequent to&quot;">
+      <pattern>
+        <token>subsequent</token><token>to</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>after</suggestion></message>
+      <example correction="after">We should <marker>subsequent to</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_WORDINESS_AT_PRESENT" name="Simplify &quot;at the present time&quot;">
+      <pattern>
+        <token>at</token><token>the</token><token>present</token><token>time</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>now</suggestion></message>
+      <example correction="now">We should <marker>at the present time</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_WORDINESS_UNTIL_SUCH_TIME" name="Simplify &quot;until such time as&quot;">
+      <pattern>
+        <token>until</token><token>such</token><token>time</token><token>as</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>until</suggestion></message>
+      <example correction="until">We should <marker>until such time as</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_NOMINALIZATION_MAKE_A_DECISION" name="Simplify &quot;make a decision&quot;">
+      <pattern>
+        <token>make</token><token>a</token><token>decision</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>decide</suggestion></message>
+      <example correction="decide">We should <marker>make a decision</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_NOMINALIZATION_CONDUCT_INVESTIGATION" name="Simplify &quot;conduct an investigation into&quot;">
+      <pattern>
+        <token>conduct</token><token>an</token><token>investigation</token><token>into</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>investigate</suggestion></message>
+      <example correction="investigate">We should <marker>conduct an investigation into</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_NOMINALIZATION_GIVE_CONSIDERATION" name="Simplify &quot;give consideration to&quot;">
+      <pattern>
+        <token>give</token><token>consideration</token><token>to</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>consider</suggestion></message>
+      <example correction="consider">We should <marker>give consideration to</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_NOMINALIZATION_CAME_TO_CONCLUSION" name="Simplify &quot;came to a conclusion that&quot;">
+      <pattern>
+        <token>came</token><token>to</token><token>a</token><token>conclusion</token><token>that</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>concluded that</suggestion></message>
+      <example correction="concluded that">We should <marker>came to a conclusion that</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_NOMINALIZATION_MAKE_AN_ADJUSTMENT" name="Simplify &quot;make an adjustment to&quot;">
+      <pattern>
+        <token>make</token><token>an</token><token>adjustment</token><token>to</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>adjust</suggestion></message>
+      <example correction="adjust">We should <marker>make an adjustment to</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_NOMINALIZATION_PROVIDE_ASSISTANCE" name="Simplify &quot;provide assistance to&quot;">
+      <pattern>
+        <token>provide</token><token>assistance</token><token>to</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>help</suggestion></message>
+      <example correction="help">We should <marker>provide assistance to</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_NOMINALIZATION_TAKE_INTO_CONSIDERATION" name="Simplify &quot;take into consideration&quot;">
+      <pattern>
+        <token>take</token><token>into</token><token>consideration</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>consider</suggestion></message>
+      <example correction="consider">We should <marker>take into consideration</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_REDUNDANCY_ADVANCE_PLANNING" name="Simplify &quot;advance planning&quot;">
+      <pattern>
+        <token>advance</token><token>planning</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>planning</suggestion></message>
+      <example correction="planning">We should <marker>advance planning</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_REDUNDANCY_END_RESULT" name="Simplify &quot;end result&quot;">
+      <pattern>
+        <token>end</token><token>result</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>result</suggestion></message>
+      <example correction="result">We should <marker>end result</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_REDUNDANCY_BASIC_FUNDAMENTALS" name="Simplify &quot;basic fundamentals&quot;">
+      <pattern>
+        <token>basic</token><token>fundamentals</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>fundamentals</suggestion></message>
+      <example correction="fundamentals">We should <marker>basic fundamentals</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_REDUNDANCY_FREE_GIFT" name="Simplify &quot;free gift&quot;">
+      <pattern>
+        <token>free</token><token>gift</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>gift</suggestion></message>
+      <example correction="gift">We should <marker>free gift</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_REDUNDANCY_PAST_HISTORY" name="Simplify &quot;past history&quot;">
+      <pattern>
+        <token>past</token><token>history</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>history</suggestion></message>
+      <example correction="history">We should <marker>past history</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_REDUNDANCY_SUM_TOTAL" name="Simplify &quot;sum total&quot;">
+      <pattern>
+        <token>sum</token><token>total</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>total</suggestion></message>
+      <example correction="total">We should <marker>sum total</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_CLARITY_HAS_CAPABILITY" name="Simplify &quot;has the capability to&quot;">
+      <pattern>
+        <token>has</token><token>the</token><token>capability</token><token>to</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>can</suggestion></message>
+      <example correction="can">We should <marker>has the capability to</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_CLARITY_UTILIZE" name="Simplify &quot;utilize&quot;">
+      <pattern>
+        <token>utilize</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>use</suggestion></message>
+      <example correction="use">We should <marker>utilize</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_CLARITY_ASSISTANCE" name="Simplify &quot;assistance&quot;">
+      <pattern>
+        <token>assistance</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>help</suggestion></message>
+      <example correction="help">We should <marker>assistance</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_CLARITY_COMMENCE" name="Simplify &quot;commence&quot;">
+      <pattern>
+        <token>commence</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>start</suggestion></message>
+      <example correction="start">We should <marker>commence</marker> simplify our writing.</example>
+    </rule>
+    <rule id="IKMAL_CLARITY_TERMINATE" name="Simplify &quot;terminate&quot;">
+      <pattern>
+        <token>terminate</token>
+      </pattern>
+      <message>Consider simplifying for conciseness: <suggestion>end</suggestion></message>
+      <example correction="end">We should <marker>terminate</marker> simplify our writing.</example>
+    </rule>
+  </category>
+</rules>
