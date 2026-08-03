@@ -14,6 +14,8 @@ Last updated: 2026-08-03
 - Deterministic style-guide ingestion for PDF, HTML, Markdown, text, and CSV
   review workflows. Imported guides are optional and switchable.
 - Electron menubar shell with a writing tester and service controls.
+- Desktop style-guide settings with imported-guide selection, persisted default,
+  and enable/disable controls backed by the local management API.
 - First desktop UI pass with separate LanguageTool/quality health indicators,
   full replacement suggestions, one-click apply actions, clear/reset control,
   and Cmd/Ctrl+Enter checking.
@@ -38,8 +40,6 @@ Last updated: 2026-08-03
 
 ## Next
 
-- Add style-guide selection, default-guide, and enable/disable controls to the
-  desktop settings panel.
 - Add a menubar quick-check flow and recent-check history.
 - Improve result grouping for grammar, quality, style-guide, and transformer
   findings when multiple systems flag the same text.

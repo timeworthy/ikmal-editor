@@ -81,6 +81,31 @@
           <span><strong>Quality checks</strong><small id="quality-status-label">Checking…</small></span>
         </div>
       </div>
+      <div class="setting-card style-guide-card">
+        <div class="style-guide-heading">
+          <div>
+            <strong>Style guide</strong>
+            <p>Optionally apply approved rules from an imported guide.</p>
+          </div>
+          <button class="button button-quiet" id="refresh-style-guides" type="button">Refresh</button>
+        </div>
+        <label class="style-guide-select-row" for="style-guide-select">
+          <span>
+            <strong>Default guide</strong>
+            <small id="style-guide-count">No guides imported</small>
+          </span>
+          <select id="style-guide-select" disabled>
+            <option value="">No imported guides</option>
+          </select>
+        </label>
+        <label class="setting-row style-guide-toggle-row">
+          <span>
+            <strong>Use selected guide</strong>
+            <small id="style-guide-status">Import and select a guide to enable style checks.</small>
+          </span>
+          <input type="checkbox" id="style-guide-toggle" disabled>
+        </label>
+      </div>
       <label class="setting-row">
         <span>
           <strong>Start at login</strong>

@@ -32,6 +32,22 @@ type qualityProxyCandidate struct {
 	Native      bool
 }
 
+type styleGuideSummary struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	SourceType string `json:"sourceType,omitempty"`
+	ImportedAt string `json:"importedAt,omitempty"`
+	EntryCount int    `json:"entryCount"`
+	RuleCount  int    `json:"ruleCount,omitempty"`
+	Active     bool   `json:"active"`
+}
+
+type styleGuideStateResponse struct {
+	Guides   []styleGuideSummary `json:"guides"`
+	ActiveID string              `json:"activeId,omitempty"`
+	Enabled  bool                `json:"enabled"`
+}
+
 func runQualityProxy() {
 	var qualityProcess *exec.Cmd
 	if !qualityEndpointReady() {
@@ -51,6 +67,9 @@ func runQualityProxy() {
 	mux.HandleFunc("/v2", proxy.forwardHandler)
 	mux.HandleFunc("/v2/check", proxy.checkHandler)
 	mux.HandleFunc("/v2/languages", proxy.forwardHandler)
+	mux.HandleFunc("/v1/style-guides", styleGuideStateHandler)
+	mux.HandleFunc("/v1/style-guide/select", styleGuideSelectHandler)
+	mux.HandleFunc("/v1/style-guide/enabled", styleGuideEnabledHandler)
 
 	port := os.Getenv("IKMAL_QUALITY_PROXY_PORT")
 	if port == "" {
@@ -61,6 +80,99 @@ func runQualityProxy() {
 	if err := http.ListenAndServe(addr, qualityCORS(mux)); err != nil {
 		fmt.Printf("Quality proxy stopped: %v\n", err)
 	}
+}
+
+func styleGuideStateHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	guides, err := loadStyleGuides()
+	if err != nil && !os.IsNotExist(err) {
+		writeQualityJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	selection, selectionErr := loadStyleGuideSelection()
+	if selectionErr != nil && !os.IsNotExist(selectionErr) {
+		writeQualityJSON(w, http.StatusInternalServerError, map[string]string{"error": selectionErr.Error()})
+		return
+	}
+
+	state := styleGuideStateResponse{Guides: make([]styleGuideSummary, 0, len(guides))}
+	for _, guide := range guides {
+		active := guide.ID == selection.GuideID
+		state.Guides = append(state.Guides, styleGuideSummary{
+			ID:         guide.ID,
+			Name:       guide.Name,
+			SourceType: guide.SourceType,
+			ImportedAt: guide.ImportedAt,
+			EntryCount: len(guide.Entries),
+			RuleCount:  guide.RuleCount,
+			Active:     active,
+		})
+		if active {
+			state.ActiveID = guide.ID
+			state.Enabled = selection.Enabled
+		}
+	}
+	writeQualityJSON(w, http.StatusOK, state)
+}
+
+func styleGuideSelectHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var request struct {
+		ID string `json:"id"`
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || strings.TrimSpace(request.ID) == "" {
+		writeQualityJSON(w, http.StatusBadRequest, map[string]string{"error": "style guide id is required"})
+		return
+	}
+	if err := selectStyleGuide(strings.TrimSpace(request.ID)); err != nil {
+		status := http.StatusBadRequest
+		if os.IsNotExist(err) {
+			status = http.StatusNotFound
+		}
+		writeQualityJSON(w, status, map[string]string{"error": err.Error()})
+		return
+	}
+	styleGuideStateHandler(w, styleGuideStateRequest(r))
+}
+
+func styleGuideEnabledHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var request struct {
+		Enabled bool `json:"enabled"`
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		writeQualityJSON(w, http.StatusBadRequest, map[string]string{"error": "enabled must be a boolean"})
+		return
+	}
+	if err := setStyleGuideEnabled(request.Enabled); err != nil {
+		status := http.StatusBadRequest
+		if os.IsNotExist(err) {
+			status = http.StatusNotFound
+		}
+		writeQualityJSON(w, status, map[string]string{"error": err.Error()})
+		return
+	}
+	styleGuideStateHandler(w, styleGuideStateRequest(r))
+}
+
+// styleGuideStateRequest keeps the management handlers' response shape consistent
+// without making a second public state-building function.
+func styleGuideStateRequest(r *http.Request) *http.Request {
+	request := r.Clone(r.Context())
+	request.Method = http.MethodGet
+	return request
 }
 
 func qualityProxyLanguageToolURL() string {

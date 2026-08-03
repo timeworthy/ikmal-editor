@@ -1,11 +1,76 @@
 package main
 
 import (
+	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestStyleGuideManagementHandlersExposeAndChangeSelection(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("IKMAL_STYLE_GUIDE_DIR", dir)
+	guide := styleGuide{
+		ID:         "plain-language",
+		Name:       "Plain Language",
+		SourceType: "markdown",
+		ImportedAt: "2026-08-03T00:00:00Z",
+		Entries:    []styleGuideEntry{{ID: "one", Text: "Prefer plain language", Kind: "prefer"}},
+		RuleCount:  1,
+	}
+	content, err := json.Marshal(guide)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, guide.ID+".json"), content, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	state := callStyleGuideHandler(t, styleGuideStateHandler, "GET", "", "")
+	if state.ActiveID != "" || state.Enabled || len(state.Guides) != 1 || state.Guides[0].Active {
+		t.Fatalf("unexpected initial style-guide state: %+v", state)
+	}
+	state = callStyleGuideHandler(t, styleGuideSelectHandler, "POST", `{"id":"plain-language"}`, "")
+	if state.ActiveID != "plain-language" || state.Enabled || !state.Guides[0].Active {
+		t.Fatalf("unexpected selected style-guide state: %+v", state)
+	}
+	state = callStyleGuideHandler(t, styleGuideEnabledHandler, "POST", `{"enabled":true}`, "")
+	if state.ActiveID != "plain-language" || !state.Enabled {
+		t.Fatalf("unexpected enabled style-guide state: %+v", state)
+	}
+}
+
+func TestStyleGuideStateHandlerReturnsEmptyStateWithoutImport(t *testing.T) {
+	t.Setenv("IKMAL_STYLE_GUIDE_DIR", filepath.Join(t.TempDir(), "missing"))
+	state := callStyleGuideHandler(t, styleGuideStateHandler, "GET", "", "")
+	if state.Guides == nil || len(state.Guides) != 0 || state.ActiveID != "" || state.Enabled {
+		t.Fatalf("expected empty style-guide state, got %+v", state)
+	}
+}
+
+func callStyleGuideHandler(t *testing.T, handler func(http.ResponseWriter, *http.Request), method, body, contentType string) styleGuideStateResponse {
+	t.Helper()
+	request := httptest.NewRequest(method, "http://127.0.0.1:8096/v1/style-guides", strings.NewReader(body))
+	if contentType != "" {
+		request.Header.Set("Content-Type", contentType)
+	} else if body != "" {
+		request.Header.Set("Content-Type", "application/json")
+	}
+	response := httptest.NewRecorder()
+	handler(response, request)
+	if response.Code != 200 {
+		t.Fatalf("style-guide handler returned HTTP %d: %s", response.Code, response.Body.String())
+	}
+	var state styleGuideStateResponse
+	if err := json.Unmarshal(response.Body.Bytes(), &state); err != nil {
+		t.Fatalf("decode style-guide response: %v", err)
+	}
+	return state
+}
 
 func TestMergeProxyCandidatesPrefersBroaderQualityCorrection(t *testing.T) {
 	narrow := qualityProxyCandidate{

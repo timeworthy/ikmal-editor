@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const QUALITY_PROXY_URL = process.env.IKMAL_DESKTOP_PROXY_URL || 'http://127.0.0.1:8096';
+const STYLE_GUIDE_URL = `${QUALITY_PROXY_URL}/v1/style-guides`;
 const QUALITY_HEALTH_URL = process.env.IKMAL_DESKTOP_QUALITY_URL || 'http://127.0.0.1:8098/health';
 const LANGUAGE_TOOL_URL = process.env.IKMAL_DESKTOP_LANGUAGETOOL_URL || 'http://127.0.0.1:8097';
 const SERVICE_POLL_MS = 3000;
@@ -173,6 +174,37 @@ function registerIPC() {
     });
     if (!response.ok) {
       throw new Error(`Writing check failed with HTTP ${response.status}`);
+    }
+    return response.json();
+  });
+  ipcMain.handle('style-guide-state', async () => {
+    const response = await fetch(STYLE_GUIDE_URL, { signal: AbortSignal.timeout(3000) });
+    if (!response.ok) throw new Error(`Style-guide state failed with HTTP ${response.status}`);
+    return response.json();
+  });
+  ipcMain.handle('style-guide-select', async (_, id) => {
+    const response = await fetch(`${QUALITY_PROXY_URL}/v1/style-guide/select`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id }),
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.error || `Style-guide selection failed with HTTP ${response.status}`);
+    }
+    return response.json();
+  });
+  ipcMain.handle('style-guide-enabled', async (_, enabled) => {
+    const response = await fetch(`${QUALITY_PROXY_URL}/v1/style-guide/enabled`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ enabled: Boolean(enabled) }),
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.error || `Style-guide setting failed with HTTP ${response.status}`);
     }
     return response.json();
   });

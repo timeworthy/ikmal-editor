@@ -14,9 +14,15 @@ const languageToolStatusDot = document.querySelector('#languagetool-status-dot')
 const languageToolStatusLabel = document.querySelector('#languagetool-status-label');
 const qualityStatusDot = document.querySelector('#quality-status-dot');
 const qualityStatusLabel = document.querySelector('#quality-status-label');
+const styleGuideSelect = document.querySelector('#style-guide-select');
+const styleGuideToggle = document.querySelector('#style-guide-toggle');
+const styleGuideCount = document.querySelector('#style-guide-count');
+const styleGuideStatus = document.querySelector('#style-guide-status');
+const refreshStyleGuidesButton = document.querySelector('#refresh-style-guides');
 
 const sampleText = 'Plants, by comparison, produce their own food. The method is different. The result shows a difference.';
 let lastResponse = { matches: [] };
+let styleGuideState;
 
 function escapeHTML(value) {
   return String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
@@ -49,6 +55,52 @@ function updateServiceState(state) {
   if (state.proxyUrl) document.querySelector('#proxy-endpoint').textContent = `${state.proxyUrl}/v2`;
   startButton.disabled = state.managerRunning;
   stopButton.disabled = !state.managerRunning;
+}
+
+function setStyleGuideStatus(message, error = false) {
+  styleGuideStatus.textContent = message;
+  styleGuideStatus.classList.toggle('is-error', error);
+}
+
+function renderStyleGuideState(state) {
+  styleGuideState = state || { guides: [], activeId: '', enabled: false };
+  const guides = Array.isArray(styleGuideState.guides) ? styleGuideState.guides : [];
+  styleGuideSelect.replaceChildren();
+  if (!guides.length) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = 'No imported guides';
+    styleGuideSelect.appendChild(option);
+  } else {
+    guides.forEach((guide) => {
+      const option = document.createElement('option');
+      option.value = guide.id;
+      option.textContent = `${guide.name} (${guide.entryCount} entr${guide.entryCount === 1 ? 'y' : 'ies'})`;
+      styleGuideSelect.appendChild(option);
+    });
+  }
+  styleGuideSelect.disabled = guides.length === 0;
+  styleGuideToggle.disabled = !styleGuideState.activeId;
+  styleGuideSelect.value = styleGuideState.activeId || '';
+  styleGuideToggle.checked = Boolean(styleGuideState.enabled);
+  styleGuideCount.textContent = guides.length ? `${guides.length} guide${guides.length === 1 ? '' : 's'} available` : 'No guides imported';
+  if (!guides.length) {
+    setStyleGuideStatus('Import and select a guide to enable style checks.');
+  } else if (!styleGuideState.activeId) {
+    setStyleGuideStatus('Choose a guide to make it the default.');
+  } else if (styleGuideState.enabled) {
+    setStyleGuideStatus('Enabled. Restart services to apply native XML rules.');
+  } else {
+    setStyleGuideStatus('Selected but disabled.');
+  }
+}
+
+async function loadStyleGuideState() {
+  try {
+    renderStyleGuideState(await window.ikmal.getStyleGuideState());
+  } catch (error) {
+    setStyleGuideStatus(error.message || 'Style-guide settings are unavailable.', true);
+  }
 }
 
 function renderResults(response, sourceText) {
@@ -134,6 +186,28 @@ document.querySelector('#sample-button').addEventListener('click', () => { input
 startButton.addEventListener('click', () => window.ikmal.startServices().then(updateServiceState));
 stopButton.addEventListener('click', () => window.ikmal.stopServices().then(updateServiceState));
 document.querySelector('#launch-toggle').addEventListener('change', (event) => window.ikmal.setLaunchAtLogin(event.target.checked));
+refreshStyleGuidesButton.addEventListener('click', loadStyleGuideState);
+styleGuideSelect.addEventListener('change', async (event) => {
+  if (!event.target.value) return;
+  styleGuideSelect.disabled = true;
+  setStyleGuideStatus('Selecting guide…');
+  try {
+    renderStyleGuideState(await window.ikmal.selectStyleGuide(event.target.value));
+  } catch (error) {
+    setStyleGuideStatus(error.message || 'Could not select that guide.', true);
+    await loadStyleGuideState();
+  }
+});
+styleGuideToggle.addEventListener('change', async (event) => {
+  styleGuideToggle.disabled = true;
+  setStyleGuideStatus(event.target.checked ? 'Enabling guide…' : 'Disabling guide…');
+  try {
+    renderStyleGuideState(await window.ikmal.setStyleGuideEnabled(event.target.checked));
+  } catch (error) {
+    setStyleGuideStatus(error.message || 'Could not update that guide.', true);
+    await loadStyleGuideState();
+  }
+});
 input.addEventListener('keydown', (event) => {
   if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
     event.preventDefault();
@@ -144,4 +218,5 @@ window.ikmal.onServiceState(updateServiceState);
 window.ikmal.onServiceError((message) => setNotice(message));
 window.ikmal.getServiceState().then(updateServiceState);
 window.ikmal.getLaunchAtLogin().then((enabled) => { document.querySelector('#launch-toggle').checked = enabled; });
+loadStyleGuideState();
 updateWordCount();
