@@ -29,35 +29,20 @@
   <rect width="1280" height="640" fill="url(#bg)"/>
   <rect width="1280" height="640" fill="url(#halo)"/>
 
-  <!-- Left: the bare door mark, matching assets/ikmal_languagetool_mark.svg.
-       No monogram and no squiggly here: the wordmark to the right already sets the
-       name, so repeating "EDITOR" inside the door only competes with it.
-       Door art spans y -170..160 locally (330 tall); scaled 1.03 to match the text
-       block, and centred on y=356 so its optical centre lines up with the stack. -->
-  <g transform="translate(258, 356) scale(1.03)" filter="url(#shadow)">
-    <!-- Arched Door Silhouette (Indigo #5f6ad3) -->
-    <path d="M-130 160 L-130 -40 A130 130 0 0 1 130 -40 L130 160 Z" fill="#5f6ad3"/>
-
-    <!-- Burnt Orange Door Knob -->
-    <circle cx="95" cy="95" r="14" fill="#c47b4a"/>
-  </g>
-
-  <!-- Right: Text Stack (left-aligned). The Ikmal product name is the headline;
+  <!-- Centered text stack. The Ikmal product name is the headline;
        LanguageTool appears only in the descriptive "for LanguageTool" support line,
        so the banner reads as a third-party tool rather than an official edition. -->
-  <g transform="translate(462, 0)" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
-    <!-- Headline: the product wordmark, with the Ikmal orange dot -->
-    <text x="0" y="314" font-size="84" font-weight="800" fill="#ffffff" letter-spacing="-0.03em">Ikmal<tspan fill="#c47b4a" font-weight="600" dx="12">&#8211;</tspan><tspan dx="12">Editor</tspan><tspan fill="#c47b4a">.</tspan></text>
+  <g transform="translate(320, 0)" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+    <!-- Headline: the product wordmark -->
+    <text x="0" y="314" font-size="96" font-weight="700" fill="#ffffff" letter-spacing="-0.03em">Ikmal<tspan dx="16">Editor</tspan></text>
 
-    <!-- LanguageTool Signature Wavy Squiggly Line, fitted to the measured headline
-         width (587px) so it terminates flush with the final period rather than
-         overhanging it. 15 half-waves of 39.1px keeps the original wavelength. -->
-    <path d="M0 346 Q19.6 361.0 39.1 346 T78.3 346 T117.4 346 T156.5 346 T195.7 346 T234.8 346 T273.9 346 T313.1 346 T352.2 346 T391.3 346 T430.5 346 T469.6 346 T508.7 346 T547.9 346 T587.0 346" fill="none" stroke="url(#lt-squiggly)" stroke-width="6" stroke-linecap="round"/>
+    <!-- LanguageTool signature squiggle, fitted to the measured wordmark width. -->
+    <path d="M0 346 Q19.6 361.0 39.1 346 T78.3 346 T117.4 346 T156.5 346 T195.7 346 T234.8 346 T273.9 346 T313.1 346 T352.2 346 T391.3 346 T430.5 346 T469.6 346" fill="none" stroke="url(#lt-squiggly)" stroke-width="6" stroke-linecap="round"/>
 
     <!-- Support line: what it is -->
-    <text x="0" y="406" font-size="38" font-weight="600" fill="#c7cede" letter-spacing="-0.01em">Local writing quality for LanguageTool</text>
+    <text x="0" y="406" font-size="38" font-weight="600" fill="#c7cede" letter-spacing="-0.01em">Your writing companion built on LanguageTool</text>
 
     <!-- Sub-line -->
-    <text x="0" y="454" font-size="25" font-weight="400" fill="#8994ab">Private desktop tools &#183; Optional local AI</text>
+    <text x="0" y="454" font-size="25" font-weight="400" fill="#8994ab">Private desktop tools &#183; No subscription required</text>
   </g>
 </svg>
