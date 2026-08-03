@@ -93,13 +93,13 @@ func TestMergeProxyCandidatesPrefersBroaderQualityCorrection(t *testing.T) {
 
 func TestMergeProxyCandidatesPreservesNativeLanguageToolMatch(t *testing.T) {
 	native := qualityProxyCandidate{
-		Match:  map[string]any{"message": "native"},
+		Match:  map[string]any{"message": "native", "offset": 10, "length": 4},
 		Start:  10,
 		End:    14,
 		Native: true,
 	}
 	quality := qualityProxyCandidate{
-		Match:       map[string]any{"message": "quality"},
+		Match:       map[string]any{"message": "quality", "ikmalSource": "quality-sidecar"},
 		Start:       10,
 		End:         14,
 		Replacement: "edit",
@@ -108,6 +108,18 @@ func TestMergeProxyCandidatesPreservesNativeLanguageToolMatch(t *testing.T) {
 	merged := mergeProxyCandidates([]qualityProxyCandidate{native}, []qualityProxyCandidate{quality})
 	if len(merged) != 1 || !merged[0].Native {
 		t.Fatalf("expected native match to win, got %+v", merged)
+	}
+	response := proxyMatches(merged)
+	if len(response) != 1 {
+		t.Fatalf("expected one grouped match, got %+v", response)
+	}
+	match := response[0].(map[string]any)
+	sources, ok := match["ikmalSources"].([]string)
+	if !ok || len(sources) != 2 || sources[0] != "LanguageTool" || sources[1] != "quality-sidecar" {
+		t.Fatalf("expected source provenance, got %+v", match["ikmalSources"])
+	}
+	if related, ok := match["ikmalRelated"].([]any); !ok || len(related) != 1 {
+		t.Fatalf("expected one related finding, got %+v", match["ikmalRelated"])
 	}
 }
 

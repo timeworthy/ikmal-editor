@@ -163,25 +163,49 @@ async function loadStyleGuideState() {
   }
 }
 
+function displaySource(source) {
+  return ({
+    'quality-sidecar': 'Quality checks',
+    'style-guide-sidecar': 'Style guide',
+    transformer: 'Transformer',
+  })[source] || source || 'LanguageTool';
+}
+
 function renderResults(response, sourceText) {
   const matches = Array.isArray(response.matches) ? response.matches : [];
+  const groupedCount = matches.reduce((count, match) => count + (Array.isArray(match.ikmalRelated) ? match.ikmalRelated.length : 0), 0);
   lastResponse = response;
   emptyState.classList.toggle('is-hidden', matches.length > 0);
-  summary.textContent = matches.length ? `${matches.length} suggestion${matches.length === 1 ? '' : 's'} found` : '';
+  summary.textContent = matches.length
+    ? `${matches.length} suggestion${matches.length === 1 ? '' : 's'} found${groupedCount ? ` · ${groupedCount} grouped finding${groupedCount === 1 ? '' : 's'}` : ''}`
+    : '';
   summary.classList.toggle('is-hidden', matches.length === 0);
   results.querySelectorAll('.result-card').forEach((node) => node.remove());
   matches.forEach((match, index) => {
     const matchedText = sourceText.slice(match.offset || 0, (match.offset || 0) + (match.length || 0));
     const replacement = match.replacements && match.replacements[0] ? match.replacements[0].value : '';
     const source = match.ikmalSource || (match.rule && match.rule.id && match.rule.id.startsWith('IKMAL_') ? 'quality sidecar' : 'LanguageTool');
+    const sources = Array.isArray(match.ikmalSources) ? match.ikmalSources : [source];
+    const related = Array.isArray(match.ikmalRelated) ? match.ikmalRelated : [];
     const suggestion = replacement
       ? `Replace “${matchedText}” with “${replacement}”`
       : 'Review this wording';
+    const relatedMarkup = related.length ? `
+      <details class="related-findings">
+        <summary>Also flagged by ${escapeHTML(related.map((finding) => displaySource(finding.source)).join(', '))}</summary>
+        <div class="related-list">${related.map((finding) => `
+          <div class="related-finding">
+            <strong>${escapeHTML(displaySource(finding.source))}</strong>
+            <span>${escapeHTML(finding.message || 'Related finding.')}</span>
+            ${finding.replacement ? `<small>Suggested: ${escapeHTML(finding.replacement)}</small>` : ''}
+          </div>`).join('')}
+        </div>
+      </details>` : '';
     const card = document.createElement('article');
     card.className = 'result-card';
     card.innerHTML = `
       <div class="result-topline">
-        <span class="result-category">${escapeHTML(source)}</span>
+        <span class="result-category">${escapeHTML(displaySource(source))}${sources.length > 1 ? ` + ${sources.length - 1} related` : ''}</span>
         <span class="result-offset">${match.length || 0} chars</span>
       </div>
       <p class="result-message">${escapeHTML(match.message || 'Review this passage.')}</p>
@@ -189,6 +213,7 @@ function renderResults(response, sourceText) {
         <span class="chip-label">Suggested change</span>
         <strong>${escapeHTML(suggestion)}</strong>
       </div>
+      ${relatedMarkup}
       <button class="result-apply" type="button" data-match-index="${index}" ${replacement ? '' : 'disabled'}>${replacement ? 'Apply suggestion' : 'No direct replacement'}</button>`;
     results.appendChild(card);
   });

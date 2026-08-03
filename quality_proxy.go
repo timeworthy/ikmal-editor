@@ -30,6 +30,7 @@ type qualityProxyCandidate struct {
 	Replacement string
 	Confidence  float64
 	Native      bool
+	Related     []map[string]any
 }
 
 type styleGuideSummary struct {
@@ -465,7 +466,22 @@ func mergeProxyCandidates(native, quality []qualityProxyCandidate) []qualityProx
 			}
 		}
 		if !wins {
+			for _, index := range conflicts {
+				if proxyCandidateWins(merged[index], candidate) {
+					addProxyRelated(&merged[index], candidate)
+					for _, finding := range candidate.Related {
+						addProxyRelatedEntry(&merged[index], finding)
+					}
+					break
+				}
+			}
 			continue
+		}
+		for _, index := range conflicts {
+			addProxyRelated(&candidate, merged[index])
+			for _, finding := range merged[index].Related {
+				addProxyRelatedEntry(&candidate, finding)
+			}
 		}
 		filtered := make([]qualityProxyCandidate, 0, len(merged)-len(conflicts)+1)
 		conflictSet := make(map[int]bool, len(conflicts))
@@ -513,10 +529,74 @@ func proxyCandidateWins(candidate, existing qualityProxyCandidate) bool {
 func proxyMatches(candidates []qualityProxyCandidate) []any {
 	matches := make([]any, 0, len(candidates))
 	for _, candidate := range candidates {
-		delete(candidate.Match, "ikmalSource")
+		if candidate.Match == nil {
+			candidate.Match = map[string]any{}
+		}
+		source := proxyCandidateSource(candidate)
+		candidate.Match["ikmalSource"] = source
+		sources := []string{source}
+		related := make([]any, 0, len(candidate.Related))
+		for _, finding := range candidate.Related {
+			if relatedSource, ok := finding["source"].(string); ok && relatedSource != "" && !containsString(sources, relatedSource) {
+				sources = append(sources, relatedSource)
+			}
+			related = append(related, finding)
+		}
+		if len(sources) > 1 {
+			candidate.Match["ikmalSources"] = sources
+		}
+		if len(related) > 0 {
+			candidate.Match["ikmalRelated"] = related
+		}
 		matches = append(matches, candidate.Match)
 	}
 	return matches
+}
+
+func proxyCandidateSource(candidate qualityProxyCandidate) string {
+	if source, ok := candidate.Match["ikmalSource"].(string); ok && source != "" {
+		return source
+	}
+	if candidate.Native {
+		return "LanguageTool"
+	}
+	return "quality-sidecar"
+}
+
+func addProxyRelated(candidate *qualityProxyCandidate, related qualityProxyCandidate) {
+	entry := map[string]any{
+		"source":      proxyCandidateSource(related),
+		"message":     related.Match["message"],
+		"replacement": related.Replacement,
+		"offset":      related.Start,
+		"length":      related.End - related.Start,
+	}
+	if rule, ok := related.Match["rule"].(map[string]any); ok {
+		if id, ok := rule["id"].(string); ok && id != "" {
+			entry["ruleId"] = id
+		}
+	}
+	addProxyRelatedEntry(candidate, entry)
+}
+
+func addProxyRelatedEntry(candidate *qualityProxyCandidate, entry map[string]any) {
+	key := fmt.Sprintf("%v|%v|%v|%v|%v", entry["source"], entry["message"], entry["offset"], entry["length"], entry["replacement"])
+	for _, existing := range candidate.Related {
+		existingKey := fmt.Sprintf("%v|%v|%v|%v|%v", existing["source"], existing["message"], existing["offset"], existing["length"], existing["replacement"])
+		if key == existingKey {
+			return
+		}
+	}
+	candidate.Related = append(candidate.Related, entry)
+}
+
+func containsString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
 }
 
 func proxyNumber(value any) (int, bool) {
