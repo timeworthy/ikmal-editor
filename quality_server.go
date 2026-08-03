@@ -34,13 +34,21 @@ type qualityResponse struct {
 }
 
 type qualitySuggestion struct {
-	Start       int     `json:"start"`
-	End         int     `json:"end"`
-	Replacement string  `json:"replacement,omitempty"`
-	Category    string  `json:"category"`
-	Message     string  `json:"message"`
-	Confidence  float64 `json:"confidence"`
-	Source      string  `json:"source"`
+	Start              int                 `json:"start"`
+	End                int                 `json:"end"`
+	Replacement        string              `json:"replacement,omitempty"`
+	Category           string              `json:"category"`
+	Message            string              `json:"message"`
+	Confidence         float64             `json:"confidence"`
+	Source             string              `json:"source"`
+	RelatedOccurrences []qualityOccurrence `json:"relatedOccurrences,omitempty"`
+	Antecedent         *qualityAntecedent  `json:"antecedent,omitempty"`
+}
+
+type qualityOccurrence struct {
+	Start int    `json:"start"`
+	End   int    `json:"end"`
+	Text  string `json:"text"`
 }
 
 type qualityAntecedent struct {
@@ -336,6 +344,7 @@ func analyzeQualityText(text string) qualityResponse {
 					Agreement:       agreement,
 				})
 				if agreement != "" {
+					antecedentLink := antecedents[len(antecedents)-1]
 					suggestions = append(suggestions, qualitySuggestion{
 						Start:       qualityUTF16Offset(text, token.Start),
 						End:         qualityUTF16Offset(text, token.End),
@@ -344,6 +353,7 @@ func analyzeQualityText(text string) qualityResponse {
 						Message:     fmt.Sprintf("The pronoun %q may not agree with the antecedent %q.", token.Text, antecedent.Text),
 						Confidence:  confidence,
 						Source:      "quality-sidecar",
+						Antecedent:  &antecedentLink,
 					})
 				}
 			}
@@ -352,12 +362,13 @@ func analyzeQualityText(text string) qualityResponse {
 		if isQualityContentWord(token, tokens, i) {
 			if previous, ok := lastContent[token.Lower]; ok && sameQualityWindow(token, previous, i, tokens) {
 				suggestions = append(suggestions, qualitySuggestion{
-					Start:      qualityUTF16Offset(text, token.Start),
-					End:        qualityUTF16Offset(text, token.End),
-					Category:   "repetition",
-					Message:    fmt.Sprintf("The content word %q repeats nearby. Consider varying the wording if the repetition is not intentional.", token.Text),
-					Confidence: 0.86,
-					Source:     "quality-sidecar",
+					Start:              qualityUTF16Offset(text, token.Start),
+					End:                qualityUTF16Offset(text, token.End),
+					Category:           "repetition",
+					Message:            fmt.Sprintf("The content word %q repeats nearby. Consider varying the wording if the repetition is not intentional.", token.Text),
+					Confidence:         0.86,
+					Source:             "quality-sidecar",
+					RelatedOccurrences: qualityOccurrencePair(text, previous, token),
 				})
 			}
 			lastContent[token.Lower] = token
@@ -366,12 +377,13 @@ func analyzeQualityText(text string) qualityResponse {
 		if family, ok := qualityWordFamilies[token.Lower]; ok {
 			if previous, found := lastFamily[family]; found && sameQualityWindow(token, previous, i, tokens) && previous.Lower != token.Lower {
 				suggestions = append(suggestions, qualitySuggestion{
-					Start:      qualityUTF16Offset(text, token.Start),
-					End:        qualityUTF16Offset(text, token.End),
-					Category:   "word-family-echo",
-					Message:    fmt.Sprintf("%q echoes the nearby word %q. Consider varying the wording.", token.Text, previous.Text),
-					Confidence: 0.78,
-					Source:     "quality-sidecar",
+					Start:              qualityUTF16Offset(text, token.Start),
+					End:                qualityUTF16Offset(text, token.End),
+					Category:           "word-family-echo",
+					Message:            fmt.Sprintf("%q echoes the nearby word %q. Consider varying the wording.", token.Text, previous.Text),
+					Confidence:         0.78,
+					Source:             "quality-sidecar",
+					RelatedOccurrences: qualityOccurrencePair(text, previous, token),
 				})
 			}
 			lastFamily[family] = token
@@ -661,6 +673,17 @@ func qualityUTF16Offset(text string, byteOffset int) int {
 		}
 	}
 	return units
+}
+
+func qualityOccurrencePair(text string, first, second qualityToken) []qualityOccurrence {
+	occurrences := []qualityOccurrence{
+		{Start: qualityUTF16Offset(text, first.Start), End: qualityUTF16Offset(text, first.End), Text: first.Text},
+		{Start: qualityUTF16Offset(text, second.Start), End: qualityUTF16Offset(text, second.End), Text: second.Text},
+	}
+	if occurrences[0].Start > occurrences[1].Start {
+		occurrences[0], occurrences[1] = occurrences[1], occurrences[0]
+	}
+	return occurrences
 }
 
 func isQualityWord(token qualityToken) bool {

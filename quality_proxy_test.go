@@ -154,6 +154,27 @@ func TestQualitySuggestionLanguageToolMatchUsesUTF16Offsets(t *testing.T) {
 	}
 }
 
+func TestQualitySuggestionLanguageToolMatchCarriesUIMetadata(t *testing.T) {
+	suggestion := qualitySuggestion{
+		Start:    12,
+		End:      22,
+		Message:  "The wording repeats nearby.",
+		Category: "repetition",
+		Source:   "quality-sidecar",
+		RelatedOccurrences: []qualityOccurrence{
+			{Start: 2, End: 7, Text: "clear"},
+			{Start: 12, End: 17, Text: "clear"},
+		},
+	}
+	match := qualitySuggestionLanguageToolMatch("A clear idea is clear.", suggestion)
+	if _, ok := match["ikmalRelatedOccurrences"]; !ok {
+		t.Fatalf("expected repeat occurrence metadata: %+v", match)
+	}
+	if match["ikmalSource"] != "quality-sidecar" {
+		t.Fatalf("expected source metadata: %+v", match)
+	}
+}
+
 func TestParseQualityProxyRequestReadsLanguageToolDataEnvelope(t *testing.T) {
 	form := url.Values{
 		"data":     {`{"text":"Plants produce their own food."}`},

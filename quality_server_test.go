@@ -7,7 +7,7 @@ import (
 )
 
 func TestAnalyzeQualityTextTracksRepeatsAndAntecedents(t *testing.T) {
-	response := analyzeQualityText("Plants produce its own food. The method is different. The result shows a difference.")
+	response := analyzeQualityText("Plants produce its own food. The approach is innovative. The result is innovative. The method is different. The result shows a difference.")
 	if len(response.Antecedents) == 0 {
 		t.Fatal("expected an antecedent link")
 	}
@@ -22,6 +22,40 @@ func TestAnalyzeQualityTextTracksRepeatsAndAntecedents(t *testing.T) {
 	}
 	if !foundFamily {
 		t.Fatal("expected different/difference family echo")
+	}
+}
+
+func TestAnalyzeQualityTextIncludesRelatedOccurrencesAndAntecedentLinks(t *testing.T) {
+	pronounResponse := analyzeQualityText("Plants produce its own food.")
+	repetitionResponse := analyzeQualityText("The approach is innovative. The result is innovative.")
+	echoResponse := analyzeQualityText("The method is different. The result shows a difference.")
+	var pronoun, repetition, echo *qualitySuggestion
+	for index := range pronounResponse.Suggestions {
+		if pronounResponse.Suggestions[index].Category == "pronoun-antecedent" {
+			pronoun = &pronounResponse.Suggestions[index]
+		}
+	}
+	for index := range repetitionResponse.Suggestions {
+		if repetitionResponse.Suggestions[index].Category == "repetition" {
+			repetition = &repetitionResponse.Suggestions[index]
+		}
+	}
+	for index := range echoResponse.Suggestions {
+		if echoResponse.Suggestions[index].Category == "word-family-echo" {
+			echo = &echoResponse.Suggestions[index]
+		}
+	}
+	if pronoun == nil || pronoun.Antecedent == nil || pronoun.Antecedent.Antecedent != "Plants" {
+		t.Fatalf("expected pronoun suggestion to carry its antecedent link, got %+v", pronoun)
+	}
+	if repetition == nil || len(repetition.RelatedOccurrences) != 2 {
+		t.Fatalf("expected repeated word occurrences, got %+v", repetition)
+	}
+	if repetition.RelatedOccurrences[0].Text != "innovative" || repetition.RelatedOccurrences[1].Text != "innovative" {
+		t.Fatalf("unexpected repeated occurrence text: %+v", repetition.RelatedOccurrences)
+	}
+	if echo == nil || len(echo.RelatedOccurrences) != 2 || echo.RelatedOccurrences[0].Text != "different" || echo.RelatedOccurrences[1].Text != "difference" {
+		t.Fatalf("expected word-family occurrences, got %+v", echo)
 	}
 }
 

@@ -10,6 +10,8 @@ const startButton = document.querySelector('#start-button');
 const stopButton = document.querySelector('#stop-button');
 const checkButton = document.querySelector('#check-button');
 const clearButton = document.querySelector('#clear-button');
+const antecedentLinks = document.querySelector('#antecedent-links');
+const antecedentList = document.querySelector('#antecedent-list');
 const languageToolStatusDot = document.querySelector('#languagetool-status-dot');
 const languageToolStatusLabel = document.querySelector('#languagetool-status-label');
 const qualityStatusDot = document.querySelector('#quality-status-dot');
@@ -171,10 +173,48 @@ function displaySource(source) {
   })[source] || source || 'LanguageTool';
 }
 
+function selectTextRange(start, end) {
+  input.focus();
+  input.setSelectionRange(start, end);
+}
+
+function renderAntecedents(response, sourceText) {
+  const links = Array.isArray(response.ikmalAntecedents) ? response.ikmalAntecedents : [];
+  antecedentList.replaceChildren();
+  antecedentLinks.classList.toggle('is-hidden', links.length === 0 || !sourceText);
+  links.forEach((link) => {
+    const button = document.createElement('button');
+    button.className = 'antecedent-link';
+    button.type = 'button';
+    button.innerHTML = `<strong>${escapeHTML(link.pronoun || 'Pronoun')}</strong><span>→</span><mark>${escapeHTML(link.antecedent || 'Unresolved')}</mark>`;
+    button.title = `Jump to ${link.pronoun || 'pronoun'} and its antecedent`;
+    button.addEventListener('click', () => selectTextRange(link.start || 0, link.end || 0));
+    antecedentList.appendChild(button);
+  });
+}
+
+function renderOccurrencePreview(sourceText, match, occurrences) {
+  const spans = [{ offset: match.offset || 0, length: match.length || 0 }, ...occurrences.map((occurrence) => ({ offset: occurrence.start ?? occurrence.offset ?? 0, length: occurrence.end != null ? occurrence.end - (occurrence.start ?? occurrence.offset ?? 0) : occurrence.length || 0 }))]
+    .filter((span) => span.length > 0)
+    .sort((left, right) => left.offset - right.offset);
+  const unique = spans.filter((span, index) => index === 0 || span.offset !== spans[index - 1].offset || span.length !== spans[index - 1].length);
+  let cursor = 0;
+  const parts = [];
+  unique.forEach((span) => {
+    if (span.offset < cursor) return;
+    parts.push(escapeHTML(sourceText.slice(cursor, span.offset)));
+    parts.push(`<mark>${escapeHTML(sourceText.slice(span.offset, span.offset + span.length))}</mark>`);
+    cursor = span.offset + span.length;
+  });
+  parts.push(escapeHTML(sourceText.slice(cursor)));
+  return parts.join('');
+}
+
 function renderResults(response, sourceText) {
   const matches = Array.isArray(response.matches) ? response.matches : [];
   const groupedCount = matches.reduce((count, match) => count + (Array.isArray(match.ikmalRelated) ? match.ikmalRelated.length : 0), 0);
   lastResponse = response;
+  renderAntecedents(response, sourceText);
   emptyState.classList.toggle('is-hidden', matches.length > 0);
   summary.textContent = matches.length
     ? `${matches.length} suggestion${matches.length === 1 ? '' : 's'} found${groupedCount ? ` · ${groupedCount} grouped finding${groupedCount === 1 ? '' : 's'}` : ''}`
@@ -187,6 +227,7 @@ function renderResults(response, sourceText) {
     const source = match.ikmalSource || (match.rule && match.rule.id && match.rule.id.startsWith('IKMAL_') ? 'quality sidecar' : 'LanguageTool');
     const sources = Array.isArray(match.ikmalSources) ? match.ikmalSources : [source];
     const related = Array.isArray(match.ikmalRelated) ? match.ikmalRelated : [];
+    const occurrences = Array.isArray(match.ikmalRelatedOccurrences) ? match.ikmalRelatedOccurrences : [];
     const suggestion = replacement
       ? `Replace “${matchedText}” with “${replacement}”`
       : 'Review this wording';
@@ -201,6 +242,11 @@ function renderResults(response, sourceText) {
           </div>`).join('')}
         </div>
       </details>` : '';
+    const occurrenceMarkup = occurrences.length > 1 ? `
+      <div class="occurrence-preview" aria-label="All related occurrences">
+        <span>Occurrences</span>
+        <p>${renderOccurrencePreview(sourceText, match, occurrences)}</p>
+      </div>` : '';
     const card = document.createElement('article');
     card.className = 'result-card';
     card.innerHTML = `
@@ -213,6 +259,7 @@ function renderResults(response, sourceText) {
         <span class="chip-label">Suggested change</span>
         <strong>${escapeHTML(suggestion)}</strong>
       </div>
+      ${occurrenceMarkup}
       ${relatedMarkup}
       <button class="result-apply" type="button" data-match-index="${index}" ${replacement ? '' : 'disabled'}>${replacement ? 'Apply suggestion' : 'No direct replacement'}</button>`;
     results.appendChild(card);

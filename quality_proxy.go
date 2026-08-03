@@ -246,6 +246,9 @@ func (proxy qualityProxy) checkHandler(w http.ResponseWriter, r *http.Request) {
 	if qualityErr != nil {
 		languageToolResponse["ikmalQualityWarning"] = qualityErr.Error()
 	}
+	if len(qualityResponse.Antecedents) > 0 {
+		languageToolResponse["ikmalAntecedents"] = qualityResponse.Antecedents
+	}
 	writeQualityJSON(w, http.StatusOK, languageToolResponse)
 }
 
@@ -431,7 +434,7 @@ func qualitySuggestionLanguageToolMatch(text string, suggestion qualitySuggestio
 		replacements = append(replacements, map[string]any{"value": suggestion.Replacement})
 	}
 	ruleID := "IKMAL_" + strings.ToUpper(strings.ReplaceAll(suggestion.Category, "-", "_"))
-	return map[string]any{
+	match := map[string]any{
 		"message":      suggestion.Message,
 		"shortMessage": "Writing quality",
 		"replacements": replacements,
@@ -443,6 +446,13 @@ func qualitySuggestionLanguageToolMatch(text string, suggestion qualitySuggestio
 		"rule":         map[string]any{"id": ruleID, "subId": "1", "description": suggestion.Category, "issueType": "style", "category": map[string]any{"id": "STYLE", "name": "Writing quality"}},
 		"ikmalSource":  suggestion.Source,
 	}
+	if len(suggestion.RelatedOccurrences) > 0 {
+		match["ikmalRelatedOccurrences"] = suggestion.RelatedOccurrences
+	}
+	if suggestion.Antecedent != nil {
+		match["ikmalAntecedent"] = suggestion.Antecedent
+	}
+	return match
 }
 
 func mergeProxyCandidates(native, quality []qualityProxyCandidate) []qualityProxyCandidate {
@@ -570,6 +580,9 @@ func addProxyRelated(candidate *qualityProxyCandidate, related qualityProxyCandi
 		"replacement": related.Replacement,
 		"offset":      related.Start,
 		"length":      related.End - related.Start,
+	}
+	if occurrences, ok := related.Match["ikmalRelatedOccurrences"]; ok {
+		entry["occurrences"] = occurrences
 	}
 	if rule, ok := related.Match["rule"].(map[string]any); ok {
 		if id, ok := rule["id"].(string); ok && id != "" {

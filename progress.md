@@ -24,6 +24,8 @@ Last updated: 2026-08-03
   support for macOS, Windows, and Linux XDG autostart.
 - Data-driven regression fixtures now cover subject/verb, pronoun/antecedent,
   repeats, word-family echoes, clean text, ambiguity, and approved style rules.
+- Desktop repeat/echo findings now show all related occurrences, and
+  antecedent links are exposed in the tester and proxy response metadata.
 - First desktop UI pass with separate LanguageTool/quality health indicators,
   full replacement suggestions, one-click apply actions, clear/reset control,
   and Cmd/Ctrl+Enter checking.
@@ -41,9 +43,5 @@ Last updated: 2026-08-03
 
 - Continue desktop UI polish: make service state understandable at a glance
   and make suggestions easier to review and apply.
-- Full suggestion text in result chips, including multi-word replacements.
-- Repeat-word and echo results should highlight every related occurrence when
-  the suggestion UI is opened.
-- Antecedent links should be visible in the writing tester and extension UI.
 
 ## Next

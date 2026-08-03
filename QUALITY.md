@@ -179,6 +179,12 @@ Offsets returned by the sidecar are UTF-16 code-unit offsets, matching
 LanguageTool's API convention so they can be merged without shifting text
 around emoji or other supplementary Unicode characters.
 
+The proxy also adds optional `ikmalRelatedOccurrences` metadata to repeat and
+word-family echo matches, plus `ikmalAntecedent` on an agreement match and
+`ikmalAntecedents` at the response level. LanguageTool clients can ignore these
+unknown fields, while richer clients can highlight every occurrence and draw
+pronoun-to-antecedent links.
+
 ## Antecedent tracking
 
 Antecedent tracking is a separate signal from pronoun agreement:
