@@ -6,13 +6,13 @@ class IkmalEditor < Formula
 
   if OS.mac? && Hardware::CPU.arm?
     url "https://github.com/timeworthymedia/ikmal-editor/releases/download/v0.9.0-beta/ikmal-editor-v0.9.0-beta-darwin-arm64.tar.gz"
-    sha256 "1bbdb0bbbacd37a0904c379e58634f6facfbd7687df87b0cc9af03a57cc7dfef"
+    sha256 "b0a0dfc88d0adf26f3c7546ea7933742d8819e4d6e301e7a80ee59dc91e77c10"
   elsif OS.mac? && Hardware::CPU.intel?
     url "https://github.com/timeworthymedia/ikmal-editor/releases/download/v0.9.0-beta/ikmal-editor-v0.9.0-beta-darwin-amd64.tar.gz"
-    sha256 "5622db34623f29ec1e1d95966a555ae672885a6d072ac3514e7f47791acbdc56"
+    sha256 "3e98295b376d0aedf3c7546ea7933742d8819e4d6e301e7a80ee59dc91e77c10"
   elsif OS.linux?
     url "https://github.com/timeworthymedia/ikmal-editor/releases/download/v0.9.0-beta/ikmal-editor-v0.9.0-beta-linux-amd64.tar.gz"
-    sha256 "1af0110816d060586541ad668318345042df785911a89d4e164d0a5b389686fa"
+    sha256 "cc88134b0359537e3ed26807d267e738859df58e3380858470a0ba043a720d44"
   end
 
   def install
