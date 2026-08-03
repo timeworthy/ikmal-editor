@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const QUALITY_PROXY_URL = process.env.IKMAL_DESKTOP_PROXY_URL || 'http://127.0.0.1:8096';
 const QUALITY_HEALTH_URL = process.env.IKMAL_DESKTOP_QUALITY_URL || 'http://127.0.0.1:8098/health';
+const LANGUAGE_TOOL_URL = process.env.IKMAL_DESKTOP_LANGUAGETOOL_URL || 'http://127.0.0.1:8097';
 const SERVICE_POLL_MS = 3000;
 
 let tray;
@@ -33,11 +34,13 @@ async function endpointReady(url) {
 }
 
 async function readServiceState() {
-  const [proxyReady, qualityReady] = await Promise.all([
+  const [languageToolReady, proxyReady, qualityReady] = await Promise.all([
+    endpointReady(`${LANGUAGE_TOOL_URL}/v2/languages`),
     endpointReady(`${QUALITY_PROXY_URL}/health`),
     endpointReady(QUALITY_HEALTH_URL),
   ]);
   return {
+    languageToolReady,
     proxyReady,
     qualityReady,
     managerRunning: Boolean(backendProcess && backendProcess.exitCode === null),

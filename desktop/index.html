@@ -12,8 +12,8 @@
       <div class="brand-lockup">
         <img src="../assets/ikmal_languagetool_icon.png" alt="" class="brand-icon">
         <div>
-          <div class="eyebrow">IKMAL</div>
-          <h1>EDITOR</h1>
+          <div class="eyebrow">LOCAL WRITING QUALITY</div>
+          <h1>Ikmal Editor</h1>
         </div>
       </div>
       <div class="service-summary" id="service-summary" title="Service status">
@@ -38,9 +38,13 @@
       <textarea id="writing-input" spellcheck="true" placeholder="Paste or write a short passage here…">Plants, by comparison, produces its own light.</textarea>
       <div class="editor-footer">
         <span id="word-count">0 words</span>
-        <button class="button button-primary" id="check-button">Check writing</button>
+        <div class="editor-actions">
+          <button class="button button-quiet" id="clear-button">Clear</button>
+          <button class="button button-primary" id="check-button">Check writing <span class="button-shortcut">⌘↵</span></button>
+        </div>
       </div>
       <div class="notice is-hidden" id="writing-notice"></div>
+      <div class="check-summary is-hidden" id="check-summary"></div>
       <section class="results" id="results" aria-live="polite">
         <div class="empty-state" id="empty-state">
           <span class="empty-mark">✦</span>
@@ -67,6 +71,16 @@
           <button class="button button-quiet" id="stop-button">Stop</button>
         </div>
       </div>
+      <div class="service-status-grid" aria-label="Service health">
+        <div class="service-status-item">
+          <span class="mini-status-dot" id="languagetool-status-dot"></span>
+          <span><strong>LanguageTool</strong><small id="languagetool-status-label">Checking…</small></span>
+        </div>
+        <div class="service-status-item">
+          <span class="mini-status-dot" id="quality-status-dot"></span>
+          <span><strong>Quality checks</strong><small id="quality-status-label">Checking…</small></span>
+        </div>
+      </div>
       <label class="setting-row">
         <span>
           <strong>Start at login</strong>
@@ -76,7 +90,7 @@
       </label>
       <div class="endpoint-card">
         <span class="section-kicker">ENDPOINTS</span>
-        <code id="proxy-endpoint">http://127.0.0.1:8096</code>
+        <code id="proxy-endpoint">http://127.0.0.1:8096/v2</code>
         <small>Use <code>http://127.0.0.1:8096/v2</code> in the LanguageTool extension.</small>
       </div>
     </section>
