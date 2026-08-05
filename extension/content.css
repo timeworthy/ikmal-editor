@@ -1,0 +1,87 @@
+/* Injected into every page, so every rule is namespaced and every property is
+   defensive: host pages have their own resets and we must not inherit them. */
+
+.ikmal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2147483646;
+  pointer-events: none;
+}
+
+.ikmal-mark {
+  position: absolute;
+  height: 2px;
+  border-radius: 1px;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.ikmal-mark.is-spelling { background: #d67560; }
+.ikmal-mark.is-grammar  { background: #7b6cd9; }
+.ikmal-mark.is-style    { background: #e0a458; }
+.ikmal-mark:hover { height: 3px; }
+
+/* Off-screen replica used only to measure where characters land in a
+   textarea. Never visible, never interactive. */
+.ikmal-mirror {
+  position: absolute;
+  top: 0;
+  left: -99999px;
+  overflow: hidden;
+  visibility: hidden;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  pointer-events: none;
+}
+
+.ikmal-card {
+  position: absolute;
+  z-index: 2147483647;
+  display: none;
+  box-sizing: border-box;
+  max-width: 320px;
+  padding: 10px 11px;
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 8px;
+  background: #15141a;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .38);
+  color: #e8e8ec;
+  font: 400 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-align: left;
+}
+
+.ikmal-card.is-open { display: block; }
+
+.ikmal-card-source {
+  margin-bottom: 5px;
+  color: #76767f;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.ikmal-card-message {
+  margin: 0 0 9px;
+  color: #c5c5cb;
+  font-size: 12.5px;
+}
+
+.ikmal-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ikmal-card-apply {
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: #7b6cd9;
+  color: #fff;
+  font: 600 12px/1 inherit;
+  cursor: pointer;
+}
+
+.ikmal-card-apply:hover { background: #8e80df; }

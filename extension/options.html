@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+  <link rel="stylesheet" href="options.css">
+  <title>ikmal editor settings</title>
+</head>
+<body class="options">
+  <main>
+    <header class="header">
+      <div class="brand">
+        <div class="eyebrow">WRITING QUALITY</div>
+        <h1>ikmal editor settings</h1>
+      </div>
+      <div class="status" id="status">
+        <span class="status-dot"></span>
+        <span id="status-label">Checking…</span>
+      </div>
+    </header>
+
+    <section class="section">
+      <h2>Server</h2>
+      <p class="section-note">
+        ikmal only ever talks to a server you run. The default is the ikmal
+        quality proxy, which adds the local quality checks on top of
+        LanguageTool. Point it at port 8097 to use LanguageTool alone.
+      </p>
+      <label class="field">
+        <span>Address</span>
+        <input type="url" id="endpoint" placeholder="http://127.0.0.1:8096" spellcheck="false">
+      </label>
+      <div class="field-actions">
+        <button class="button button-quiet" id="test" type="button">Test connection</button>
+        <small id="test-result"></small>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Language</h2>
+      <label class="field">
+        <span>Check text as</span>
+        <select id="language">
+          <option value="auto">Detect automatically</option>
+          <option value="en-US">English (US)</option>
+          <option value="en-GB">English (UK)</option>
+          <option value="de-DE">German</option>
+          <option value="fr">French</option>
+          <option value="es">Spanish</option>
+          <option value="pt-BR">Portuguese (Brazil)</option>
+          <option value="nl">Dutch</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Native language <small>(optional; improves false-friend detection)</small></span>
+        <input type="text" id="mother-tongue" placeholder="e.g. de-DE" spellcheck="false">
+      </label>
+    </section>
+
+    <section class="section">
+      <h2>Behaviour</h2>
+      <label class="field">
+        <span>Wait before checking <small>milliseconds after you stop typing</small></span>
+        <input type="number" id="delay" min="200" max="5000" step="100">
+      </label>
+      <label class="field">
+        <span>Shortest text to check <small>characters</small></span>
+        <input type="number" id="min-length" min="1" max="200" step="1">
+      </label>
+    </section>
+
+    <section class="section">
+      <h2>Sites turned off</h2>
+      <p class="section-note">ikmal ignores text fields on these sites.</p>
+      <div class="host-list" id="host-list"></div>
+    </section>
+
+    <section class="section">
+      <h2>Privacy</h2>
+      <p class="section-note">
+        This extension may only reach <code>127.0.0.1</code> and
+        <code>localhost</code>; that restriction is declared in its manifest, so
+        the browser enforces it rather than asking you to trust a promise. There
+        is no analytics call, no update ping, no account, and no remote server
+        to fall back to. Your text never leaves your machine.
+      </p>
+    </section>
+
+    <footer class="footer">
+      <small id="save-state">Changes save as you make them.</small>
+    </footer>
+  </main>
+  <script src="options.js" type="module"></script>
+</body>
+</html>

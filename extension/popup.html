@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+  <title>ikmal editor</title>
+</head>
+<body>
+  <header class="header">
+    <div class="brand">
+      <div class="eyebrow">WRITING QUALITY</div>
+      <h1>ikmal editor</h1>
+    </div>
+    <div class="status" id="status">
+      <span class="status-dot"></span>
+      <span id="status-label">Checking…</span>
+    </div>
+  </header>
+
+  <div class="body">
+    <div class="server-note" id="server-note"></div>
+
+    <label class="row">
+      <span>
+        <strong>Check as I write</strong>
+        <small>Applies everywhere unless a site is turned off.</small>
+      </span>
+      <input type="checkbox" id="enabled-toggle">
+    </label>
+
+    <label class="row">
+      <span>
+        <strong id="site-label">This site</strong>
+        <small id="site-note">Checking is on for this site.</small>
+      </span>
+      <input type="checkbox" id="site-toggle">
+    </label>
+
+    <div class="privacy">
+      Your text goes to <code id="endpoint-label">127.0.0.1</code> and nowhere else.
+      No account, no cloud, no telemetry.
+    </div>
+  </div>
+
+  <section class="support is-hidden" id="support">
+    <p class="support-lead">Good writing keeps us informed and keeps history legible.</p>
+    <p class="support-body">
+      It should not sit behind a paywall, so nothing here is locked and nothing
+      ever will be. If ikmal is useful to you and you are able, you can help
+      keep it maintained.
+    </p>
+    <div class="support-actions">
+      <button class="button button-primary" id="support-link" type="button">Help fund it</button>
+      <button class="button button-quiet" id="support-dismiss" type="button">Not now</button>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <button class="link" id="open-options" type="button">Settings</button>
+    <button class="link" id="open-support" type="button">Support ikmal</button>
+  </footer>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>
