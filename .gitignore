@@ -9,3 +9,6 @@ bin/
 
 # Electron development dependencies
 desktop/node_modules/
+
+# Playwright MCP session artifacts (console logs, page dumps, downloaded .crx)
+.playwright-mcp/
