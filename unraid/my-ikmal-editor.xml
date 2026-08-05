@@ -1,21 +1,21 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>ikmal-editor</Name>
-  <Repository>timeworthymedia/ikmal-editor:latest</Repository>
-  <Registry>https://hub.docker.com/r/timeworthymedia/ikmal-editor</Registry>
+  <Repository>ghcr.io/timeworthy/ikmal-editor:latest</Repository>
+  <Registry>https://github.com/timeworthy/ikmal-editor/pkgs/container/ikmal-editor</Registry>
   <Network>bridge</Network>
   <MyIP/>
   <Shell>sh</Shell>
   <Privileged>false</Privileged>
-  <Support>https://github.com/timeworthymedia/ikmal-editor/issues</Support>
-  <Project>https://github.com/timeworthymedia/ikmal-editor</Project>
+  <Support>https://github.com/timeworthy/ikmal-editor/issues</Support>
+  <Project>https://github.com/timeworthy/ikmal-editor</Project>
   <Overview>
     ikmal editor: Launch Manager for LanguageTool with embedded Plain English conciseness rule packs, FastText auto-downloader, and 1-click app auto-configurator.
   </Overview>
   <Category>Tools:Utilities Productivity:</Category>
   <WebUI>http://[IP]:[PORT:8097]/v2/check</WebUI>
-  <TemplateURL>https://raw.githubusercontent.com/timeworthymedia/ikmal-editor/main/unraid/my-ikmal-editor.xml</TemplateURL>
-  <Icon>https://raw.githubusercontent.com/timeworthymedia/ikmal-editor/main/assets/ikmal_languagetool_icon.png</Icon>
+  <TemplateURL>https://raw.githubusercontent.com/timeworthy/ikmal-editor/main/unraid/my-ikmal-editor.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/timeworthy/ikmal-editor/main/assets/ikmal_languagetool_icon.png</Icon>
   <ExtraParams/>
   <PostArgs/>
   <CPUset/>
