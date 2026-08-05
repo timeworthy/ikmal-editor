@@ -10,7 +10,7 @@ pkgs.buildGoModule {
 
   meta = with pkgs.lib; {
     description = "Standalone LanguageTool manager, background service supervisor, and app auto-configurator";
-    homepage = "https://github.com/timeworthymedia/ikmal-editor";
+    homepage = "https://github.com/timeworthy/ikmal-editor";
     license = licenses.mit;
     maintainers = [ ];
     mainProgram = "ikmal-editor";
