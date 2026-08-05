@@ -11,6 +11,15 @@ import (
 
 const qualityTransformerModelID = "Xenova/t5-base-grammar-correction"
 
+// resolveQualityTransformerModel mirrors the adapter's own env lookup so setup
+// reports and warns about the model that will actually be downloaded.
+func resolveQualityTransformerModel() (id string, isDefault bool) {
+	if override := os.Getenv("IKMAL_TRANSFORMER_MODEL"); override != "" {
+		return override, false
+	}
+	return qualityTransformerModelID, true
+}
+
 // The adapter and package manifest are embedded so the standalone Go binary
 // can provision the same Transformers.js/ONNX style used by ikmal.
 //
@@ -21,6 +30,12 @@ var embeddedQualityTransformerJS []byte
 var embeddedQualityPackageJSON []byte
 
 func runQualitySetup() {
+	// Confirm before the first write. Everything past this point creates
+	// directories, resolves an npm tree, or downloads model weights.
+	if !confirmQualityNotices() {
+		return
+	}
+
 	qualityDir, adapterPath := qualityRuntimePaths()
 	if err := os.MkdirAll(qualityDir, 0755); err != nil {
 		fmt.Printf("Quality setup failed: %v\n", err)
@@ -54,7 +69,8 @@ func runQualitySetup() {
 
 	// Preload explicitly during setup so the model download is visible and
 	// failures happen during setup rather than the first document check.
-	fmt.Printf("Downloading and caching %s if needed...\n", qualityTransformerModelID)
+	modelID, _ := resolveQualityTransformerModel()
+	fmt.Printf("Downloading and caching %s if needed...\n", modelID)
 	if err := runQualityCommand(nodePath, adapterPath, "--preload"); err != nil {
 		fmt.Printf("Quality runtime installed, but model preload failed: %v\n", err)
 	}

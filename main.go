@@ -25,7 +25,7 @@ const (
 	// once per day. The request sends no identifier, no query string, and no body:
 	// the aggregate hit count in the web server log is the only signal it produces,
 	// and it exists so users learn about new releases. See -no-update-check.
-	updateCheckURL = "https://raw.githubusercontent.com/timeworthymedia/ikmal-editor/main/version.json"
+	updateCheckURL = "https://raw.githubusercontent.com/timeworthy/ikmal-editor/main/version.json"
 )
 
 func main() {
@@ -51,6 +51,11 @@ func main() {
 
 	if len(os.Args) > 1 && (os.Args[1] == "-quality-setup" || os.Args[1] == "--quality-setup" || os.Args[1] == "quality-setup") {
 		runQualitySetup()
+		return
+	}
+
+	if len(os.Args) > 1 && (os.Args[1] == "-quality-status" || os.Args[1] == "--quality-status" || os.Args[1] == "quality-status") {
+		printQualityStatus()
 		return
 	}
 
@@ -714,7 +719,7 @@ func autoConfigureApps() {
 	}
 
 	// 1. LanguageTool for Mac (Safari, Apple Mail, System-wide TextEdit/Messages)
-	if runtime.GOOS == "darwin" {
+	if runtime.GOOS == "darwin" && integrationTargetEnabled("macos") {
 		fmt.Println("Auto-configuring LanguageTool for Mac (Safari, Apple Mail, System-wide)...")
 		exec.Command("defaults", "write", "org.languagetool.mac", "apiServer", serverUrl).Run()
 		exec.Command("defaults", "write", "org.languagetool.mac", "useLocalServer", "-bool", "true").Run()

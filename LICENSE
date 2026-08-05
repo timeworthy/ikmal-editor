@@ -1,3 +1,13 @@
+SCOPE: The MIT license below applies to the original work in this repository.
+It does not apply to third-party software that ikmal-editor bundles, links to,
+or downloads at runtime -- including LanguageTool, the Electron runtime, the
+fastText language identification model, and the optional quality model, each of
+which carries its own separate license. Some of those licenses impose terms the
+MIT grant below cannot override; the optional quality model in particular is
+licensed for non-commercial use only. See THIRD-PARTY-NOTICES.md.
+
+---
+
 MIT License
 
 Copyright (c) 2026 Ian Sherr (https://iansherr.com) / Time Worthy Media (https://timeworthymedia.com)

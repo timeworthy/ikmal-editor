@@ -175,7 +175,11 @@ func runQualityServer() {
 	mux.HandleFunc("/health", qualityHealthHandler)
 	mux.HandleFunc("/v1/analyze", qualityAnalyzeHandler)
 
-	addr := "127.0.0.1:" + port
+	host := strings.TrimSpace(os.Getenv("IKMAL_BIND_HOST"))
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	addr := host + ":" + port
 	fmt.Println("ikmal quality sidecar listening on http://" + addr)
 	if err := http.ListenAndServe(addr, qualityCORS(mux)); err != nil {
 		fmt.Printf("Quality sidecar stopped: %v\n", err)
@@ -205,11 +209,14 @@ func startManagedQualityTransformer() *exec.Cmd {
 	qualityDir, adapterPath := qualityRuntimePaths()
 	transformerPackage := filepath.Join(qualityDir, "node_modules", "@huggingface", "transformers")
 	if _, err := os.Stat(adapterPath); os.IsNotExist(err) || os.Getenv("IKMAL_QUALITY_FORCE_SETUP") == "1" {
-		fmt.Println("Managed transformer runtime is not set up; running quality setup...")
+		// Setup installs third-party code and model weights, so it asks first
+		// even on this implicit path. Declining leaves the deterministic
+		// checks running rather than failing the server.
+		fmt.Println("Managed transformer runtime is not set up.")
 		runQualitySetup()
 	}
 	if _, err := os.Stat(adapterPath); err != nil {
-		fmt.Printf("Managed transformer adapter is unavailable: %v\n", err)
+		fmt.Println("Continuing with deterministic quality checks only.")
 		return nil
 	}
 	if _, err := os.Stat(transformerPackage); err != nil {
