@@ -7,11 +7,11 @@
 <p align="center">
   <a href="https://go.dev"><img src="https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go" alt="Go Version" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
-  <a href="https://github.com/timeworthymedia/ikmal-editor"><img src="https://img.shields.io/badge/ikmal-editor-7B2CBF?style=flat" alt="ikmal editor repository" /></a>
+  <a href="https://github.com/timeworthy/ikmal-editor"><img src="https://img.shields.io/badge/ikmal-editor-7B2CBF?style=flat" alt="ikmal editor repository" /></a>
   <a href="https://dev.languagetool.org/"><img src="https://img.shields.io/badge/LanguageTool-Official--Docs-blue" alt="LanguageTool Official" /></a>
 </p>
 
-* **GitHub Repository**: [https://github.com/timeworthymedia/ikmal-editor](https://github.com/timeworthymedia/ikmal-editor)
+* **GitHub Repository**: [https://github.com/timeworthy/ikmal-editor](https://github.com/timeworthy/ikmal-editor)
 * **Official LanguageTool Documentation**: [https://dev.languagetool.org/](https://dev.languagetool.org/)
 
 **`ikmal-editor`** is a local writing enhancer built on [LanguageTool](https://dev.languagetool.org/). It can add quality checks and style guidance to an existing local LanguageTool service or manage a local instance when you choose.
@@ -56,7 +56,7 @@ While LanguageTool provides powerful HTTP server capabilities, setting up a loca
 
 - **Homebrew (`brew upgrade`)**: When you update LanguageTool via Homebrew (`brew upgrade languagetool`), Homebrew updates the core LanguageTool engine binary independently. `ikmal-editor` detects the updated binary and launches it automatically without requiring changes to your daemon.
 - **Raspberry Pi (ARM64 & ARMv7)**: Pre-compiled `linux-arm64` and `linux-armv7` binaries for 1-click execution on Raspberry Pi 3, 4, and 5.
-- **Unraid Home Server**: Add template URL `https://raw.githubusercontent.com/timeworthymedia/ikmal-editor/main/unraid/my-ikmal-editor.xml` in Unraid Community Applications.
+- **Unraid Home Server**: Add template URL `https://raw.githubusercontent.com/timeworthy/ikmal-editor/main/unraid/my-ikmal-editor.xml` in Unraid Community Applications.
 - **Docker (`docker pull`)**: Containerized LanguageTool images are updated independently via standard Docker image pulls.
 - **APT (`sudo apt upgrade`)**: Linux system packages update independently via standard `apt` package management.
 - **Standalone Java JAR**: `ikmal-editor` fetches official releases directly from `org.languagetool.org`.
@@ -89,11 +89,11 @@ Aggregate download counts come from the GitHub Releases API, not from the binary
 ### Option A: Install via Homebrew (macOS & Linux)
 
 ```bash
-# 1. Tap the official Time Worthy Media repository
-brew tap timeworthymedia/tap
+# 1. Add the tap
+brew tap timeworthy/tap
 
 # 2. Install ikmal editor
-brew install timeworthymedia/tap/ikmal-editor
+brew install timeworthy/tap/ikmal-editor
 
 # 3. Auto-configure Chrome, Firefox, Safari, Apple Mail, Word, & VSCode
 ikmal-editor -configure-apps
@@ -103,7 +103,7 @@ ikmal-editor -configure-apps
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/timeworthymedia/ikmal-editor.git
+git clone https://github.com/timeworthy/ikmal-editor.git
 cd ikmal-editor
 
 # 2. Build & launch server manager (auto-configures background server & apps)
@@ -157,6 +157,47 @@ and preloads the model when Node.js and npm are available:
 The setup downloads the quantized `Xenova/t5-base-grammar-correction` model
 only when explicitly run; it is not downloaded during normal LanguageTool
 startup.
+
+Setup discloses what it will install and asks for confirmation **before writing
+anything**. This is the only part of `ikmal-editor` that adds third-party code
+and model weights to your machine, so it names the sizes, the sources, the
+licenses, and the fact that the runtime is resolved from the npm registry.
+Acknowledging once is remembered in `~/.ikmal-editor/quality-notices-accepted.json`.
+
+Non-interactive callers (CI, containers, the desktop app) confirm with an
+environment variable instead of a prompt, so setup never blocks on a question
+nothing can answer:
+
+```bash
+IKMAL_ACCEPT_QUALITY_NOTICES=1 ./ikmal-editor --quality-setup
+```
+
+Inspect what is and is not installed at any time:
+
+```bash
+./ikmal-editor --quality-status
+```
+
+The same disclosure gates the implicit path: starting the sidecar with
+`--quality-transformer` when the adapter is missing asks before installing, and
+declining leaves the deterministic quality checks running rather than failing.
+
+> **Model license — read before commercial use.** The MIT license above covers
+> `ikmal-editor` itself. It does not and cannot cover the model weights, which
+> are not ours to license. The default quality model derives from
+> [`vennify/t5-base-grammar-correction`](https://huggingface.co/vennify/t5-base-grammar-correction),
+> released under **CC BY-NC-SA 4.0** — a *non-commercial* license. Running
+> `--quality-setup` downloads those weights to your machine, which makes you,
+> not us, the party bound by their terms. If your use is primarily directed
+> toward commercial advantage, point the adapter at a permissively licensed
+> model instead:
+>
+> ```bash
+> IKMAL_TRANSFORMER_MODEL=Unbabel/gec-t5_small ./ikmal-editor --quality-setup
+> ```
+>
+> Every other part of `ikmal-editor` — the launcher, the LanguageTool
+> supervisor, the rule packs, the proxy, and the editor — is unencumbered.
 
 Transformer analysis is chunked locally instead of sending whole pages to the
 model. It groups sentences up to 80 words by default and preserves document
@@ -303,21 +344,77 @@ npm install
 npm start
 ```
 
-The tray menu can start or stop the manager, and the writing panel shows full
-suggested replacement text, related occurrences, and antecedent links. Build a
-platform bundle with `npm run package`; release automation can select targets
-with `IKMAL_DESKTOP_PLATFORM` and `IKMAL_DESKTOP_ARCH`.
+The tray menu can start or stop the manager, and the compact writing panel
+shows full suggested replacement text, related occurrences, and antecedent
+links. **Open editor…** launches the larger local scratch pad with a writing
+canvas and suggestion rail; both surfaces live-check after a short pause in
+typing, while their Check buttons force an immediate recheck. Build a platform
+bundle with `npm run package`; release automation can select targets with
+`IKMAL_DESKTOP_PLATFORM` and `IKMAL_DESKTOP_ARCH`.
+
+The optional container smoke harness exercises the deterministic quality
+sidecar and proxy lifecycle without requiring a LanguageTool download. It
+prefers Apple's OCI-compatible `container` CLI when available and falls back
+to Docker Compose:
+
+```bash
+./tools/quality_smoke.sh
+```
+
+Choose a backend explicitly with `IKMAL_CONTAINER_RUNTIME=auto|apple|docker|none`.
+The ordinary Go and Electron test suites do not require a container runtime.
 
 ---
 
-## Browser Extensions & Add-ons Setup
+## The ikmal browser extension
+
+`ikmal-editor` ships its own extension in [`extension/`](extension/). It checks
+text fields in your browser against the server on your own machine.
+
+- **No account, no cloud, no premium tier.** Nothing is locked, and there is no
+  code path that could lock it — [`tools/verify_extension.mjs`](tools/verify_extension.mjs)
+  fails the build if an entitlement check appears in the source.
+- **It cannot reach the internet.** The manifest declares exactly two permitted
+  hosts, `127.0.0.1` and `localhost`, so the browser enforces the boundary
+  rather than asking you to trust a privacy policy. The same verifier fails the
+  build if that widens.
+- **It is not a fork.** LanguageTool's current extension is proprietary; their
+  older LGPL one is Manifest V2 with vendored 2016-era dependencies. This is
+  written fresh against the documented HTTP API. See
+  [extension/README.md](extension/README.md) for the full reasoning.
+
+Install it from the desktop app under **Settings → Browser extension**, which
+reveals the folder to point "Load unpacked" at, or build a distributable zip:
+
+```bash
+cd desktop && npm run package:extension
+```
+
+### VS Code adapter
+
+The optional [`vscode-extension/`](vscode-extension/) adapter turns the same
+local matches into VS Code diagnostics and quick fixes. It uses the shared
+contract but keeps VS Code's document lifecycle separate from the browser
+content script:
+
+```bash
+cd desktop && npm run package:vscode
+```
+
+The generated zip is written under `bin/vscode-extension/`. The adapter accepts
+only loopback endpoints and has no cloud or account path.
+
+### Third-party extensions
 
 > **Note**: `ikmal-editor` automatically configures settings for your installed applications and extensions, but **does not download browser extensions or office plug-ins automatically**. You are responsible for installing your preferred extension once from the official source.
 
 Find official browser extensions and office plug-ins at:
 - **[LanguageTool Plug-ins & Add-ons Directory](https://dev.languagetool.org/software-that-supports-languagetool-as-a-plug-in-or-add-on)**
 
-Once installed, running `ikmal-editor -configure-apps` automatically routes your browser extensions to `http://127.0.0.1:8097/v2/check`.
+Once installed, the desktop enhancer review detects supported integrations and
+shows the target, endpoint, and consequences before changing anything. The
+explicit `ikmal-editor -configure-apps` command remains available for users
+who want to configure all supported targets at once.
 
 ---
 
@@ -363,6 +460,19 @@ The manager embeds [`rules/style_conciseness.xml`](rules/style_conciseness.xml),
 
 ---
 
+## Supporting this project
+
+Good writing is how we stay informed and how history stays legible. Tools that
+help people write clearly should not sit behind a paywall, so ikmal editor is
+free and stays free — no premium tier, no license key, no entitlement check
+anywhere in the codebase. The build fails if one ever appears.
+
+The most valuable contributions cost nothing: bug reports from real writing,
+rules for your field, support for a language other than English, or packaging
+for a distro that does not have it yet. See **[SUPPORT.md](SUPPORT.md)**.
+
+---
+
 ## What is Time Worthy Media?
 
 Time Worthy Media is the studio behind ikmal editor. This project grew out of
@@ -388,4 +498,7 @@ confidence, and control over their work.
 
 ## License & Copyright
 
-MIT License Copyright (c) 2026 [Ian Sherr](https://iansherr.com) / [Time Worthy Media](https://timeworthymedia.com). All rights reserved.
+MIT License. Copyright (c) 2026 [Ian Sherr](https://iansherr.com) / [Time Worthy Media](https://timeworthymedia.com).
+
+The MIT license covers this repository's own code. Third-party components have
+their own terms — see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

@@ -1,0 +1,14 @@
+# Drives the "Sponsor" button on the repository page.
+#
+# The github: entry stays commented until GitHub Sponsors is actually enabled
+# for the account. Listing an account that is not enrolled renders a Sponsor
+# button that leads to a plain profile page, which is worse than no button.
+#
+# To enable, after enrollment is approved:
+#   1. Uncomment the github: line below.
+#   2. Update SUPPORT_URL in extension/support.js to the sponsors URL.
+#   3. Replace the "Status:" note in SUPPORT.md with the funding link.
+
+# github: [timeworthy]
+
+custom: ["https://github.com/timeworthy/ikmal-editor/blob/main/SUPPORT.md"]
