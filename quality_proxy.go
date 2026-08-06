@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -317,11 +318,23 @@ func (proxy qualityProxy) forwardHandler(w http.ResponseWriter, r *http.Request)
 	}
 	target.Path = strings.TrimSuffix(target.Path, "/check") + strings.TrimPrefix(r.URL.Path, "/v2")
 	target.RawQuery = r.URL.RawQuery
-	request, err := http.NewRequestWithContext(r.Context(), r.Method, target.String(), nil)
+	var body io.Reader
+	if r.Body != nil && r.Method != http.MethodGet && r.Method != http.MethodHead {
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+		payload, readErr := io.ReadAll(r.Body)
+		if readErr != nil {
+			writeQualityJSON(w, http.StatusBadRequest, map[string]string{"error": "request body is too large or unreadable"})
+			return
+		}
+		body = bytes.NewReader(payload)
+	}
+	request, err := http.NewRequestWithContext(r.Context(), r.Method, target.String(), body)
 	if err != nil {
 		writeQualityJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
 		return
 	}
+	request.Header = r.Header.Clone()
+	request.Header.Del("Host")
 	response, err := proxy.client.Do(request)
 	if err != nil {
 		writeQualityJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})

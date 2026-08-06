@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -188,5 +190,45 @@ func TestParseQualityProxyRequestReadsLanguageToolDataEnvelope(t *testing.T) {
 	}
 	if values.Get("text") != "Plants produce their own food." {
 		t.Fatalf("expected data envelope text, got %q", values.Get("text"))
+	}
+}
+
+func TestForwardHandlerPreservesPOSTBodyAndHeaders(t *testing.T) {
+	backendHandler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/v2/check" {
+			http.Error(writer, "unexpected path", http.StatusBadRequest)
+			return
+		}
+		if request.Header.Get("Content-Type") != "application/x-www-form-urlencoded" {
+			http.Error(writer, "unexpected content type", http.StatusBadRequest)
+			return
+		}
+		body, err := io.ReadAll(request.Body)
+		if err != nil {
+			http.Error(writer, "could not read body", http.StatusBadRequest)
+			return
+		}
+		if string(body) != "text=Plants+produce+food.&language=en-US" && string(body) != "language=en-US&text=Plants+produce+food." {
+			http.Error(writer, "unexpected body", http.StatusBadRequest)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write([]byte(`{"matches":[]}`))
+	})
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	backend := &http.Server{Handler: backendHandler}
+	go func() { _ = backend.Serve(listener) }()
+	defer backend.Close()
+
+	proxy := qualityProxy{languageToolURL: "http://" + listener.Addr().String() + "/v2/check", client: &http.Client{}}
+	request := httptest.NewRequest(http.MethodPost, "http://127.0.0.1:8096/v2/check", strings.NewReader("text=Plants+produce+food.&language=en-US"))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	response := httptest.NewRecorder()
+	proxy.forwardHandler(response, request)
+	if response.Code != http.StatusOK || response.Body.String() != `{"matches":[]}` {
+		t.Fatalf("unexpected proxy response: HTTP %d %s", response.Code, response.Body.String())
 	}
 }
