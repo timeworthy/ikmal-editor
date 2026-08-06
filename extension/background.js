@@ -84,24 +84,31 @@ function hostOf(sender) {
   }
 }
 
-chrome.runtime.onInstalled.addListener(async () => {
-  chrome.contextMenus.create({
-    id: 'ikmal-toggle-site',
-    title: 'Turn ikmal off for this site',
-    contexts: ['editable'],
+// The context menu is a convenience, not the feature. Registering it at the top
+// level means a runtime without chrome.contextMenus throws here and takes the
+// whole service worker with it — and with it every check, because the content
+// script talks to nothing else. Guarded so a missing optional API costs only
+// the menu.
+if (chrome.contextMenus) {
+  chrome.runtime.onInstalled.addListener(async () => {
+    chrome.contextMenus.create({
+      id: 'ikmal-toggle-site',
+      title: 'Turn ikmal off for this site',
+      contexts: ['editable'],
+    });
   });
-});
 
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId !== 'ikmal-toggle-site') return;
-  const host = hostOf({ tab });
-  if (!host) return;
+  chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+    if (info.menuItemId !== 'ikmal-toggle-site') return;
+    const host = hostOf({ tab });
+    if (!host) return;
 
-  const settings = await readSettings();
-  const disabled = new Set(settings.disabledHosts || []);
-  if (disabled.has(host)) disabled.delete(host);
-  else disabled.add(host);
+    const settings = await readSettings();
+    const disabled = new Set(settings.disabledHosts || []);
+    if (disabled.has(host)) disabled.delete(host);
+    else disabled.add(host);
 
-  await writeSettings({ disabledHosts: [...disabled] });
-  chrome.tabs.sendMessage(tab.id, { type: 'settings-changed' }).catch(() => {});
-});
+    await writeSettings({ disabledHosts: [...disabled] });
+    chrome.tabs.sendMessage(tab.id, { type: 'settings-changed' }).catch(() => {});
+  });
+}

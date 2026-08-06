@@ -26,6 +26,12 @@
   let settings = null;
   let hoveredMark = null;
   let pointerFrame = null;
+  let indicator = null;
+  // How far the indicator sits inside the field's bottom-right corner. Enough
+  // to clear a textarea's resize grip without floating away from the edge.
+  const INDICATOR_INSET = 6;
+  // Below this the indicator would cover more of the field than it informs.
+  const INDICATOR_MIN_FIELD = 90;
 
   function ensureOverlay() {
     if (overlay?.isConnected) return overlay;
@@ -46,6 +52,57 @@
 
   function closeCard() {
     if (card) card.classList.remove('is-open');
+  }
+
+  // --- field indicator ---------------------------------------------------
+
+  // A small state readout anchored inside the focused field's bottom-right
+  // corner, so the field itself says whether it is being checked rather than
+  // the answer living only in the toolbar popup.
+
+  function ensureIndicator() {
+    if (indicator?.isConnected) return indicator;
+    indicator = document.createElement('div');
+    indicator.className = 'ikmal-indicator';
+    indicator.setAttribute('role', 'status');
+    // Keep focus in the field: losing it would blur the field and tear the
+    // overlay down before any click could be acted on.
+    indicator.addEventListener('mousedown', (event) => event.preventDefault());
+    document.documentElement.appendChild(indicator);
+    return indicator;
+  }
+
+  function positionIndicator(field) {
+    if (!indicator || activeField !== field) return;
+    const box = field.getBoundingClientRect();
+    // Hide rather than float over a field too small to spare the corner.
+    if (box.width < INDICATOR_MIN_FIELD || box.height < 24) {
+      indicator.classList.remove('is-visible');
+      return;
+    }
+    indicator.style.top = `${box.bottom + window.scrollY - INDICATOR_INSET - indicator.offsetHeight}px`;
+    indicator.style.left = `${box.right + window.scrollX - INDICATOR_INSET - indicator.offsetWidth}px`;
+  }
+
+  const INDICATOR_STATES = {
+    checking: { text: '···', title: 'ikmal is checking this text' },
+    clean: { text: '✓', title: 'ikmal found nothing to flag' },
+    off: { text: '‖', title: 'ikmal is off for this site' },
+    error: { text: '!', title: 'ikmal could not reach your local server' },
+  };
+
+  function setIndicator(field, state, count = 0) {
+    if (activeField !== field) return;
+    const element = ensureIndicator();
+    const preset = INDICATOR_STATES[state];
+    element.textContent = preset ? preset.text : String(count);
+    element.title = preset ? preset.title : `ikmal found ${count} suggestion${count === 1 ? '' : 's'}`;
+    element.className = `ikmal-indicator is-visible is-${state}`;
+    positionIndicator(field);
+  }
+
+  function hideIndicator() {
+    if (indicator) indicator.classList.remove('is-visible');
   }
 
   function isEditable(node) {
@@ -95,12 +152,34 @@
   }
 
   async function runCheck(field) {
-    if (!settings?.enabled) return clearMarks(field);
+    if (!settings?.enabled) {
+      clearMarks(field);
+      setIndicator(field, 'off');
+      return;
+    }
     const text = textOf(field);
-    if (!text || text.trim().length < (settings.minLength ?? 12)) return clearMarks(field);
+    if (!text || text.trim().length < (settings.minLength ?? 12)) {
+      clearMarks(field);
+      // Too short is not a state worth reporting: the field is simply empty or
+      // barely started, and a readout there would be noise.
+      hideIndicator();
+      return;
+    }
 
+    setIndicator(field, 'checking');
     const response = await send({ type: 'check', text, language: settings.language });
-    if (!response.ok || response.data?.skipped) return clearMarks(field);
+    if (!response.ok) {
+      clearMarks(field);
+      setIndicator(field, 'error');
+      return;
+    }
+    if (response.data?.skipped) {
+      clearMarks(field);
+      // 'too-short' is the service worker agreeing with the check above.
+      if (response.data.skipped === 'too-short') hideIndicator();
+      else setIndicator(field, 'off');
+      return;
+    }
 
     const record = state.get(field);
     if (!record) return;
@@ -110,6 +189,7 @@
     record.matches = Array.isArray(response.data.matches) ? response.data.matches : [];
     record.checkedText = text;
     renderMarks(field);
+    setIndicator(field, record.matches.length ? 'flagged' : 'clean', record.matches.length);
   }
 
   function clearMarks(field) {
@@ -356,9 +436,10 @@
         ensureOverlay().textContent = '';
       }
       setHoveredMark(null);
+      hideIndicator();
       closeCard();
     });
-    field.addEventListener('scroll', () => { closeCard(); renderMarks(field); });
+    field.addEventListener('scroll', () => { closeCard(); renderMarks(field); positionIndicator(field); });
   }
 
   function scan(root = document) {
@@ -369,7 +450,9 @@
 
   const reposition = () => {
     closeCard();
-    if (activeField) renderMarks(activeField);
+    if (!activeField) return;
+    renderMarks(activeField);
+    positionIndicator(activeField);
   };
 
   document.addEventListener('focusin', (event) => {

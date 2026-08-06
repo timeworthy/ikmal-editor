@@ -43,6 +43,43 @@
   pointer-events: none;
 }
 
+/* State readout pinned inside the focused field's bottom-right corner. Unlike
+   the marks this is a control, so it does take pointer events — it sits in the
+   corner rather than over the text, so it never stands between the caret and
+   a word. It stays laid out while hidden because positioning needs its
+   measured size. */
+.ikmal-indicator {
+  position: absolute;
+  z-index: 2147483646;
+  visibility: hidden;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 10px;
+  opacity: 0;
+  background: #15141a;
+  color: #c5c5cb;
+  font: 600 11px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-align: center;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition: opacity .12s ease;
+}
+
+.ikmal-indicator.is-visible { visibility: visible; opacity: .92; }
+.ikmal-indicator.is-visible:hover { opacity: 1; }
+
+.ikmal-indicator.is-checking { color: #76767f; }
+.ikmal-indicator.is-clean { color: #6fa37c; }
+.ikmal-indicator.is-flagged { color: #fff; background: #7b6cd9; border-color: transparent; }
+.ikmal-indicator.is-off { color: #76767f; }
+.ikmal-indicator.is-error { color: #d67560; }
+
 .ikmal-card {
   position: absolute;
   z-index: 2147483647;
