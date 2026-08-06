@@ -75,3 +75,25 @@ test('Office bridge rejects non-loopback checker targets', () => {
   assert.throws(() => validateBackendURL('https://example.com/v2/check'), /loopback/);
   assert.throws(() => validateBackendURL('http://127.0.0.1:8096/other'), /\/v2\/check/);
 });
+
+test('Office bridge CSP admits office.js but nothing else off-machine', async () => {
+  const server = await startServer();
+  try {
+    const address = server.address();
+    const response = await fetch(`http://${address.address}:${address.port}/office/word/`);
+    const csp = response.headers.get('content-security-policy');
+
+    // Every task pane loads office.js from Microsoft's CDN and cannot
+    // initialize without it. A CSP that blocks it leaves the pane stuck.
+    const scriptSrc = csp.split(';').map((part) => part.trim()).find((part) => part.startsWith('script-src'));
+    assert.ok(scriptSrc, 'CSP must declare script-src rather than falling back to default-src');
+    assert.match(scriptSrc, /https:\/\/appsforoffice\.microsoft\.com/);
+
+    // The exception is that one origin. The pane must still be unable to
+    // send document text anywhere but this loopback bridge.
+    assert.match(csp, /connect-src 'self'/);
+    assert.doesNotMatch(scriptSrc, /\*/);
+  } finally {
+    await stopServer(server);
+  }
+});

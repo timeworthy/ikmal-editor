@@ -76,7 +76,13 @@ function applySecurityHeaders(response, origin, config) {
   response.setHeader('cache-control', 'no-store');
   response.setHeader('x-content-type-options', 'nosniff');
   response.setHeader('referrer-policy', 'no-referrer');
-  response.setHeader('content-security-policy', "default-src 'self'; connect-src 'self'; frame-ancestors https://*.officeapps.live.com https://*.office.com https://localhost:*/; base-uri 'none'");
+  // script-src must admit Microsoft's office.js CDN. Office add-ins have no
+  // supported way to load the host API locally, and every task pane calls
+  // Office.onReady before it can do anything, so 'self' alone leaves the pane
+  // stuck on its loading state forever. The exception is that one origin;
+  // connect-src stays 'self' so the pane still cannot talk to anything but
+  // this loopback bridge.
+  response.setHeader('content-security-policy', "default-src 'self'; script-src 'self' https://appsforoffice.microsoft.com; connect-src 'self'; frame-ancestors https://*.officeapps.live.com https://*.office.com https://localhost:*/; base-uri 'none'");
   if (origin && config.allowedOrigins.has(origin)) {
     response.setHeader('access-control-allow-origin', origin);
     response.setHeader('access-control-allow-headers', 'content-type');
