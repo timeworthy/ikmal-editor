@@ -29,6 +29,11 @@ let quitting = false;
 let launchAtLogin;
 let desktopPreferences;
 let editorPendingText = '';
+// True once the editor page has finished loading and its IPC listeners exist.
+let editorReady = false;
+// Set while a native dialog owned by the compact window is open, so its
+// hide-on-blur behaviour does not close the window out from under the dialog.
+let suppressAutoHide = false;
 let officeBridgeServer;
 
 function desktopPreferencesPath() {
@@ -383,7 +388,11 @@ function runManagerCommand(args, extraEnv = {}, options = {}) {
       cwd: path.dirname(binary),
       env: { ...process.env, ...extraEnv },
       timeout: options.timeout ?? 10000,
-      maxBuffer: 1024 * 1024,
+      // The quality-stack install pipes an npm install and a model download
+      // through stdout. At the 1MB default execFile kills the child partway
+      // through with ERR_CHILD_PROCESS_STDIO_MAXBUFFER, which surfaces as a
+      // failed install after the user has already waited for the download.
+      maxBuffer: options.maxBuffer ?? 1024 * 1024,
     }, (error, stdout, stderr) => {
       if (error) {
         reject(new Error((stderr || stdout || error.message).trim()));
@@ -447,9 +456,22 @@ function setCompactHeight(height) {
   return true;
 }
 
+// deliverEditorText hands pending text to the editor renderer once the page is
+// listening. Readiness is tracked with an explicit flag set from
+// did-finish-load rather than webContents.isLoading(), which still reports true
+// while that event is being delivered — polling it drops the text entirely.
+function deliverEditorText() {
+  if (!editorWindow || !editorReady || !editorPendingText) return;
+  editorWindow.webContents.send('editor-text', editorPendingText);
+  editorPendingText = '';
+}
+
 function showEditorWindow(text = '') {
   const initialText = String(text || '');
-  editorPendingText = initialText;
+  // Only replace the editor's contents when there is text to hand over.
+  // Reopening the window from the tray, the dock, or app.on('activate') passes
+  // nothing, and sending an empty string would clear the user's draft.
+  if (initialText) editorPendingText = initialText;
   if (!editorWindow) {
     editorWindow = new BrowserWindow({
       width: 1120,
@@ -470,21 +492,23 @@ function showEditorWindow(text = '') {
       },
     });
     editorWindow.loadFile(path.join(__dirname, 'editor.html'));
+    // on, not once: a reload re-runs the renderer and clears its listeners, so
+    // readiness has to be re-established each time the page loads.
+    editorWindow.webContents.on('did-finish-load', () => {
+      editorReady = true;
+      deliverEditorText();
+    });
     editorWindow.once('ready-to-show', () => {
       editorWindow.show();
       editorWindow.focus();
-      editorWindow.webContents.send('editor-text', editorPendingText);
-      editorPendingText = '';
+      deliverEditorText();
     });
-    editorWindow.on('closed', () => { editorWindow = undefined; });
+    editorWindow.on('closed', () => { editorWindow = undefined; editorReady = false; });
     return;
   }
   editorWindow.show();
   editorWindow.focus();
-  if (!editorWindow.webContents.isLoading()) {
-    editorWindow.webContents.send('editor-text', editorPendingText);
-    editorPendingText = '';
-  }
+  deliverEditorText();
 }
 
 function quickCheckClipboard() {
@@ -591,7 +615,10 @@ function createWindow() {
   });
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
   mainWindow.once('ready-to-show', () => showWindow());
-  mainWindow.on('blur', () => mainWindow.hide());
+  // The compact window hides on blur so it behaves like a menubar popover.
+  // A native file panel steals focus, so auto-hide is suppressed while one is
+  // open; otherwise the window disappears and takes its attached sheet along.
+  mainWindow.on('blur', () => { if (!suppressAutoHide) mainWindow.hide(); });
   mainWindow.on('closed', () => { mainWindow = undefined; });
 }
 
@@ -643,7 +670,7 @@ function registerIPC() {
     }
     const output = await runManagerCommand(['--quality-setup'], {
       IKMAL_ACCEPT_QUALITY_NOTICES: '1',
-    }, { timeout: 30 * 60 * 1000 });
+    }, { timeout: 30 * 60 * 1000, maxBuffer: 64 * 1024 * 1024 });
     return { output, status: JSON.parse(await runManagerCommand(['--quality-status'])) };
   });
   ipcMain.handle('reveal-extension', async () => {
@@ -674,17 +701,29 @@ function registerIPC() {
     if (!response.ok) throw new Error(`Style-guide state failed with HTTP ${response.status}`);
     return response.json();
   });
-  ipcMain.handle('import-style-guide', async () => {
-    const owner = editorWindow || mainWindow;
-    const result = await dialog.showOpenDialog(owner, {
-      title: 'Import a style guide',
-      buttonLabel: 'Import guide',
-      properties: ['openFile'],
-      filters: [
-        { name: 'Style guides', extensions: ['pdf', 'html', 'htm', 'md', 'markdown', 'txt'] },
-        { name: 'All files', extensions: ['*'] },
-      ],
-    });
+  ipcMain.handle('import-style-guide', async (event) => {
+    // Parent the panel to the window that actually asked for it. Preferring the
+    // editor window attached the compact window's sheet to a window that may be
+    // hidden or behind, leaving the user with no visible dialog.
+    const owner = BrowserWindow.fromWebContents(event.sender) || editorWindow || mainWindow;
+    // The compact window hides itself on blur, which would take an attached
+    // sheet down with it and leave this promise pending forever.
+    const suppressed = owner === mainWindow;
+    if (suppressed) suppressAutoHide = true;
+    let result;
+    try {
+      result = await dialog.showOpenDialog(owner, {
+        title: 'Import a style guide',
+        buttonLabel: 'Import guide',
+        properties: ['openFile'],
+        filters: [
+          { name: 'Style guides', extensions: ['pdf', 'html', 'htm', 'md', 'markdown', 'txt'] },
+          { name: 'All files', extensions: ['*'] },
+        ],
+      });
+    } finally {
+      if (suppressed) suppressAutoHide = false;
+    }
     if (result.canceled || !result.filePaths[0]) return { canceled: true };
     const filePath = result.filePaths[0];
     const output = await runManagerCommand(['--style-guide-import', filePath]);
@@ -772,14 +811,21 @@ function registerIPC() {
   ipcMain.handle('office-reveal-project-manifest', () => revealOfficeManifest('manifest-project.xml'));
   ipcMain.handle('set-desktop-presence', (_, next) => {
     const requested = next && typeof next === 'object' ? next : {};
-    const menubarIcon = requested.menubarIcon !== false;
+    let menubarIcon = requested.menubarIcon !== false;
     let dockIcon = requested.dockIcon === true;
     let notice = '';
-    // Keep at least one local entry point available. Turning off the menubar
-    // while the Dock is hidden would strand a background app with no UI.
+    // Keep at least one local entry point available. Which one can be kept is
+    // platform-specific: only macOS has a Dock, and applyDockVisibility is a
+    // no-op elsewhere. Substituting the Dock on Windows or Linux would leave
+    // the app running with no tray, no dock, and no way back to it.
     if (!menubarIcon && !dockIcon) {
-      dockIcon = true;
-      notice = 'The Dock icon was kept on because at least one way to open ikmal editor must remain available.';
+      if (process.platform === 'darwin') {
+        dockIcon = true;
+        notice = 'The Dock icon was kept on because at least one way to open ikmal editor must remain available.';
+      } else {
+        menubarIcon = true;
+        notice = 'The tray icon was kept on because it is the only way to open ikmal editor on this platform.';
+      }
     }
     desktopPreferences = { ...desktopPreferences, menubarIcon, dockIcon };
     saveDesktopPreferences();

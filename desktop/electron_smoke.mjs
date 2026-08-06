@@ -385,6 +385,20 @@ try {
     text: document.querySelector('#editor-input').value,
     settings: document.querySelector('#editor-settings-view').classList.contains('is-hidden')
   })`, (state) => state.text === 'The full editor receives this passage.' && state.settings, 'Full-editor launch smoke failed');
+  // Reopening the editor with no text — what the tray entry, the dock, and
+  // app.on('activate') all do — must not clear whatever is already in it.
+  await editor.evaluate(`(() => {
+    const input = document.querySelector('#editor-input');
+    input.value = 'A draft that must survive reopening.';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+  await browser.evaluate('window.ikmal.openEditor()');
+  await wait(500);
+  const preservedDraft = await editor.evaluate(`document.querySelector('#editor-input').value`);
+  if (preservedDraft !== 'A draft that must survive reopening.') {
+    throw new Error(`Reopening the editor discarded the draft: ${JSON.stringify(preservedDraft)}`);
+  }
+
   const editorPresenceBefore = await editor.evaluate('window.ikmal.getDesktopPresence()');
   if (!editorPresenceBefore.menubarIcon || editorPresenceBefore.dockIcon) {
     throw new Error(`Full-editor presence baseline failed: ${JSON.stringify({ editorText, editorPresenceBefore })}`);
