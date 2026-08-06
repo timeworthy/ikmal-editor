@@ -323,7 +323,16 @@ function renderIntegrationStatus(state) {
           : state === 'detected'
             ? 'Found · no managed endpoint'
             : 'Not detected';
-      const dotClass = state === 'configured' ? 'is-ready' : state === 'not-detected' ? 'is-unavailable' : '';
+      // Every state needs its own colour. 'detected' and 'misconfigured' both
+      // fell through to the default grey dot, so an integration pointing at the
+      // wrong server looked exactly like one that simply is not set up.
+      const dotClass = state === 'configured'
+        ? 'is-ready'
+        : state === 'misconfigured'
+          ? 'is-warn'
+          : state === 'detected'
+            ? 'is-idle'
+            : 'is-unavailable';
       row.innerHTML = `<span class="mini-status-dot ${dotClass}"></span><span><strong>${escapeHTML(target.name)}</strong><small>${escapeHTML(status)} · ${escapeHTML(target.details || '')}</small></span>`;
       integrationList.appendChild(row);
     });

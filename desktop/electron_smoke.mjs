@@ -378,6 +378,49 @@ try {
     hidden: document.querySelector('#writing-notice').classList.contains('is-hidden'),
     status: document.querySelector('#writing-status-label').textContent,
   })`, (state) => state.text.trim() === 'A failure should offer clear actions.' && state.hidden && state.status === 'Ready when you are', 'Failure-cancel smoke failed');
+  // The settings panel must fit the compact window. A single non-wrapping
+  // action row (the six Office manifest buttons plus remove-certificate) was
+  // ~1180px wide in a 430px window, which pushed the acknowledgement checkbox
+  // and several buttons outside the viewport, where they rendered but could
+  // not be clicked. Assert nothing in the panel escapes horizontally, and that
+  // the controls a user has to reach are actually hit-testable.
+  await browser.evaluate(`[...document.querySelectorAll('.tab')].find((b) => b.textContent.trim() === 'Settings').click()`);
+  await wait(600);
+  await browser.evaluate(`document.querySelectorAll('#settings-panel details').forEach((d) => { d.open = true; })`);
+  await wait(400);
+  const settingsOverflow = await browser.evaluate(`(() => {
+    const limit = document.documentElement.clientWidth;
+    return [...document.querySelectorAll('#settings-panel *')]
+      .filter((el) => { const b = el.getBoundingClientRect(); return (b.width || b.height) && (b.right > limit + 1 || b.left < -1); })
+      .map((el) => (el.id ? '#' + el.id : el.tagName + '.' + String(el.className).split(' ')[0]) + ':' + Math.round(el.getBoundingClientRect().width) + 'px')
+      .slice(0, 8);
+  })()`);
+  if (settingsOverflow.length) {
+    throw new Error(`Settings panel overflows the compact window: ${settingsOverflow.join(', ')}`);
+  }
+  // The quality install block needs a working manager binary to render, and
+  // this run deliberately points at a missing one, so controls with no box are
+  // not applicable here rather than broken. Anything that does render must be
+  // reachable — the Office manifest row is the one that overflowed.
+  for (const controlID of ['configure-integrations', 'refresh-integrations', 'reveal-office-manifest', 'reveal-project-manifest', 'remove-office-certificate']) {
+    const hit = await browser.evaluate(`(() => {
+      const el = document.querySelector('#${controlID}');
+      if (!el) return 'missing';
+      const box = el.getBoundingClientRect();
+      if (!box.width && !box.height) return 'not-rendered';
+      el.scrollIntoView({ block: 'center' });
+      const b = el.getBoundingClientRect();
+      const top = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
+      if (!top) return 'offscreen';
+      return top === el || el.contains(top) ? 'self' : 'covered by ' + (top.id || top.tagName);
+    })()`);
+    if (hit !== 'self' && hit !== 'not-rendered') {
+      throw new Error(`Settings control #${controlID} is not clickable: ${hit}`);
+    }
+  }
+  await browser.evaluate(`[...document.querySelectorAll('.tab')].find((b) => b.textContent.trim() === 'Quick check').click()`);
+  await wait(300);
+
   await browser.evaluate(`window.ikmal.openEditor('The full editor receives this passage.')`);
   const editorTarget = await waitForTarget('/editor.html');
   const editor = await connect(editorTarget);

@@ -237,7 +237,12 @@ h1, h2, p { margin: 0; }
 .setting-card > div:first-child, .setting-row > span, .style-guide-heading > div { display: grid; gap: 5px; min-width: 0; }
 .setting-card strong, .setting-row strong, .service-status-item strong { display: block; color: var(--fg-1); font-size: 13px; font-weight: 600; letter-spacing: -.01em; }
 .setting-card p, .setting-row small, .service-status-item small, .style-guide-select-row small { display: block; margin-top: 0; color: var(--fg-4); font-size: 11.5px; line-height: 1.45; }
-.setting-actions { flex: 0 0 auto; }
+/* Action rows carry as many as seven buttons (the six Office manifests plus
+   remove-certificate). As a single nowrap row that measures ~1180px, which in
+   the 430px compact window pushed the whole settings panel sideways: the
+   acknowledgement checkbox and several buttons ended up outside the viewport,
+   where they render but cannot be clicked. Wrapping keeps them reachable. */
+.setting-actions { flex: 0 1 auto; flex-wrap: wrap; min-width: 0; }
 .service-overview { display: grid; align-items: stretch; gap: 10px; }
 .service-overview-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .settings-group { flex: 0 0 auto; overflow: hidden; border: 1px solid var(--hair); border-radius: var(--r3); background: var(--bg-1); }
@@ -295,6 +300,10 @@ h1, h2, p { margin: 0; }
 .service-status-item { display: flex; align-items: center; gap: 9px; padding: 10px 11px; border: 1px solid var(--hair); border-radius: var(--r2); background: var(--bg-1); }
 .mini-status-dot.is-ready { background: var(--sage); box-shadow: 0 0 7px rgba(111, 163, 124, .6); }
 .mini-status-dot.is-unavailable { background: var(--terracotta); }
+/* Amber: installed but pointed somewhere else — actionable, unlike absent. */
+.mini-status-dot.is-warn { background: var(--amber); box-shadow: 0 0 7px rgba(224, 164, 88, .55); }
+/* Present but not wired up, and nothing is wrong: deliberately unemphatic. */
+.mini-status-dot.is-idle { background: var(--fg-4); }
 .style-guide-card { flex-direction: column; align-items: stretch; gap: 12px; }
 .style-guide-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .setting-row, .style-guide-select-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 13px; border: 1px solid var(--hair); border-radius: var(--r3); color: var(--fg-1); background: var(--bg-1); cursor: pointer; }
@@ -352,6 +361,11 @@ input[type=checkbox]:disabled { cursor: default; opacity: .45; }
 /* footer */
 .app-footer { display: flex; align-items: center; justify-content: space-between; padding: 9px 16px; border-top: 1px solid var(--hair); color: var(--fg-4); background: var(--slate-0); font-family: var(--mono); font-size: 9.5px; letter-spacing: .05em; text-transform: uppercase; }
 
+/* The compact window opens at 430px and has a 380px minimum, so every rule
+   below applies to it in normal use. These were previously split across a
+   520px and a 420px breakpoint, and the narrow-width half never took effect at
+   the default width — which is why the settings panel read as cramped out of
+   the box rather than only when deliberately shrunk. */
 @media (max-width: 520px) {
   .app-header { padding-inline: 13px; }
   .panel { padding: 13px; }
@@ -359,9 +373,12 @@ input[type=checkbox]:disabled { cursor: default; opacity: .45; }
   #settings-panel .setting-card { padding: 11px 12px; }
   #settings-panel .service-status-item { padding: 9px 10px; }
   #settings-panel .presence-card { gap: 10px; }
-}
 
-@media (max-width: 420px) {
+  /* Stack each card's description above its buttons. Side by side, a heading
+     and a multi-button row share 430px and both end up unreadable. */
+  #settings-panel .setting-card { align-items: stretch; flex-direction: column; }
+  #settings-panel .setting-card .setting-actions { justify-content: flex-start; }
+
   .button-shortcut { display: none; }
   .panel-heading-actions { align-items: stretch !important; }
   .panel-heading-actions .button { padding-inline: 9px; font-size: 11.5px; }
@@ -374,6 +391,10 @@ input[type=checkbox]:disabled { cursor: default; opacity: .45; }
   .settings-group > summary small { white-space: normal; }
   .notice-surface { display: grid; }
   .notice-actions { justify-content: flex-start; }
+}
+
+@media (max-width: 420px) {
+  .panel-heading-actions .button { padding-inline: 8px; font-size: 11px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
