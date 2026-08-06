@@ -114,11 +114,17 @@ test('compact shell offers the expanded editor entry point', () => {
   assert.match(html, /id="office-settings"/);
   assert.match(html, /id="generate-office-certificate"/);
   assert.match(html, /id="start-office-bridge"/);
-  assert.match(html, /id="reveal-excel-manifest"/);
-  assert.match(html, /id="reveal-powerpoint-manifest"/);
-  assert.match(html, /id="reveal-outlook-manifest"/);
-  assert.match(html, /id="reveal-onenote-manifest"/);
-  assert.match(html, /id="reveal-project-manifest"/);
+  // The six per-host manifest buttons collapsed into one picker, but every
+  // host must still be reachable and still map to its own preload method.
+  assert.match(html, /id="office-manifest-host"/);
+  for (const host of ['word', 'excel', 'powerpoint', 'outlook', 'onenote', 'project']) {
+    assert.match(html, new RegExp(`<option value="${host}"`), `manifest picker is missing ${host}`);
+    assert.match(renderer, new RegExp(`${host}:\\s*\\(\\) =>`), `renderer does not map ${host} to a reveal call`);
+  }
+  for (const method of ['revealOfficeManifest', 'revealOfficeExcelManifest', 'revealOfficePowerPointManifest',
+    'revealOfficeOutlookManifest', 'revealOfficeOneNoteManifest', 'revealOfficeProjectManifest']) {
+    assert.match(renderer, new RegExp(`window\\.ikmal\\.${method}\\(\\)`), `renderer no longer calls ${method}`);
+  }
   assert.match(html, /id="start-spell-services"/);
   assert.match(html, /id="setup-celebration"/);
   assert.match(renderer, /installSpellServerButton/);

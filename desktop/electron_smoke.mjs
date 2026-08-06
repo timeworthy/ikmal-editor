@@ -386,26 +386,40 @@ try {
   // the controls a user has to reach are actually hit-testable.
   await browser.evaluate(`[...document.querySelectorAll('.tab')].find((b) => b.textContent.trim() === 'Settings').click()`);
   await wait(600);
-  await browser.evaluate(`document.querySelectorAll('#settings-panel details').forEach((d) => { d.open = true; })`);
-  await wait(400);
-  const settingsOverflow = await browser.evaluate(`(() => {
-    const limit = document.documentElement.clientWidth;
-    return [...document.querySelectorAll('#settings-panel *')]
-      .filter((el) => { const b = el.getBoundingClientRect(); return (b.width || b.height) && (b.right > limit + 1 || b.left < -1); })
-      .map((el) => (el.id ? '#' + el.id : el.tagName + '.' + String(el.className).split(' ')[0]) + ':' + Math.round(el.getBoundingClientRect().width) + 'px')
-      .slice(0, 8);
-  })()`);
-  if (settingsOverflow.length) {
-    throw new Error(`Settings panel overflows the compact window: ${settingsOverflow.join(', ')}`);
+  // Each group is checked on its own rather than opening them all at once,
+  // because the groups are an accordion: opening one closes the others, so a
+  // bulk open would only ever measure the last group.
+  const groupIDs = await browser.evaluate(`[...document.querySelectorAll('#settings-panel details.settings-group')].map((d) => d.id)`);
+  for (const groupID of groupIDs) {
+    await browser.evaluate(`document.getElementById('${groupID}').open = true`);
+    await wait(220);
+    const openCount = await browser.evaluate(`[...document.querySelectorAll('#settings-panel details.settings-group')].filter((d) => d.open).length`);
+    if (openCount !== 1) {
+      throw new Error(`Settings groups are not an accordion: ${openCount} open after expanding #${groupID}`);
+    }
+    const overflow = await browser.evaluate(`(() => {
+      const limit = document.documentElement.clientWidth;
+      return [...document.querySelectorAll('#settings-panel *')]
+        .filter((el) => { const b = el.getBoundingClientRect(); return (b.width || b.height) && (b.right > limit + 1 || b.left < -1); })
+        .map((el) => (el.id ? '#' + el.id : el.tagName + '.' + String(el.className).split(' ')[0]) + ':' + Math.round(el.getBoundingClientRect().width) + 'px')
+        .slice(0, 8);
+    })()`);
+    if (overflow.length) {
+      throw new Error(`Settings group #${groupID} overflows the compact window: ${overflow.join(', ')}`);
+    }
   }
   // The quality install block needs a working manager binary to render, and
   // this run deliberately points at a missing one, so controls with no box are
   // not applicable here rather than broken. Anything that does render must be
   // reachable — the Office manifest row is the one that overflowed.
-  for (const controlID of ['configure-integrations', 'refresh-integrations', 'reveal-office-manifest', 'reveal-project-manifest', 'remove-office-certificate']) {
+  for (const controlID of ['configure-integrations', 'refresh-integrations', 'reveal-office-manifest', 'office-manifest-host', 'remove-office-certificate']) {
     const hit = await browser.evaluate(`(() => {
       const el = document.querySelector('#${controlID}');
       if (!el) return 'missing';
+      // Groups are an accordion, so the control's own group must be the open
+      // one before it can be measured.
+      const group = el.closest('details.settings-group');
+      if (group && !group.open) group.open = true;
       const box = el.getBoundingClientRect();
       if (!box.width && !box.height) return 'not-rendered';
       el.scrollIntoView({ block: 'center' });

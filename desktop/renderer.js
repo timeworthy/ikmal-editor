@@ -80,12 +80,18 @@ const generateOfficeCertificateButton = document.querySelector('#generate-office
 const startOfficeBridgeButton = document.querySelector('#start-office-bridge');
 const stopOfficeBridgeButton = document.querySelector('#stop-office-bridge');
 const revealOfficeManifestButton = document.querySelector('#reveal-office-manifest');
-const revealExcelManifestButton = document.querySelector('#reveal-excel-manifest');
-const revealPowerPointManifestButton = document.querySelector('#reveal-powerpoint-manifest');
-const revealOutlookManifestButton = document.querySelector('#reveal-outlook-manifest');
-const revealOneNoteManifestButton = document.querySelector('#reveal-onenote-manifest');
-const revealProjectManifestButton = document.querySelector('#reveal-project-manifest');
+const officeManifestHost = document.querySelector('#office-manifest-host');
 const removeOfficeCertificateButton = document.querySelector('#remove-office-certificate');
+// The preload contract still exposes one method per host; only the UI collapsed
+// into a picker, so the main-process handlers stay one-per-manifest.
+const officeManifestReveals = {
+  word: () => window.ikmal.revealOfficeManifest(),
+  excel: () => window.ikmal.revealOfficeExcelManifest(),
+  powerpoint: () => window.ikmal.revealOfficePowerPointManifest(),
+  outlook: () => window.ikmal.revealOfficeOutlookManifest(),
+  onenote: () => window.ikmal.revealOfficeOneNoteManifest(),
+  project: () => window.ikmal.revealOfficeProjectManifest(),
+};
 const officeBridgeStatus = document.querySelector('#office-bridge-status');
 const setupCelebration = document.querySelector('#setup-celebration');
 const celebrationConfetti = document.querySelector('#celebration-confetti');
@@ -1084,45 +1090,17 @@ startOfficeBridgeButton.addEventListener('click', startOfficeBridge);
 stopOfficeBridgeButton.addEventListener('click', stopOfficeBridge);
 removeOfficeCertificateButton.addEventListener('click', removeOfficeCertificate);
 revealOfficeManifestButton.addEventListener('click', async () => {
-  try {
-    await window.ikmal.revealOfficeManifest();
-  } catch (error) {
-    showFailureNotice(error.message || 'Could not reveal the Word manifest.', { details: error.stack || error.message });
+  const host = officeManifestHost.value;
+  const reveal = officeManifestReveals[host];
+  const label = officeManifestHost.selectedOptions[0]?.textContent || host;
+  if (!reveal) {
+    showFailureNotice(`No manifest is available for ${label}.`);
+    return;
   }
-});
-revealExcelManifestButton.addEventListener('click', async () => {
   try {
-    await window.ikmal.revealOfficeExcelManifest();
+    await reveal();
   } catch (error) {
-    showFailureNotice(error.message || 'Could not reveal the Excel manifest.', { details: error.stack || error.message });
-  }
-});
-revealPowerPointManifestButton.addEventListener('click', async () => {
-  try {
-    await window.ikmal.revealOfficePowerPointManifest();
-  } catch (error) {
-    showFailureNotice(error.message || 'Could not reveal the PowerPoint manifest.', { details: error.stack || error.message });
-  }
-});
-revealOutlookManifestButton.addEventListener('click', async () => {
-  try {
-    await window.ikmal.revealOfficeOutlookManifest();
-  } catch (error) {
-    showFailureNotice(error.message || 'Could not reveal the Outlook manifest.', { details: error.stack || error.message });
-  }
-});
-revealOneNoteManifestButton.addEventListener('click', async () => {
-  try {
-    await window.ikmal.revealOfficeOneNoteManifest();
-  } catch (error) {
-    showFailureNotice(error.message || 'Could not reveal the OneNote manifest.', { details: error.stack || error.message });
-  }
-});
-revealProjectManifestButton.addEventListener('click', async () => {
-  try {
-    await window.ikmal.revealOfficeProjectManifest();
-  } catch (error) {
-    showFailureNotice(error.message || 'Could not reveal the Project manifest.', { details: error.stack || error.message });
+    showFailureNotice(error.message || `Could not reveal the ${label} manifest.`, { details: error.stack || error.message });
   }
 });
 dismissCelebration.addEventListener('click', () => setupCelebration.classList.add('is-hidden'));
@@ -1227,6 +1205,23 @@ window.ikmal.getAnnotationPreferences().then((preferences) => annotationControls
 window.ikmal.onAnnotationPreferences((preferences) => annotationControls.apply(preferences));
 window.ikmal.getCheckingPreferences().then(renderCheckingPreferences).catch(() => renderCheckingPreferences(checkingPreferences));
 window.ikmal.onCheckingPreferences(renderCheckingPreferences);
+// Settings groups behave as an accordion. Each is short on its own, but the
+// compact window only shows ~296px of panel, so several open at once turns the
+// panel into a very long scroll with the thing you opened somewhere in the
+// middle of it. Opening one closes the rest, which bounds the scroll to the
+// summaries plus a single expanded group.
+document.querySelectorAll('#settings-panel details.settings-group').forEach((group) => {
+  group.addEventListener('toggle', () => {
+    if (!group.open) return;
+    document.querySelectorAll('#settings-panel details.settings-group').forEach((other) => {
+      if (other !== group) other.open = false;
+    });
+    // Bring the newly opened group's summary to the top rather than leaving it
+    // wherever the collapse of the others happened to move it.
+    group.scrollIntoView({ block: 'nearest' });
+  });
+});
+
 loadStyleGuideState();
 loadIntegrationStatus();
 loadQualityStatus();

@@ -175,13 +175,22 @@
             <div>2. Approve it in your operating system’s certificate store.</div>
             <div>3. Start the bridge, then sideload the Word or Excel manifest.</div>
           </div>
+          <!-- One picker rather than six buttons. Sideloading is a per-host
+               action done once, so the host belongs in a control, not in six
+               separate labels competing for the compact window's width. -->
+          <div class="manifest-row">
+            <label class="manifest-label" for="office-manifest-host">Task pane</label>
+            <select id="office-manifest-host">
+              <option value="word">Word</option>
+              <option value="excel">Excel</option>
+              <option value="powerpoint">PowerPoint</option>
+              <option value="outlook">Outlook</option>
+              <option value="onenote">OneNote</option>
+              <option value="project">Project</option>
+            </select>
+            <button class="button button-quiet" id="reveal-office-manifest" type="button">Show manifest</button>
+          </div>
           <div class="setting-actions">
-            <button class="button button-quiet" id="reveal-office-manifest" type="button">Show Word manifest</button>
-            <button class="button button-quiet" id="reveal-excel-manifest" type="button">Show Excel manifest</button>
-            <button class="button button-quiet" id="reveal-powerpoint-manifest" type="button">Show PowerPoint manifest</button>
-            <button class="button button-quiet" id="reveal-outlook-manifest" type="button">Show Outlook manifest</button>
-            <button class="button button-quiet" id="reveal-onenote-manifest" type="button">Show OneNote manifest</button>
-            <button class="button button-quiet" id="reveal-project-manifest" type="button">Show Project manifest</button>
             <button class="button button-quiet" id="remove-office-certificate" type="button">Remove certificate</button>
           </div>
           <small id="office-bridge-status" aria-live="polite">Checking Office bridge availability…</small>
