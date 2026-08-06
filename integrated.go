@@ -80,35 +80,159 @@ func startIntegratedProxy() *exec.Cmd {
 	return command
 }
 
+// readinessGrace is how long a freshly started service may stay unhealthy
+// before the supervisor treats it as failed. The quality engine loads a
+// transformer model on first request, which takes far longer than a health
+// tick; without this the supervisor would kill it while it was still starting
+// and never let it finish.
+const readinessGrace = 90 * time.Second
+
+// managedService supervises one child process. It owns how to start it, how to
+// tell whether it is answering, and when it exited.
+type managedService struct {
+	name    string
+	start   func() *exec.Cmd
+	healthy func() bool
+
+	command   *exec.Cmd
+	exited    chan struct{}
+	startedAt time.Time
+	failures  int
+	// supervised stays true between a failed restart and the next attempt, so
+	// a service the supervisor still intends to revive is not mistaken for one
+	// it never owned.
+	supervised bool
+}
+
+func newManagedService(name string, command *exec.Cmd, start func() *exec.Cmd, healthy func() bool) *managedService {
+	service := &managedService{name: name, start: start, healthy: healthy}
+	service.adopt(command)
+	return service
+}
+
+// adopt takes ownership of a started process. Wait runs on its own goroutine
+// because ProcessState is only ever populated by Wait: without it an exited
+// child is invisible to the supervisor and lingers as a zombie.
+func (service *managedService) adopt(command *exec.Cmd) {
+	service.command = command
+	service.exited = nil
+	service.startedAt = time.Now()
+	service.supervised = service.supervised || command != nil
+	if command == nil || command.Process == nil {
+		return
+	}
+	exited := make(chan struct{})
+	service.exited = exited
+	go func() {
+		_ = command.Wait()
+		close(exited)
+	}()
+}
+
+func (service *managedService) running() bool {
+	return service.supervised
+}
+
+func (service *managedService) hasExited() bool {
+	if service.exited == nil {
+		return false
+	}
+	select {
+	case <-service.exited:
+		return true
+	default:
+		return false
+	}
+}
+
+// stop kills the child and waits for the adopt goroutine to reap it, so the
+// port is released before a restart tries to bind it again.
+func (service *managedService) stop() {
+	if service.command == nil || service.command.Process == nil {
+		service.command = nil
+		return
+	}
+	_ = service.command.Process.Kill()
+	if service.exited != nil {
+		<-service.exited
+	}
+	service.command = nil
+	service.exited = nil
+}
+
+// check restarts the service if it has exited or has stopped answering. It
+// reports whether supervision should continue.
+func (service *managedService) check() bool {
+	if !service.running() {
+		return false
+	}
+	exited := service.command != nil && service.hasExited()
+	if service.command != nil && !exited {
+		if service.healthy() {
+			service.failures = 0
+			return true
+		}
+		// An unhealthy service inside its grace window is still starting.
+		if time.Since(service.startedAt) < readinessGrace {
+			return true
+		}
+		fmt.Printf("Managed %s stopped answering; restarting it.\n", service.name)
+	} else if exited {
+		fmt.Printf("Managed %s stopped; restarting it.\n", service.name)
+	}
+
+	service.stop()
+	service.adopt(service.start())
+	if service.command != nil {
+		service.failures = 0
+		return true
+	}
+
+	// A start that declines because the endpoint is already answering means
+	// something else now provides this service. That is not a failure; there
+	// is simply nothing left for this supervisor to own.
+	if service.healthy() {
+		fmt.Printf("Managed %s is now provided by another process; no longer supervising it.\n", service.name)
+		service.supervised = false
+		return false
+	}
+
+	service.failures++
+	// Report rather than going quiet: the supervisor has just killed the
+	// service the user was relying on, and a silent exit is the one outcome
+	// they cannot act on.
+	fmt.Printf("Managed %s could not be restarted (attempt %d).\n", service.name, service.failures)
+	if service.failures >= 5 {
+		fmt.Printf("Managed %s failed to restart %d times; no longer supervising it.\n", service.name, service.failures)
+		service.supervised = false
+		return false
+	}
+	// Stay supervised so the next tick retries.
+	service.startedAt = time.Now()
+	return true
+}
+
+// monitorIntegratedServices keeps the managed services alive until every one it
+// owns is gone. The proxy and the quality engine are judged on their own health
+// endpoints: the proxy answers on 8096 and manages its own quality server, so
+// folding the engine's health into the proxy's restart test would kill a
+// perfectly healthy proxy every time the engine was slow to load or absent.
 func monitorIntegratedServices(proxyProcess **exec.Cmd, qualityProcess **exec.Cmd) {
+	proxy := newManagedService("quality proxy", *proxyProcess, startIntegratedProxy, func() bool {
+		return httpReady("http://127.0.0.1:8096/health")
+	})
+	quality := newManagedService("quality engine", *qualityProcess, func() *exec.Cmd {
+		return startManagedQualityServerWithTransformer(true)
+	}, qualityEndpointReady)
+
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	for range ticker.C {
-		if *proxyProcess != nil {
-			proxyExited := (*proxyProcess).ProcessState != nil
-			if proxyExited || !httpReady("http://127.0.0.1:8096/health") || !qualityEndpointReady() {
-				if proxyExited {
-					fmt.Println("Managed quality proxy stopped; restarting it.")
-				} else {
-					fmt.Println("Managed quality services are unhealthy; restarting the managed proxy and quality engine.")
-				}
-				stopManagedQualityTransformer(*proxyProcess)
-				*proxyProcess = startIntegratedProxy()
-			}
-		}
-		if *qualityProcess != nil {
-			qualityExited := (*qualityProcess).ProcessState != nil
-			if qualityExited || !qualityEndpointReady() {
-				if qualityExited {
-					fmt.Println("Managed quality engine stopped; restarting it.")
-				} else {
-					fmt.Println("Managed quality engine is unhealthy; restarting it.")
-				}
-				stopManagedQualityTransformer(*qualityProcess)
-				*qualityProcess = startManagedQualityServerWithTransformer(true)
-			}
-		}
-		if *proxyProcess == nil && *qualityProcess == nil {
+		proxyAlive := proxy.check()
+		qualityAlive := quality.check()
+		*proxyProcess = proxy.command
+		*qualityProcess = quality.command
+		if !proxyAlive && !qualityAlive {
 			return
 		}
 	}
