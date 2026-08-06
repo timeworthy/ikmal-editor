@@ -370,6 +370,15 @@ input[type=checkbox]:disabled { cursor: default; opacity: .45; }
 .link-button { padding: 0; border: 0; background: none; color: var(--amber); font: inherit; text-decoration: underline; cursor: pointer; }
 .link-button:hover { opacity: .8; }
 #quality-install-status { color: var(--fg-4); font-size: 10.5px; line-height: 1.4; }
+/* Naming the vendor on every row is the point of this card: without it the
+   list reads as "ikmal's integrations" rather than someone else's plugins
+   pointed at the user's own server. */
+.integration-vendor { margin-top: 2px; color: var(--fg-4); font-family: var(--mono); font-size: 9.5px; letter-spacing: .04em; text-transform: uppercase; }
+.integration-switch { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--border-1); border-radius: var(--r2); background: var(--bg-2); }
+.integration-switch.is-hidden { display: none; }
+.integration-switch strong { color: var(--fg-1); font-size: 11.5px; }
+.integration-switch p { color: var(--fg-3); font-size: 11px; line-height: 1.45; }
+.integration-switch ul { margin: 0; padding-left: 16px; color: var(--fg-3); font-size: 11px; line-height: 1.5; }
 .integration-action { display: grid; gap: 6px; padding: 10px; border: 1px solid rgba(224, 164, 88, .24); border-radius: var(--r2); background: rgba(224, 164, 88, .08); }
 .integration-action.is-hidden { display: none; }
 .integration-action strong { color: var(--amber); font-size: 11.5px; }

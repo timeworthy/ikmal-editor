@@ -111,12 +111,12 @@
         </div>
       </div>
       <details class="settings-group" id="enhancer-settings">
-        <summary><span><strong>Enhancer integration</strong><small>Use ikmal checks with detected LanguageTool integrations.</small></span><em>Optional</em></summary>
+        <summary><span><strong>LanguageTool plugins</strong><small>Point LanguageTool's own browser plugins at your local ikmal server.</small></span><em>Optional</em></summary>
         <div class="setting-card integration-card">
           <div class="style-guide-heading">
             <div>
-              <strong>LanguageTool enhancer</strong>
-              <p>Review detected integrations before changing anything.</p>
+              <strong>LanguageTool's plugins, using your server</strong>
+              <p>These are LanguageTool's own extensions, not ikmal's. Configuring one rewrites its server address so it checks against this computer instead of LanguageTool's cloud. ikmal's own extension is a separate product, under Browser extension below.</p>
             </div>
             <div class="setting-actions">
               <button class="button button-quiet" id="refresh-integrations" type="button">Refresh</button>
@@ -125,6 +125,19 @@
           </div>
           <div class="integration-list" id="integration-list" aria-live="polite">
             <small>Checking installed integrations…</small>
+          </div>
+          <div class="integration-switch is-hidden" id="integration-switch">
+            <strong>Use ikmal's extension instead?</strong>
+            <p>ikmal has its own browser extension. It is a different product from LanguageTool's, so switching changes what you get:</p>
+            <ul>
+              <li>No LanguageTool account, and no premium features — ikmal has neither.</li>
+              <li>ikmal's own quality suggestions become available.</li>
+              <li>Running both at once underlines everything twice. Turn one off.</li>
+            </ul>
+            <div class="setting-actions">
+              <button class="button button-primary" id="switch-to-ikmal" type="button">Show ikmal extension files</button>
+              <button class="button button-quiet" id="dismiss-switch" type="button">Keep LanguageTool's</button>
+            </div>
           </div>
           <div class="integration-action is-hidden" id="integration-action">
             <strong id="integration-action-title">Ready to configure</strong>

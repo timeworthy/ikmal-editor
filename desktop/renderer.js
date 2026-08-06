@@ -24,6 +24,14 @@ const styleGuideStatus = document.querySelector('#style-guide-status');
 const importStyleGuideButton = document.querySelector('#import-style-guide');
 const refreshStyleGuidesButton = document.querySelector('#refresh-style-guides');
 const integrationList = document.querySelector('#integration-list');
+const integrationSwitch = document.querySelector('#integration-switch');
+const switchToIkmalButton = document.querySelector('#switch-to-ikmal');
+const dismissSwitchButton = document.querySelector('#dismiss-switch');
+// The browser targets are the only ones ikmal has its own product for. macOS
+// system integration and the VS Code entry are LanguageTool's too, but ikmal's
+// alternatives there are the spell server and the VS Code adapter, which are
+// installed from their own cards rather than by swapping an extension.
+const BROWSER_LANGUAGETOOL_TARGETS = new Set(['firefox', 'chrome']);
 const refreshIntegrationsButton = document.querySelector('#refresh-integrations');
 const qualityComponentList = document.querySelector('#quality-component-list');
 const qualityLicenseNotice = document.querySelector('#quality-license-notice');
@@ -115,6 +123,7 @@ let recentChecks = [];
 let checkTimer;
 let checkGeneration = 0;
 let ignoredMatches = new Set();
+let switchOfferDismissed = false;
 let resizeFrame;
 let statusAnimationFrame;
 const annotationSurface = window.IkmalAnnotationSurface.attach({
@@ -342,10 +351,19 @@ function renderIntegrationStatus(state) {
           : state === 'detected'
             ? 'is-idle'
             : 'is-unavailable';
-      row.innerHTML = `<span class="mini-status-dot ${dotClass}"></span><span><strong>${escapeHTML(target.name)}</strong><small>${escapeHTML(status)} · ${escapeHTML(target.details || '')}</small></span>`;
+      // Name whose product each row is. Every row here is LanguageTool's, and
+      // saying so is the difference between "my integrations" and "someone
+      // else's plugin I pointed at my own server".
+      row.innerHTML = `<span class="mini-status-dot ${dotClass}"></span><span><strong>${escapeHTML(target.name)}</strong><small>${escapeHTML(status)} · ${escapeHTML(target.details || '')}</small><small class="integration-vendor">LanguageTool's plugin</small></span>`;
       integrationList.appendChild(row);
     });
   }
+  // Offer ikmal's own extension only where one of LanguageTool's browser
+  // plugins is actually installed. Nothing is switched automatically: the
+  // button reveals the folder and the panel states what changes.
+  const browserPluginDetected = targets.some((target) => BROWSER_LANGUAGETOOL_TARGETS.has(target.id) && target.detected);
+  integrationSwitch.classList.toggle('is-hidden', !browserPluginDetected || switchOfferDismissed);
+
   const candidates = integrationCandidates();
   configureIntegrationsButton.disabled = candidates.length === 0;
   configureIntegrationsButton.textContent = candidates.length ? 'Review' : targets.some((target) => target.configured) ? 'Connected' : 'No changes';
@@ -1076,6 +1094,18 @@ revealOfficeManifestButton.addEventListener('click', async () => {
 dismissCelebration.addEventListener('click', () => setupCelebration.classList.add('is-hidden'));
 refreshStyleGuidesButton.addEventListener('click', loadStyleGuideState);
 refreshIntegrationsButton.addEventListener('click', loadIntegrationStatus);
+switchToIkmalButton.addEventListener('click', async () => {
+  try {
+    await window.ikmal.revealExtension();
+    document.querySelector('#extension-settings').open = true;
+  } catch (error) {
+    showFailureNotice(error.message || 'Could not open the ikmal extension folder.', { details: error.stack || error.message });
+  }
+});
+dismissSwitchButton.addEventListener('click', () => {
+  switchOfferDismissed = true;
+  integrationSwitch.classList.add('is-hidden');
+});
 refreshQualityButton.addEventListener('click', loadQualityStatus);
 qualityAck.addEventListener('change', () => { installQualityButton.disabled = !qualityAck.checked; });
 installQualityButton.addEventListener('click', installQualityStack);
