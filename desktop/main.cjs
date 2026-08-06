@@ -35,6 +35,7 @@ let editorReady = false;
 // hide-on-blur behaviour does not close the window out from under the dialog.
 let suppressAutoHide = false;
 let officeBridgeServer;
+let focusModeAPI;
 
 function desktopPreferencesPath() {
   return path.join(app.getPath('userData'), 'desktop-preferences.json');
@@ -49,6 +50,7 @@ function readDesktopPreferences() {
       annotationStyle: ['line', 'dash'].includes(saved.annotationStyle) ? saved.annotationStyle : ANNOTATION_DEFAULTS.style,
       annotationPalette: ANNOTATION_PALETTES.has(saved.annotationPalette) ? saved.annotationPalette : ANNOTATION_DEFAULTS.palette,
       annotationIntensity: normalizeAnnotationIntensity(saved.annotationIntensity),
+      focusMode: saved.focusMode,
       ...normalizeCheckingPreferences(saved),
     };
   } catch (_) {
@@ -83,6 +85,38 @@ function checkingPreferencesState() {
     categories: desktopPreferences?.checkCategories,
   });
   return { mode: normalized.checkMode, delay: normalized.checkDelay, sensitivity: normalized.checkSensitivity, categories: normalized.checkCategories };
+}
+
+// The focus-mode presets live with the browser adapter and are resolved the
+// same way the office-bridge modules are, so the desktop shell and the
+// extension share one copy rather than two that can drift.
+function focusModeModule() {
+  if (!focusModeAPI) {
+    const base = process.env.IKMAL_DESKTOP_PACKAGED === '1' || app.isPackaged
+      ? path.join(process.resourcesPath, 'extension', 'core')
+      : path.resolve(__dirname, '..', 'extension', 'core');
+    focusModeAPI = require(path.join(base, 'focus_mode.cjs'));
+  }
+  return focusModeAPI;
+}
+
+// The stored state is returned already resolved, so an expiry that passed while
+// the app was closed or the machine asleep reads as active without anything
+// having had to fire.
+//
+// `effective` is the user's own preferences with the mode applied on top. It is
+// computed here rather than in the renderer so the presets keep one
+// implementation: the renderer has no Node access, and a browser-global copy
+// would be a fourth version of rules that must not diverge.
+function focusModeState() {
+  const focus = focusModeModule();
+  const state = focus.resolveFocusState(desktopPreferences?.focusMode);
+  return {
+    ...state,
+    label: focus.describeFocusState(state),
+    durations: focus.FOCUS_DURATIONS,
+    effective: focus.applyFocusState(checkingPreferencesState(), state),
+  };
 }
 
 function normalizeAnnotationIntensity(value) {
@@ -835,7 +869,25 @@ function registerIPC() {
     saveDesktopPreferences();
     const preferences = checkingPreferencesState();
     send('checking-preferences', preferences);
+    // The effective preferences are derived from these, so anyone showing the
+    // focus state needs to hear about it.
+    send('focus-mode', focusModeState());
     return preferences;
+  });
+  ipcMain.handle('focus-mode-state', () => focusModeState());
+  ipcMain.handle('set-focus-mode', (_, next) => {
+    const requested = next && typeof next === 'object' ? next : {};
+    const focus = focusModeModule();
+    // A duration is only meaningful when starting a mode; switching back to
+    // active clears the deadline rather than carrying a stale one.
+    const state = requested.mode === 'active' || !focus.FOCUS_MODES.includes(requested.mode)
+      ? { mode: 'active', until: null }
+      : focus.startFocusState(requested.mode, requested.duration);
+    desktopPreferences = { ...desktopPreferences, focusMode: state };
+    saveDesktopPreferences();
+    const full = focusModeState();
+    send('focus-mode', full);
+    return full;
   });
   ipcMain.handle('spell-server-state', () => spellServerState());
   ipcMain.handle('install-spell-server', () => installSpellServer());

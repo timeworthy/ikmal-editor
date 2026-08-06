@@ -70,6 +70,9 @@ const checkingCategoryInputs = {
   style: document.querySelector('#checking-category-style'),
   languagetool: document.querySelector('#checking-category-languagetool'),
 };
+const focusStateLabel = document.querySelector('#focus-state-label');
+const focusDurationSelect = document.querySelector('#focus-duration');
+const focusModeButtons = [...document.querySelectorAll('.focus-mode-button')];
 const spellServerSettings = document.querySelector('#native-spell-settings');
 const installSpellServerButton = document.querySelector('#install-spell-server');
 const removeSpellServerButton = document.querySelector('#remove-spell-server');
@@ -103,6 +106,7 @@ document.documentElement.dataset.platform = window.ikmal.platform;
 let lastResponse = { matches: [] };
 let rawResponse = { matches: [] };
 let checkingPreferences = { mode: 'automatic', delay: 700, sensitivity: 55, categories: { grammar: true, repetition: true, style: true, languagetool: true } };
+let focusState = { mode: 'active', until: null, label: 'Checking', durations: [], effective: null };
 let styleGuideState;
 let integrationState;
 let serviceState = { proxyReady: false };
@@ -543,14 +547,54 @@ function checkingCategory(match) {
   return 'languagetool';
 }
 
+// Filtering reads the effective preferences — the user's own settings with the
+// current focus mode applied on top, computed in the main process where the
+// preset rules live. The stored preferences are left untouched, so the sliders
+// keep showing what the user chose and Checking restores it exactly.
+function effectiveCheckingPreferences() {
+  return focusState.effective || checkingPreferences;
+}
+
 function filteredResponse(response) {
   const value = response || { matches: [] };
-  const threshold = 0.9 - (checkingPreferences.sensitivity / 100) * 0.4;
+  const effective = effectiveCheckingPreferences();
+  const threshold = 0.9 - (effective.sensitivity / 100) * 0.4;
   const matches = Array.isArray(value.matches) ? value.matches.filter((match) => {
     const confidence = Number(match.ikmalConfidence ?? match.confidence ?? 1);
-    return checkingPreferences.categories[checkingCategory(match)] !== false && (!Number.isFinite(confidence) || confidence >= threshold);
+    return effective.categories[checkingCategory(match)] !== false && (!Number.isFinite(confidence) || confidence >= threshold);
   }) : [];
   return { ...value, matches };
+}
+
+function renderFocusState(state) {
+  focusState = state && typeof state === 'object' ? state : focusState;
+  focusStateLabel.textContent = focusState.label || 'Checking';
+  focusModeButtons.forEach((button) => {
+    button.classList.toggle('is-active', button.dataset.mode === focusState.mode);
+    button.setAttribute('aria-pressed', String(button.dataset.mode === focusState.mode));
+  });
+  if (focusDurationSelect.options.length === 0 && Array.isArray(focusState.durations)) {
+    focusState.durations.forEach((duration) => {
+      const option = document.createElement('option');
+      option.value = duration.id;
+      option.textContent = duration.label;
+      focusDurationSelect.appendChild(option);
+    });
+  }
+  document.documentElement.dataset.focusMode = focusState.mode;
+  // A mode change alters which findings pass the filter, so anything already
+  // on screen has to be redrawn against the new effective settings.
+  renderResults(rawResponse, input.value);
+  if (focusState.mode === 'paused') setWritingStatus('idle', focusState.label);
+}
+
+async function applyFocusMode(mode) {
+  try {
+    renderFocusState(await window.ikmal.setFocusMode(mode, focusDurationSelect.value));
+    if (focusState.mode === 'active' && checkingPreferences.mode === 'automatic' && input.value.trim()) checkWriting();
+  } catch (error) {
+    setNotice(error.message || 'Could not change the focus mode.');
+  }
 }
 
 function renderCheckingPreferences(preferences) {
@@ -764,14 +808,18 @@ function scheduleCheck() {
     setNotice('', false);
     return;
   }
-  if (checkingPreferences.mode === 'manual') {
-    setWritingStatus('good', 'Ready to check');
+  // Pause resolves to manual, so this one branch covers both the setting and
+  // the preset. The status names whichever is in force, so a paused window
+  // does not look like a broken one.
+  const effective = effectiveCheckingPreferences();
+  if (effective.mode === 'manual') {
+    setWritingStatus('good', focusState.mode === 'paused' ? focusState.label : 'Ready to check');
     setNotice('', false);
     return;
   }
   setWritingStatus('checking', 'Waiting to check…');
   setNotice('', false);
-  checkTimer = setTimeout(() => checkWriting(), checkingPreferences.delay);
+  checkTimer = setTimeout(() => checkWriting(), effective.delay);
 }
 
 document.querySelectorAll('.tab').forEach((tab) => {
@@ -1143,6 +1191,10 @@ document.querySelectorAll('#settings-panel details.settings-group').forEach((gro
     group.scrollIntoView({ block: 'nearest' });
   });
 });
+
+focusModeButtons.forEach((button) => button.addEventListener('click', () => applyFocusMode(button.dataset.mode)));
+window.ikmal.getFocusMode().then(renderFocusState).catch(() => {});
+window.ikmal.onFocusMode(renderFocusState);
 
 loadStyleGuideState();
 loadIntegrationStatus();

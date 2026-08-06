@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld('ikmal', {
   setAnnotationPreferences: (settings) => ipcRenderer.invoke('set-annotation-preferences', settings),
   getCheckingPreferences: () => ipcRenderer.invoke('get-checking-preferences'),
   setCheckingPreferences: (settings) => ipcRenderer.invoke('set-checking-preferences', settings),
+  getFocusMode: () => ipcRenderer.invoke('focus-mode-state'),
+  setFocusMode: (mode, duration) => ipcRenderer.invoke('set-focus-mode', { mode, duration }),
   getSpellServerState: () => ipcRenderer.invoke('spell-server-state'),
   installSpellServer: () => ipcRenderer.invoke('install-spell-server'),
   removeSpellServer: () => ipcRenderer.invoke('remove-spell-server'),
@@ -51,5 +53,6 @@ contextBridge.exposeInMainWorld('ikmal', {
   onShowHistory: (callback) => ipcRenderer.on('show-history', () => callback()),
   onAnnotationPreferences: (callback) => ipcRenderer.on('annotation-preferences', (_, settings) => callback(settings)),
   onCheckingPreferences: (callback) => ipcRenderer.on('checking-preferences', (_, settings) => callback(settings)),
+  onFocusMode: (callback) => ipcRenderer.on('focus-mode', (_, state) => callback(state)),
   onEditorText: (callback) => ipcRenderer.on('editor-text', (_, text) => callback(text)),
 });

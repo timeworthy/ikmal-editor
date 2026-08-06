@@ -261,6 +261,25 @@
       <details class="settings-group" id="checking-settings">
         <summary><span><strong>Checking behavior</strong><small>Choose when checks run and what they surface.</small></span><em>Control</em></summary>
         <div class="setting-card checking-card">
+          <!-- Pause and Zen sit above the individual settings because they
+               override them. The controls below keep showing what the user
+               chose, so switching back to Checking restores it exactly. -->
+          <div class="focus-card" id="focus-card">
+            <div class="focus-heading">
+              <strong>Focus</strong>
+              <small id="focus-state-label">Checking</small>
+            </div>
+            <div class="focus-modes" role="group" aria-label="Focus mode">
+              <button class="focus-mode-button is-active" id="focus-active" type="button" data-mode="active">Checking</button>
+              <button class="focus-mode-button" id="focus-paused" type="button" data-mode="paused">Pause</button>
+              <button class="focus-mode-button" id="focus-zen" type="button" data-mode="zen">Zen</button>
+            </div>
+            <label class="setting-row" for="focus-duration">
+              <span><strong>For how long</strong><small>Applies when you choose Pause or Zen.</small></span>
+              <select id="focus-duration"></select>
+            </label>
+            <small id="focus-description">Pause stops checking until you ask. Zen keeps checking but shows only the most confident findings.</small>
+          </div>
           <label class="setting-row" for="checking-mode">
             <span><strong>Check timing</strong><small>Automatic waits briefly after you stop typing. Manual checks run from Check.</small></span>
             <select id="checking-mode"><option value="automatic">Automatic</option><option value="manual">Manual</option></select>
