@@ -116,4 +116,39 @@ function escapeHTML(value) {
   ));
 }
 
+const focusLabel = document.querySelector('#focus-label');
+const focusDuration = document.querySelector('#focus-duration');
+const focusButtons = [...document.querySelectorAll('.focus-mode-button')];
+
+function renderFocus(state) {
+  if (!state) return;
+  focusLabel.textContent = state.label || 'Checking';
+  focusButtons.forEach((button) => {
+    button.classList.toggle('is-active', button.dataset.mode === state.mode);
+    button.setAttribute('aria-pressed', String(button.dataset.mode === state.mode));
+  });
+}
+
+async function loadFocus() {
+  const [focus, durations] = await Promise.all([
+    send({ type: 'focus' }),
+    send({ type: 'focusDurations' }),
+  ]);
+  if (durations?.ok && focusDuration.options.length === 0) {
+    durations.data.forEach((duration) => {
+      const option = document.createElement('option');
+      option.value = duration.id;
+      option.textContent = duration.label;
+      focusDuration.appendChild(option);
+    });
+  }
+  if (focus?.ok) renderFocus(focus.data);
+}
+
+focusButtons.forEach((button) => button.addEventListener('click', async () => {
+  const response = await send({ type: 'setFocus', mode: button.dataset.mode, duration: focusDuration.value });
+  if (response?.ok) renderFocus(response.data);
+}));
+
+loadFocus();
 refresh();

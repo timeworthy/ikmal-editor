@@ -15,6 +15,9 @@ export const DEFAULT_SETTINGS = {
   checkDelayMs: 900,
   minLength: 12,
   disabledHosts: [],
+  // Pause and Zen. Shape and semantics live in core/focus_mode.js; this is only
+  // where the browser adapter persists it.
+  focusMode: { mode: 'active', until: null },
   // Support prompt state. The prompt is shown once, is dismissible forever,
   // and gates nothing. See SUPPORT.md for why it works this way.
   supportPromptSeen: false,

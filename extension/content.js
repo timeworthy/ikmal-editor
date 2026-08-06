@@ -88,15 +88,17 @@
     checking: { text: '···', title: 'ikmal is checking this text' },
     clean: { text: '✓', title: 'ikmal found nothing to flag' },
     off: { text: '‖', title: 'ikmal is off for this site' },
+    paused: { text: '‖', title: 'ikmal is paused' },
+    zen: { text: '✓', title: 'Zen: only the most confident findings' },
     error: { text: '!', title: 'ikmal could not reach your local server' },
   };
 
-  function setIndicator(field, state, count = 0) {
+  function setIndicator(field, state, count = 0, title = '') {
     if (activeField !== field) return;
     const element = ensureIndicator();
     const preset = INDICATOR_STATES[state];
     element.textContent = preset ? preset.text : String(count);
-    element.title = preset ? preset.title : `ikmal found ${count} suggestion${count === 1 ? '' : 's'}`;
+    element.title = title || (preset ? preset.title : `ikmal found ${count} suggestion${count === 1 ? '' : 's'}`);
     element.className = `ikmal-indicator is-visible is-${state}`;
     positionIndicator(field);
   }
@@ -177,6 +179,7 @@
       clearMarks(field);
       // 'too-short' is the service worker agreeing with the check above.
       if (response.data.skipped === 'too-short') hideIndicator();
+      else if (response.data.skipped === 'paused') setIndicator(field, 'paused', 0, response.data.focus?.label);
       else setIndicator(field, 'off');
       return;
     }
@@ -189,7 +192,10 @@
     record.matches = Array.isArray(response.data.matches) ? response.data.matches : [];
     record.checkedText = text;
     renderMarks(field);
-    setIndicator(field, record.matches.length ? 'flagged' : 'clean', record.matches.length);
+    const focusLabel = response.data.focus && response.data.focus.mode !== 'active'
+      ? `${response.data.focus.label || 'Zen'} · ${record.matches.length} shown`
+      : '';
+    setIndicator(field, record.matches.length ? 'flagged' : 'clean', record.matches.length, focusLabel);
   }
 
   function clearMarks(field) {
@@ -489,6 +495,15 @@
     if (message.type === 'settings-changed') {
       loadSettings().then(() => activeField && runCheck(activeField));
     }
+  });
+
+  // Focus-mode changes reach every open tab this way. A content script receives
+  // storage events directly, so no tab-enumeration permission is needed.
+  chrome.storage?.onChanged?.addListener((changes, area) => {
+    if (area !== 'local') return;
+    if (!Object.hasOwn(changes, 'focusMode') && !Object.hasOwn(changes, 'enabled')
+      && !Object.hasOwn(changes, 'disabledHosts')) return;
+    loadSettings().then(() => activeField && runCheck(activeField));
   });
 
   new MutationObserver((records) => {

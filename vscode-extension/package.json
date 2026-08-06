@@ -10,7 +10,12 @@
   "activationEvents": ["onStartupFinished"],
   "main": "extension.js",
   "contributes": {
-    "commands": [{ "command": "ikmal.checkDocument", "title": "ikmal: Check Document" }],
+    "commands": [
+      { "command": "ikmal.checkDocument", "title": "ikmal: Check Document" },
+      { "command": "ikmal.pause", "title": "ikmal: Pause checking" },
+      { "command": "ikmal.zen", "title": "ikmal: Zen mode (only the most confident findings)" },
+      { "command": "ikmal.resume", "title": "ikmal: Resume checking" }
+    ],
     "configuration": {
       "title": "ikmal editor",
       "properties": {

@@ -8,12 +8,28 @@
 
 import { readSettings, writeSettings, checkURL, healthURL, hostIsDisabled } from './config.js';
 import { buildCheckBody, normalizeCheckResponse } from './core/check_contract.js';
+import { resolveFocusState, applyFocusState, filterMatches, describeFocusState, startFocusState, FOCUS_DURATIONS } from './core/focus_mode.js';
+
+// The browser adapter has no sensitivity slider of its own, so a mode is
+// applied to these canonical defaults. Active therefore changes nothing, which
+// is what it should do.
+const BASE_PREFERENCES = {
+  mode: 'automatic',
+  sensitivity: 55,
+  categories: { grammar: true, repetition: true, style: true, languagetool: true },
+};
 
 async function checkText({ text, language, host }) {
   const settings = await readSettings();
 
   if (!settings.enabled) return { skipped: 'disabled' };
   if (hostIsDisabled(settings, host)) return { skipped: 'host-disabled' };
+
+  // Pause is answered here rather than in the content script so no request is
+  // made at all, and so every caller gets the same answer.
+  const focus = resolveFocusState(settings.focusMode);
+  if (focus.mode === 'paused') return { skipped: 'paused', focus };
+
   if (!text || text.trim().length < settings.minLength) return { skipped: 'too-short' };
 
   const body = buildCheckBody({
@@ -32,7 +48,11 @@ async function checkText({ text, language, host }) {
   if (!response.ok) {
     throw new Error(`The local server answered with HTTP ${response.status}.`);
   }
-  return normalizeCheckResponse(await response.json());
+  const result = normalizeCheckResponse(await response.json());
+  // Zen keeps checking and narrows what comes back, using the same rules the
+  // desktop applies to the same findings.
+  const effective = applyFocusState(BASE_PREFERENCES, focus);
+  return { ...result, matches: filterMatches(result.matches, effective), focus };
 }
 
 async function readHealth() {
@@ -54,6 +74,22 @@ async function readHealth() {
   }
 }
 
+async function readFocus() {
+  const settings = await readSettings();
+  const state = resolveFocusState(settings.focusMode);
+  return { ...state, label: describeFocusState(state) };
+}
+
+async function setFocus({ mode, duration }) {
+  const state = mode === 'active' ? { mode: 'active', until: null } : startFocusState(mode, duration);
+  await writeSettings({ focusMode: state });
+  // Open tabs pick this up through chrome.storage.onChanged, which content
+  // scripts receive directly. Broadcasting over chrome.tabs instead would mean
+  // asking for the "tabs" permission, and verify_extension.mjs refuses it —
+  // rightly, since a checker has no business enumerating the user's tabs.
+  return { ...state, label: describeFocusState(state) };
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Every branch resolves or rejects so the content script is never left
   // waiting on a promise that silently disappears with the worker.
@@ -61,6 +97,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     check: () => checkText({ ...message, host: hostOf(sender) }),
     health: () => readHealth(),
     settings: () => readSettings(),
+    focus: () => readFocus(),
+    focusDurations: async () => FOCUS_DURATIONS,
+    setFocus: () => setFocus(message),
     updateSettings: () => writeSettings(message.patch || {}),
   };
 

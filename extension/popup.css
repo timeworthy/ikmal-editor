@@ -160,3 +160,13 @@ h1, p { margin: 0; }
   cursor: pointer;
 }
 .link:hover { color: var(--accent); }
+
+/* Focus presets. Reachable from the toolbar because pausing is something you
+   do mid-sentence, not something you open a settings page for. */
+.focus-row { display: grid; gap: 7px; padding: 10px 0; border-top: 1px solid var(--hair, rgba(255,255,255,.08)); }
+.focus-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.focus-heading small { color: var(--fg-3, #9a9aa2); font-size: 11px; }
+.focus-modes { display: flex; gap: 6px; }
+.focus-mode-button { flex: 1 1 0; padding: 6px 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 7px; color: inherit; background: transparent; font: 600 11.5px inherit; cursor: pointer; }
+.focus-mode-button.is-active { border-color: transparent; color: #fff; background: #7b6cd9; }
+.focus-row select { width: 100%; }

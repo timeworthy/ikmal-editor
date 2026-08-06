@@ -36,6 +36,19 @@
       <input type="checkbox" id="site-toggle">
     </label>
 
+    <div class="focus-row">
+      <div class="focus-heading">
+        <strong>Focus</strong>
+        <small id="focus-label">Checking</small>
+      </div>
+      <div class="focus-modes" role="group" aria-label="Focus mode">
+        <button class="focus-mode-button is-active" type="button" data-mode="active">Checking</button>
+        <button class="focus-mode-button" type="button" data-mode="paused">Pause</button>
+        <button class="focus-mode-button" type="button" data-mode="zen">Zen</button>
+      </div>
+      <select id="focus-duration" aria-label="How long"></select>
+    </div>
+
     <div class="privacy">
       Your text goes to <code id="endpoint-label">127.0.0.1</code> and nowhere else.
       No account, no cloud, no telemetry.

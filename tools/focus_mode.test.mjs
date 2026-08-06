@@ -134,3 +134,62 @@ test('descriptions say which mode is on and how long is left', () => {
     assert.equal(api.describeFocusState({ mode: 'paused', until: NOW - 1 }, NOW), 'Checking');
   });
 });
+
+// --- filtering results ---------------------------------------------------
+
+const GRAMMAR = { message: 'Plural subject.', rule: { id: 'BE_PLURAL', category: { id: 'GRAMMAR' } }, ikmalConfidence: 0.98 };
+const STYLE = { message: 'Wordy.', rule: { id: 'IKMAL_STYLE', category: { id: 'STYLE' } }, ikmalSource: 'style', ikmalConfidence: 0.75 };
+const REPETITION = { message: 'Repeated.', rule: { id: 'IKMAL_REPETITION', category: { id: 'STYLE' } }, ikmalConfidence: 0.95 };
+const UNSCORED = { message: 'From LanguageTool.', rule: { id: 'UPPERCASE_SENTENCE_START', category: { id: 'CASING' } } };
+
+test('categories match the buckets the checking settings use', () => {
+  forEachImplementation((api) => {
+    assert.equal(api.matchCategory(GRAMMAR), 'grammar');
+    assert.equal(api.matchCategory(STYLE), 'style');
+    assert.equal(api.matchCategory(REPETITION), 'repetition');
+    assert.equal(api.matchCategory(UNSCORED), 'languagetool');
+    assert.equal(api.matchCategory(null), 'languagetool');
+  });
+});
+
+test('zen narrows the findings the other modes let through', () => {
+  forEachImplementation((api) => {
+    const all = [GRAMMAR, STYLE, REPETITION, UNSCORED];
+    const active = api.filterMatches(all, api.applyFocusState(PREFERENCES, { mode: 'active' }, NOW));
+    const zen = api.filterMatches(all, api.applyFocusState(PREFERENCES, { mode: 'zen' }, NOW));
+    assert.equal(active.length, 4, 'active must not drop anything at default sensitivity');
+    assert.ok(zen.length < active.length, 'zen must narrow the results');
+    assert.ok(zen.includes(GRAMMAR), 'zen keeps a confident grammar finding');
+    assert.ok(!zen.includes(STYLE), 'zen silences style');
+    assert.ok(!zen.includes(REPETITION), 'zen silences repetition');
+  });
+});
+
+// A finding with no confidence score is not a weak finding — plain
+// LanguageTool matches carry none, and dropping them in Zen would silence the
+// grammar checking that Zen is supposed to keep.
+test('an unscored finding survives even the strictest sensitivity', () => {
+  forEachImplementation((api) => {
+    const zen = api.filterMatches([UNSCORED], api.applyFocusState(PREFERENCES, { mode: 'zen' }, NOW));
+    assert.deepEqual(zen, [UNSCORED]);
+  });
+});
+
+test('the confidence curve matches the desktop threshold', () => {
+  forEachImplementation((api) => {
+    assert.equal(api.confidenceThreshold(0), 0.9);
+    assert.ok(Math.abs(api.confidenceThreshold(55) - 0.68) < 1e-9);
+    assert.ok(Math.abs(api.confidenceThreshold(100) - 0.5) < 1e-9);
+    // Out-of-range and nonsense values fall back to the default, never to NaN.
+    assert.equal(api.confidenceThreshold(-10), 0.9);
+    assert.ok(Math.abs(api.confidenceThreshold('nope') - 0.68) < 1e-9);
+  });
+});
+
+test('filtering tolerates anything that is not an array', () => {
+  forEachImplementation((api) => {
+    for (const value of [null, undefined, 'matches', 7, {}]) {
+      assert.deepEqual(api.filterMatches(value, PREFERENCES), []);
+    }
+  });
+});

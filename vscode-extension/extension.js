@@ -7,6 +7,44 @@ const {
   normalizeCheckResponse,
   resultIsCurrent,
 } = require('./check_contract.cjs');
+const {
+  FOCUS_DURATIONS,
+  resolveFocusState,
+  startFocusState,
+  applyFocusState,
+  filterMatches,
+  describeFocusState,
+} = require('./focus_mode.cjs');
+
+// The adapter has no sensitivity setting of its own, so a mode is applied to
+// these canonical defaults — the same ones the browser adapter uses, so Zen
+// narrows the same findings in both.
+const BASE_PREFERENCES = {
+  mode: 'automatic',
+  sensitivity: 55,
+  categories: { grammar: true, repetition: true, style: true, languagetool: true },
+};
+
+// Held in memory rather than in settings.json: a pause is a passing intent, and
+// writing it to a file the user may have in version control is the wrong place
+// for it. Restarting the window resumes checking, which is the safe direction.
+let focusState = { mode: 'active', until: null };
+let statusItem;
+
+function currentFocus() {
+  focusState = resolveFocusState(focusState);
+  return focusState;
+}
+
+function renderFocusStatus() {
+  if (!statusItem) return;
+  const state = currentFocus();
+  statusItem.text = state.mode === 'active' ? '$(check) ikmal' : `$(debug-pause) ${describeFocusState(state)}`;
+  statusItem.tooltip = state.mode === 'active'
+    ? 'ikmal is checking this document'
+    : `${describeFocusState(state)} — run "ikmal: Resume checking" to turn it back on`;
+  statusItem.show();
+}
 
 const diagnosticSource = 'ikmal editor';
 const timers = new Map();
@@ -88,6 +126,11 @@ async function checkDocument(document, diagnostics) {
   diagnostics.delete(document.uri);
   if (!currentSettings.get('enabled', true) || text.trim().length < minimum || text.length > maximum) return;
 
+  // Pause is answered before the request is built, so nothing is sent at all.
+  const focus = currentFocus();
+  renderFocusStatus();
+  if (focus.mode === 'paused') return;
+
   let endpoint;
   try {
     endpoint = loopbackEndpoint(currentSettings.get('endpoint', 'http://127.0.0.1:8096'));
@@ -102,8 +145,12 @@ async function checkDocument(document, diagnostics) {
       language: currentSettings.get('language', 'auto'),
     }));
     if (generations.get(key) !== generation || document.version !== version || !resultIsCurrent(document.getText(), text)) return;
-    matchesByDocument.set(key, { version, matches: response.matches });
-    diagnostics.set(document.uri, response.matches.map((match, index) => diagnosticFor(document, match, index)));
+    // Zen keeps checking and narrows what is reported. The indices stored here
+    // must match the ones the diagnostics carry, so the filter is applied once
+    // and both sides read the same array.
+    const matches = filterMatches(response.matches, applyFocusState(BASE_PREFERENCES, focus));
+    matchesByDocument.set(key, { version, matches });
+    diagnostics.set(document.uri, matches.map((match, index) => diagnosticFor(document, match, index)));
   } catch (error) {
     if (generations.get(key) === generation) vscode.window.setStatusBarMessage(`ikmal: ${error.message}`, 5000);
   }
@@ -180,6 +227,37 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('ikmal.checkDocument', () => {
     const document = vscode.window.activeTextEditor?.document;
     if (document) checkDocument(document, diagnostics);
+  }));
+
+  statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 0);
+  statusItem.command = 'ikmal.resume';
+  context.subscriptions.push(statusItem);
+  renderFocusStatus();
+
+  const recheckEverything = () => {
+    renderFocusStatus();
+    for (const document of vscode.workspace.textDocuments) scheduleCheck(document, diagnostics);
+  };
+
+  const startMode = async (mode) => {
+    const picked = await vscode.window.showQuickPick(
+      FOCUS_DURATIONS.map((duration) => ({ label: duration.label, id: duration.id })),
+      { title: mode === 'paused' ? 'Pause ikmal for how long?' : 'Zen mode for how long?' },
+    );
+    if (!picked) return;
+    focusState = startFocusState(mode, picked.id);
+    // Clearing first means a paused document does not keep showing the
+    // diagnostics from before the pause.
+    diagnostics.clear();
+    recheckEverything();
+  };
+
+  context.subscriptions.push(vscode.commands.registerCommand('ikmal.pause', () => startMode('paused')));
+  context.subscriptions.push(vscode.commands.registerCommand('ikmal.zen', () => startMode('zen')));
+  context.subscriptions.push(vscode.commands.registerCommand('ikmal.resume', () => {
+    focusState = { mode: 'active', until: null };
+    diagnostics.clear();
+    recheckEverything();
   }));
   context.subscriptions.push(vscode.workspace.onDidOpenTextDocument((document) => scheduleCheck(document, diagnostics)));
   context.subscriptions.push(vscode.workspace.onDidChangeTextDocument((event) => scheduleCheck(event.document, diagnostics)));

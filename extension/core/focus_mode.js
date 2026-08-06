@@ -109,3 +109,43 @@ export function describeFocusState(value, now = Date.now()) {
   }
   return `${name} ${minutes}m`;
 }
+
+// --- applying a mode to results ------------------------------------------
+
+// matchCategory classifies a finding into the same four buckets the desktop
+// checking preferences use, so "style is off in Zen" means the same thing
+// wherever a mode is applied.
+export function matchCategory(match) {
+  const value = match && typeof match === 'object' ? match : {};
+  const source = String(value.ikmalSource || '').toLowerCase();
+  const rule = String(value.rule?.id || '').toLowerCase();
+  const description = String(value.rule?.description || value.rule?.category?.id || value.category || '').toLowerCase();
+  if (rule.includes('repetition') || rule.includes('word-family') || rule.includes('echo')
+    || description.includes('repetition') || description.includes('echo')) return 'repetition';
+  if (source.includes('style') || rule.includes('style-guide') || description.includes('style')) return 'style';
+  if (source.includes('quality') || description.includes('grammar') || description.includes('agreement')
+    || rule.includes('pronoun') || rule.includes('verb')) return 'grammar';
+  return 'languagetool';
+}
+
+// The same confidence curve the desktop uses: sensitivity 0 is the strictest
+// threshold and 100 the most permissive.
+export function confidenceThreshold(sensitivity) {
+  const value = Number(sensitivity);
+  const clamped = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 55;
+  return 0.9 - (clamped / 100) * 0.4;
+}
+
+// filterMatches drops what the effective preferences silence. A finding with no
+// stated confidence is kept: absence of a score is not evidence of a weak one.
+export function filterMatches(matches, preferences) {
+  if (!Array.isArray(matches)) return [];
+  const effective = preferences && typeof preferences === 'object' ? preferences : {};
+  const categories = effective.categories || {};
+  const threshold = confidenceThreshold(effective.sensitivity);
+  return matches.filter((match) => {
+    if (categories[matchCategory(match)] === false) return false;
+    const confidence = Number(match?.ikmalConfidence ?? match?.confidence);
+    return !Number.isFinite(confidence) || confidence >= threshold;
+  });
+}
