@@ -1,5 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <title>ikmal editor</title>
-  <path d="M7 25 Q13 16 19 25 T31 25 T43 25 T55 25" fill="none" stroke="#79c9a4" stroke-width="5" stroke-linecap="round"/>
-  <path d="M9 40 Q15 31 21 40 T33 40 T45 40 T55 40" fill="none" stroke="#e3b76c" stroke-width="4" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="64" height="64" fill="none">
+  <circle cx="50" cy="50" r="33" stroke="#d7d7dd" stroke-width="7" opacity=".92"/>
+  <rect x="36" y="39" width="28" height="4" rx="2" fill="#d7d7dd" opacity=".92"/>
+  <rect x="36" y="48" width="20" height="4" rx="2" fill="#d7d7dd" opacity=".68"/>
+  <path d="M36 60q3-3 6 0t6 0t6 0t6 0" stroke="#8e80df" stroke-width="2.4" fill="none" stroke-linecap="round"/>
 </svg>
