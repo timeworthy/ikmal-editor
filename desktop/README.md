@@ -15,10 +15,18 @@ npm install
 npm start
 ```
 
-`npm start` builds and opens the packaged app. This is also the recommended
+`npm start` builds and opens the packaged app. The compact writing window is
+shown on first launch so a normal double-click has visible feedback; it can
+then be hidden and restored from the tray. This is also the recommended
 local development path on macOS because it launches the real ikmal editor app
 bundle instead of Electron's generic development bundle. Use
 `npm run dev:electron` only when debugging Electron itself.
+
+The compact window is the quick tester. Use **Open editor** or the tray menu's
+**Open editor…** action for the larger scratch pad: it checks as you type after
+a short debounce, lets you apply or ignore suggestions, copy corrected text,
+and optionally select an imported style guide. The scratch pad is deliberately
+not a document library; it is a place to check text and take it back out.
 
 The manager binary can be overridden for development or packaging:
 
@@ -32,6 +40,27 @@ supported platforms without changing the current machine's login settings:
 ```bash
 npm run verify
 ```
+
+Run the full local Go suite, including temporary-home integration scenarios:
+
+```bash
+GOCACHE=/tmp/ikmal-editor-go-cache go test ./...
+```
+
+The container lifecycle smoke test starts a deterministic quality sidecar and
+proxy, checks both health endpoints, submits a writing check, and cleans up.
+`auto` prefers Apple's OCI-compatible `container` CLI when it is installed and
+running on supported Apple Silicon/macOS systems, then falls back to Docker
+Compose:
+
+```bash
+./tools/quality_smoke.sh
+```
+
+Choose a backend explicitly with `IKMAL_CONTAINER_RUNTIME=auto|apple|docker|none`.
+Ordinary Go, Electron, and proxy tests do not require a container runtime.
+Use `IKMAL_SMOKE_REQUIRED=1` when an unavailable container runtime should fail
+the command instead of skipping the optional smoke test.
 
 Build a distributable Electron bundle for the current platform and
 architecture. The command cross-compiles and embeds the matching Go manager:

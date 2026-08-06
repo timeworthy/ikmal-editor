@@ -11,6 +11,14 @@ const version = mainGo.match(/appVersion\s*=\s*"([^"]+)"/)?.[1];
 
 const requiredFiles = [
   'index.html',
+  'editor.html',
+  'electron_smoke.mjs',
+  'annotation_surface.js',
+  'annotation_preferences.js',
+  'notice_surface.js',
+  'editor-renderer.js',
+  'editor-styles.css',
+  'editor_ui.test.mjs',
   'main.cjs',
   'preload.cjs',
   'renderer.js',
@@ -21,27 +29,31 @@ const requiredFiles = [
 ];
 const missing = requiredFiles.filter((file) => !fs.existsSync(path.join(desktop, file)));
 if (missing.length) throw new Error(`Missing desktop files: ${missing.join(', ')}`);
-if (!fs.existsSync(path.join(root, 'assets', 'ikmal_languagetool_tray.svg'))) {
-  throw new Error('Missing compact menubar tray asset.');
+for (const asset of ['ikmal_languagetool_tray.png', 'ikmal_languagetool_tray.svg', 'ikmal_languagetool.icns', 'ikmal_languagetool_icon.png']) {
+  if (!fs.existsSync(path.join(root, 'assets', asset))) throw new Error(`Missing desktop asset: ${asset}`);
 }
 if (!version || packageJSON.version !== version || packageLock.version !== version) {
   throw new Error(`Desktop version mismatch: app=${version}, package=${packageJSON.version}, lock=${packageLock.version}`);
 }
-if (packageJSON.main !== 'main.cjs' || packageJSON.name !== 'ikmal-editor-desktop' || packageJSON.productName !== 'ikmal editor') {
+if (packageJSON.main !== 'main.cjs' || packageJSON.name !== 'ikmal-editor-desktop' || packageJSON.productName !== 'ikmal editor' || packageJSON.scripts?.smoke !== 'node electron_smoke.mjs') {
   throw new Error('Desktop package metadata does not identify the expected app entry point.');
 }
 
 const mainSource = fs.readFileSync(path.join(desktop, 'main.cjs'), 'utf8');
-for (const requiredText of ['--integrated', 'app.isPackaged', 'launch_at_login.cjs', 'integration-status', 'configure-integrations']) {
+for (const requiredText of ['--integrated', 'app.isPackaged', 'launch_at_login.cjs', 'integration-status', 'configure-integrations', 'open-editor', 'editor.html', 'ready-to-show', 'desktop-presence-state', 'set-desktop-presence', 'get-annotation-preferences', 'set-annotation-preferences', 'set-compact-height', 'office-bridge-state', 'office-reveal-manifest', 'office-reveal-excel-manifest', 'office-reveal-powerpoint-manifest', 'office-reveal-outlook-manifest', 'office-reveal-onenote-manifest', 'office-reveal-project-manifest', 'app.on(\'activate\'']) {
   if (!mainSource.includes(requiredText)) throw new Error(`Desktop main is missing ${requiredText}.`);
 }
 const preloadSource = fs.readFileSync(path.join(desktop, 'preload.cjs'), 'utf8');
-for (const requiredText of ['getIntegrationStatus', 'configureIntegrations']) {
+for (const requiredText of ['getIntegrationStatus', 'configureIntegrations', 'getAnnotationPreferences', 'setAnnotationPreferences', 'onAnnotationPreferences', 'getOfficeBridgeState', 'generateOfficeCertificate', 'startOfficeBridge', 'revealOfficeExcelManifest', 'revealOfficePowerPointManifest', 'revealOfficeOutlookManifest', 'revealOfficeOneNoteManifest', 'revealOfficeProjectManifest']) {
   if (!preloadSource.includes(requiredText)) throw new Error(`Desktop preload is missing ${requiredText}.`);
 }
 const launcherSource = fs.readFileSync(path.join(desktop, 'launch_packaged.mjs'), 'utf8');
 for (const requiredText of ['run', 'package', 'ikmal editor.app', 'ikmal editor.exe']) {
   if (!launcherSource.includes(requiredText)) throw new Error(`Packaged launcher is missing ${requiredText}.`);
+}
+const packageSource = fs.readFileSync(path.join(desktop, 'package_desktop.mjs'), 'utf8');
+if (!packageSource.includes("'-buildvcs=false'") || !packageSource.includes("path.join(root, 'office-bridge')")) {
+  throw new Error('Desktop packaging must keep the Go build offline and reproducible.');
 }
 if (!packageJSON.devDependencies?.['@electron/packager']) {
   throw new Error('Desktop package is missing @electron/packager.');

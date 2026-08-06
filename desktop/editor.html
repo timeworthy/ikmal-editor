@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ikmal editor</title>
+  <link rel="stylesheet" href="editor-styles.css">
+</head>
+<body>
+  <main class="pro" aria-label="ikmal editor scratch pad">
+    <aside class="pro-side">
+      <div class="pro-app-menu-host">
+        <button class="pro-brand-trigger" id="editor-menu-trigger" type="button" aria-haspopup="menu" aria-expanded="false">
+          <img src="../assets/ikmal_languagetool_mark.svg" alt="" class="pro-brand-icon">
+          <span class="pro-brand-stack"><span>ikmal <em>editor</em></span><small>Writing quality</small></span>
+          <span class="pro-brand-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="pro-app-menu" id="editor-app-menu" role="menu" aria-labelledby="editor-menu-trigger">
+          <button type="button" role="menuitem" data-editor-menu="settings"><span>Settings</span><kbd>⌘,</kbd></button>
+          <button type="button" role="menuitem" data-editor-menu="compact"><span>Open writing tester</span></button>
+          <div class="pro-app-menu-separator" role="separator"></div>
+          <div class="pro-app-menu-note">ikmal editor · no subscription required</div>
+        </div>
+      </div>
+      <button class="pro-nav on" type="button" data-editor-nav="editor"><i></i>Editor</button>
+      <div class="pro-navlabel">Recent sessions</div>
+      <div class="pro-session-list" id="editor-recent-sessions"><small>No recent checks.</small></div>
+    </aside>
+
+    <section class="pro-main">
+      <header class="pro-top">
+        <div class="pro-doc">
+          <strong>Scratch pad</strong>
+          <em id="editor-document-meta">not saved</em>
+        </div>
+        <div class="pro-actions">
+          <button class="button button-quiet" id="editor-copy" type="button">Copy corrected text</button>
+          <button class="button button-primary" id="editor-check" type="button">Check <span class="button-shortcut">⌘↵</span></button>
+        </div>
+      </header>
+      <div class="pro-canvas">
+        <div class="pro-editor-surface">
+          <div id="editor-highlights" aria-hidden="true"></div>
+          <textarea id="editor-input" spellcheck="true" placeholder="Write or paste a passage here. This scratch pad is not saved."></textarea>
+          <div class="writing-status is-checking" id="editor-writing-status" role="status">
+            <span class="writing-status-dot" aria-hidden="true"></span>
+            <span class="writing-status-tooltip" role="tooltip">
+              <span id="editor-writing-status-label">Checking…</span>
+              <button class="writing-status-action" id="editor-writing-status-action" type="button" disabled>Open suggestions</button>
+            </span>
+          </div>
+          <div id="editor-popover" class="suggestion-popover" role="dialog" aria-live="polite"></div>
+        </div>
+        <div class="pro-notice notice-surface is-hidden" id="editor-notice" role="alert"></div>
+        <div class="pro-canvas-footer"><span id="editor-count">0 words · 0 characters · not checked</span><span>Auto-checks on</span></div>
+      </div>
+      <section class="pro-settings is-hidden" id="editor-settings-view" aria-label="Editor settings">
+        <div class="pro-settings-heading">
+          <div><p class="section-kicker">APP CONTROL</p><h2>Settings</h2></div>
+          <button class="button button-quiet" id="editor-back" type="button">Back to editor</button>
+        </div>
+        <div class="pro-setting-card">
+          <div><strong>Style guide</strong><p>Choose an imported guide. It stays optional until you enable it.</p><small id="editor-style-count">off</small></div>
+          <div class="pro-setting-actions">
+            <button class="button button-quiet" id="editor-import-style-guide" type="button">Import guide…</button>
+            <select id="editor-style-guide" disabled><option value="">None selected</option></select>
+          </div>
+        </div>
+        <label class="pro-setting-card pro-setting-toggle" for="editor-style-guide-enabled">
+          <div><strong>Use selected guide</strong><p>Apply the selected guide on the next check.</p></div>
+          <input id="editor-style-guide-enabled" type="checkbox" disabled>
+        </label>
+        <div class="pro-setting-card pro-checking-card">
+          <div><strong>Checking behavior</strong><p>Choose when checks run and which issue types appear in both editors.</p></div>
+          <div class="pro-checking-controls">
+            <label for="editor-checking-mode"><span>Check timing</span><select id="editor-checking-mode"><option value="automatic">Automatic</option><option value="manual">Manual</option></select></label>
+            <label for="editor-checking-delay"><span>Typing pause <output id="editor-checking-delay-value">700 ms</output></span><input id="editor-checking-delay" type="range" min="200" max="2000" step="50" value="700"></label>
+            <label for="editor-checking-sensitivity"><span>Suggestion sensitivity <output id="editor-checking-sensitivity-value">55%</output></span><input id="editor-checking-sensitivity" type="range" min="0" max="100" step="5" value="55"></label>
+            <fieldset><legend>Show issue types</legend>
+              <label><input type="checkbox" id="editor-checking-category-grammar" checked><span>Grammar and agreement</span></label>
+              <label><input type="checkbox" id="editor-checking-category-repetition" checked><span>Repeats and echoes</span></label>
+              <label><input type="checkbox" id="editor-checking-category-style" checked><span>Style and guide rules</span></label>
+              <label><input type="checkbox" id="editor-checking-category-languagetool" checked><span>LanguageTool suggestions</span></label>
+            </fieldset>
+          </div>
+        </div>
+        <div class="pro-setting-card pro-appearance-card">
+          <div><strong>Highlighting</strong><p>Choose indicator shapes and color strength for both editors.</p></div>
+          <div class="pro-appearance-controls">
+            <label for="editor-annotation-indicator-style"><span>Indicator style</span><select id="editor-annotation-indicator-style"><option value="squiggle">Squiggles</option><option value="line">Lines</option><option value="dash">Dashes</option></select></label>
+            <label for="editor-annotation-palette"><span>Color palette</span><select id="editor-annotation-palette"><option value="balanced">Balanced</option><option value="warm">Warm</option><option value="cool">Cool</option><option value="contrast">High contrast</option></select></label>
+            <label class="pro-appearance-slider" for="editor-annotation-intensity"><span>Color intensity <output id="editor-annotation-intensity-value">55%</output></span><input id="editor-annotation-intensity" type="range" min="0" max="100" step="5" value="55"></label>
+          </div>
+        </div>
+        <div class="pro-setting-card">
+          <div><strong>Writing services</strong><p>LanguageTool and ikmal quality checks are ready when you are.</p><small class="pro-service-state"><span class="mini-status-dot" id="editor-service-dot"></span><span id="editor-service-label">Checking service status…</span></small></div>
+          <div class="pro-setting-actions">
+            <button class="button button-primary" id="editor-start-services" type="button">Start</button>
+            <button class="button button-quiet" id="editor-stop-services" type="button">Stop</button>
+          </div>
+        </div>
+        <p class="pro-settings-note">Nothing in the scratch pad is saved. The browser extension and compact tester share these services.</p>
+        <div class="pro-setting-card pro-presence-card">
+          <div><strong>App access</strong><p>The menubar icon opens the compact tester. The Dock icon opens this full editor.</p></div>
+          <div class="pro-presence-options">
+            <label class="pro-setting-toggle" for="editor-menubar-toggle"><span><strong>Menubar icon</strong><small>On by default</small></span><input id="editor-menubar-toggle" type="checkbox" checked></label>
+            <label class="pro-setting-toggle" for="editor-dock-toggle"><span><strong>Dock icon</strong><small>Off by default</small></span><input id="editor-dock-toggle" type="checkbox"></label>
+          </div>
+          <div class="pro-notice is-hidden" id="editor-presence-notice" role="status"></div>
+        </div>
+      </section>
+    </section>
+
+    <aside class="pro-rail">
+      <div class="pro-rail-top"><strong>Suggestions</strong><em id="editor-suggestion-count">0</em></div>
+      <div class="pro-rail-list" id="editor-suggestions" aria-live="polite">
+        <div class="pro-empty"><span>✦</span><p>Write something to get a second look.</p><small>ikmal checks as you type.</small></div>
+      </div>
+      <div class="pro-rail-foot"><span>LanguageTool enhancer</span><span>8096</span></div>
+    </aside>
+  </main>
+  <script src="annotation_surface.js"></script>
+  <script src="annotation_preferences.js"></script>
+  <script src="notice_surface.js"></script>
+  <script src="editor-renderer.js"></script>
+</body>
+</html>

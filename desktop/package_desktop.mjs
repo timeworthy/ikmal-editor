@@ -20,6 +20,8 @@ const goOS = platform === 'win32' ? 'windows' : platform;
 const goArch = arch === 'x64' ? 'amd64' : arch === 'arm64' ? 'arm64' : arch === 'armv7l' ? 'arm' : arch;
 if (!['darwin', 'linux', 'win32'].includes(platform)) throw new Error(`Unsupported desktop platform: ${platform}`);
 if (!['x64', 'arm64', 'armv7l'].includes(arch)) throw new Error(`Unsupported desktop architecture: ${arch}`);
+const macIconPath = path.join(root, 'assets', 'ikmal_languagetool.icns');
+const spellServerBundlePath = path.join(root, 'bin', 'macos', 'ikmal editor spell server.service');
 
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ikmal-editor-desktop-'));
 const managerPath = path.join(tempDir, platform === 'win32' ? 'ikmal-editor.exe' : 'ikmal-editor');
@@ -27,7 +29,7 @@ const outputDir = path.join(root, 'bin', 'desktop');
 
 try {
   console.log(`Building ikmal editor desktop bundle for ${platform}/${arch}…`);
-  execFileSync('go', ['build', '-o', managerPath, '.'], {
+  execFileSync('go', ['build', '-buildvcs=false', '-o', managerPath, '.'], {
     cwd: root,
     stdio: 'inherit',
     env: { ...process.env, CGO_ENABLED: '0', GOOS: goOS, GOARCH: goArch, ...(arch === 'armv7l' ? { GOARM: '7' } : {}) },
@@ -42,10 +44,27 @@ try {
     electronVersion: packageJSON.devDependencies.electron,
     appVersion: version,
     appBundleId: 'com.timeworthymedia.ikmal-editor',
+    ...(platform === 'darwin' && fs.existsSync(macIconPath) ? { icon: macIconPath } : {}),
     overwrite: true,
     asar: true,
     prune: true,
-    extraResource: [path.join(root, 'assets'), managerPath],
+    // Ship the license and notices inside Contents/Resources so they survive
+    // when only the .app is distributed. Electron's own LICENSE and the
+    // Chromium license set are written beside the app by the packager.
+    extraResource: [
+      path.join(root, 'assets'),
+      managerPath,
+      path.join(root, 'LICENSE'),
+      path.join(root, 'THIRD-PARTY-NOTICES.md'),
+      // Shipped unpacked so Settings > Browser extension can reveal a folder
+      // the browser's "Load unpacked" can actually read.
+      path.join(root, 'extension'),
+      // Office task-pane assets and the loopback bridge are kept outside the
+      // Electron asar so a future certificate/setup flow can start the same
+      // files in the packaged app.
+      path.join(root, 'office-bridge'),
+      ...(platform === 'darwin' && fs.existsSync(spellServerBundlePath) ? [spellServerBundlePath] : []),
+    ],
     ignore: /^\/launch_at_login\.test\.cjs$/,
   });
   for (const bundle of bundles) console.log(`Desktop bundle ready: ${bundle}`);

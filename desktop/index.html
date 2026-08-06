@@ -10,9 +10,9 @@
   <main class="app-shell">
     <header class="app-header">
       <div class="brand-lockup">
-        <img src="../assets/ikmal_languagetool_icon.png" alt="" class="brand-icon">
+        <img src="../assets/ikmal_languagetool_mark.svg" alt="" class="brand-icon">
         <div>
-          <div class="eyebrow">LOCAL WRITING QUALITY</div>
+          <div class="eyebrow">WRITING QUALITY</div>
           <h1>ikmal editor</h1>
         </div>
       </div>
@@ -23,38 +23,42 @@
     </header>
 
     <nav class="tabs" aria-label="Application sections">
-      <button class="tab is-active" data-panel="writing-panel">Writing test</button>
+      <button class="tab is-active" data-panel="writing-panel">Quick check</button>
       <button class="tab" data-panel="history-panel">Recent</button>
       <button class="tab" data-panel="settings-panel">Settings</button>
     </nav>
 
     <section class="panel is-active" id="writing-panel">
-      <div class="panel-heading">
-        <div>
-          <p class="section-kicker">LOCAL CHECK</p>
-          <h2>Try a passage</h2>
+      <div class="writing-surface">
+        <div id="writing-highlights" aria-hidden="true"></div>
+        <textarea id="writing-input" spellcheck="true" placeholder="Paste or write a short passage here…">The library extended its hours, so more neighbors could visit after work.</textarea>
+        <div class="writing-status is-checking" id="writing-status" role="status">
+          <span class="writing-status-dot" aria-hidden="true"></span>
+          <span class="writing-status-tooltip" role="tooltip">
+            <span id="writing-status-label">Checking…</span>
+            <button class="writing-status-action" id="writing-status-action" type="button" disabled>Open suggestions</button>
+          </span>
         </div>
-        <button class="button button-quiet" id="sample-button">Load sample</button>
+        <div id="suggestion-popover" class="suggestion-popover" role="dialog" aria-live="polite"></div>
       </div>
-      <textarea id="writing-input" spellcheck="true" placeholder="Paste or write a short passage here…">Plants, by comparison, produces its own light.</textarea>
       <div class="editor-footer">
-        <span id="word-count">0 words</span>
+        <span class="count-group"><span id="word-count">0 words</span><span id="character-count">0 characters</span></span>
         <div class="editor-actions">
           <button class="button button-quiet" id="clear-button">Clear</button>
-          <button class="button button-primary" id="check-button">Check writing <span class="button-shortcut">⌘↵</span></button>
+          <button class="button button-primary" id="open-editor-button" type="button">Open editor</button>
         </div>
       </div>
-      <div class="notice is-hidden" id="writing-notice"></div>
-      <div class="check-summary is-hidden" id="check-summary"></div>
-      <section class="antecedent-links is-hidden" id="antecedent-links" aria-label="Pronoun antecedent links">
-        <div class="antecedent-heading">Pronoun links</div>
-        <div class="antecedent-list" id="antecedent-list"></div>
-      </section>
+      <div class="notice notice-surface is-hidden" id="writing-notice" role="alert"></div>
       <section class="results" id="results" aria-live="polite">
+        <div class="check-summary is-hidden" id="check-summary"></div>
+        <section class="antecedent-links is-hidden" id="antecedent-links" aria-label="Pronoun antecedent links">
+          <div class="antecedent-heading">Pronoun links</div>
+          <div class="antecedent-list" id="antecedent-list"></div>
+        </section>
         <div class="empty-state" id="empty-state">
           <span class="empty-mark">✦</span>
-          <p>Suggestions will appear here.</p>
-          <small>Checks stay on this computer.</small>
+          <p>Write or paste a passage to check.</p>
+          <small>Your text stays private on this computer.</small>
         </div>
       </section>
     </section>
@@ -62,7 +66,7 @@
     <section class="panel" id="history-panel">
       <div class="panel-heading">
         <div>
-          <p class="section-kicker">LOCAL HISTORY</p>
+          <p class="section-kicker">RECENT CHECKS</p>
           <h2>Recent checks</h2>
         </div>
         <button class="button button-quiet" id="clear-history-button" type="button">Clear</button>
@@ -72,7 +76,7 @@
         <div class="empty-state" id="history-empty-state">
           <span class="empty-mark">◷</span>
           <p>No recent checks.</p>
-          <small>Checks stay on this computer.</small>
+          <small>Saved on this computer.</small>
         </div>
       </section>
     </section>
@@ -81,96 +85,289 @@
       <div class="panel-heading">
         <div>
           <p class="section-kicker">APP CONTROL</p>
-          <h2>Service settings</h2>
+          <h2>Settings</h2>
         </div>
       </div>
-      <div class="setting-card">
-        <div>
-          <strong>ikmal services</strong>
-          <p>Runs LanguageTool and the quality proxy for browser extensions.</p>
-        </div>
-        <div class="setting-actions">
-          <button class="button button-primary" id="start-button">Start</button>
-          <button class="button button-quiet" id="stop-button">Stop</button>
-        </div>
-      </div>
-      <div class="service-status-grid" aria-label="Service health">
-        <div class="service-status-item">
-          <span class="mini-status-dot" id="languagetool-status-dot"></span>
-          <span><strong>LanguageTool</strong><small id="languagetool-status-label">Checking…</small></span>
-        </div>
-        <div class="service-status-item">
-          <span class="mini-status-dot" id="quality-status-dot"></span>
-          <span><strong>Quality checks</strong><small id="quality-status-label">Checking…</small></span>
-        </div>
-      </div>
-      <div class="setting-card integration-card">
-        <div class="style-guide-heading">
+      <div class="setting-card service-overview">
+        <div class="service-overview-heading">
           <div>
-            <strong>LanguageTool enhancer</strong>
-            <p>Use ikmal editor’s quality checks with detected LanguageTool integrations. Nothing changes until you approve it.</p>
+            <strong>Services</strong>
+            <p>LanguageTool and ikmal checks for your extensions.</p>
           </div>
           <div class="setting-actions">
-            <button class="button button-quiet" id="refresh-integrations" type="button">Refresh</button>
-            <button class="button button-primary" id="configure-integrations" type="button" disabled>Review</button>
+            <button class="button button-primary" id="start-button">Start</button>
+            <button class="button button-quiet" id="stop-button">Stop</button>
           </div>
         </div>
-        <div class="integration-list" id="integration-list" aria-live="polite">
-          <small>Checking installed integrations…</small>
+        <div class="service-status-grid" aria-label="Service health">
+          <div class="service-status-item">
+            <span class="mini-status-dot" id="languagetool-status-dot"></span>
+            <span><strong>LanguageTool</strong><small id="languagetool-status-label">Checking…</small></span>
+          </div>
+          <div class="service-status-item">
+            <span class="mini-status-dot" id="quality-status-dot"></span>
+            <span><strong>Quality checks</strong><small id="quality-status-label">Checking…</small></span>
+          </div>
         </div>
-        <div class="integration-action is-hidden" id="integration-action">
-          <strong id="integration-action-title">Ready to configure</strong>
-          <p id="integration-action-description"></p>
+      </div>
+      <details class="settings-group" id="enhancer-settings">
+        <summary><span><strong>Enhancer integration</strong><small>Use ikmal checks with detected LanguageTool integrations.</small></span><em>Optional</em></summary>
+        <div class="setting-card integration-card">
+          <div class="style-guide-heading">
+            <div>
+              <strong>LanguageTool enhancer</strong>
+              <p>Review detected integrations before changing anything.</p>
+            </div>
+            <div class="setting-actions">
+              <button class="button button-quiet" id="refresh-integrations" type="button">Refresh</button>
+              <button class="button button-primary" id="configure-integrations" type="button" disabled>Review</button>
+            </div>
+          </div>
+          <div class="integration-list" id="integration-list" aria-live="polite">
+            <small>Checking installed integrations…</small>
+          </div>
+          <div class="integration-action is-hidden" id="integration-action">
+            <strong id="integration-action-title">Ready to configure</strong>
+            <p id="integration-action-description"></p>
+            <div class="setting-actions">
+              <button class="button button-primary" id="apply-integrations" type="button">Configure selected</button>
+              <button class="button button-quiet" id="cancel-integrations" type="button">Leave unchanged</button>
+            </div>
+          </div>
+        </div>
+      </details>
+      <details class="settings-group" id="extension-settings">
+        <summary><span><strong>Browser extension</strong><small>Check text fields in your browser against this machine.</small></span><em>Optional</em></summary>
+        <div class="setting-card extension-card">
+          <div class="style-guide-heading">
+            <div>
+              <strong>ikmal for the browser</strong>
+              <p>No account, no cloud, nothing locked. It can only reach this computer.</p>
+            </div>
+            <div class="setting-actions">
+              <button class="button button-primary" id="reveal-extension" type="button">Show files</button>
+            </div>
+          </div>
+          <ol class="extension-steps">
+            <li>Open <code>chrome://extensions</code> and turn on <strong>Developer mode</strong>.</li>
+            <li>Choose <strong>Load unpacked</strong>, then pick the folder that Show files opens.</li>
+            <li>It connects to <code id="extension-endpoint">127.0.0.1:8096</code> on its own.</li>
+          </ol>
+          <small id="extension-status"></small>
+        </div>
+      </details>
+      <details class="settings-group" id="office-settings">
+        <summary><span><strong>Microsoft Office</strong><small>Use the local Word task pane over HTTPS.</small></span><em>New</em></summary>
+        <div class="setting-card office-card">
+          <div class="style-guide-heading">
+            <div>
+              <strong>ikmal for Word, Excel, and Project</strong>
+              <p>The bridge serves local task panes and forwards checks only to this computer. Office must trust the generated localhost certificate before loading them.</p>
+            </div>
+            <div class="setting-actions">
+              <button class="button button-primary" id="generate-office-certificate" type="button">Generate certificate</button>
+              <button class="button button-quiet" id="start-office-bridge" type="button">Start bridge</button>
+              <button class="button button-quiet" id="stop-office-bridge" type="button">Stop</button>
+            </div>
+          </div>
+          <div class="extension-steps">
+            <div>1. Generate the per-user localhost certificate.</div>
+            <div>2. Approve it in your operating system’s certificate store.</div>
+            <div>3. Start the bridge, then sideload the Word or Excel manifest.</div>
+          </div>
           <div class="setting-actions">
-            <button class="button button-primary" id="apply-integrations" type="button">Configure selected</button>
-            <button class="button button-quiet" id="cancel-integrations" type="button">Leave unchanged</button>
+            <button class="button button-quiet" id="reveal-office-manifest" type="button">Show Word manifest</button>
+            <button class="button button-quiet" id="reveal-excel-manifest" type="button">Show Excel manifest</button>
+            <button class="button button-quiet" id="reveal-powerpoint-manifest" type="button">Show PowerPoint manifest</button>
+            <button class="button button-quiet" id="reveal-outlook-manifest" type="button">Show Outlook manifest</button>
+            <button class="button button-quiet" id="reveal-onenote-manifest" type="button">Show OneNote manifest</button>
+            <button class="button button-quiet" id="reveal-project-manifest" type="button">Show Project manifest</button>
+            <button class="button button-quiet" id="remove-office-certificate" type="button">Remove certificate</button>
+          </div>
+          <small id="office-bridge-status" aria-live="polite">Checking Office bridge availability…</small>
+        </div>
+      </details>
+      <details class="settings-group" id="quality-settings">
+        <summary><span><strong>Quality model</strong><small>Add optional local suggestions beyond LanguageTool.</small></span><em>Optional</em></summary>
+        <div class="setting-card quality-card">
+          <div class="style-guide-heading">
+            <div>
+              <strong>Local quality model</strong>
+              <p>Install third-party model files only after you review and accept their licenses.</p>
+            </div>
+            <div class="setting-actions">
+              <button class="button button-quiet" id="refresh-quality" type="button">Refresh</button>
+            </div>
+          </div>
+          <div class="component-list" id="quality-component-list" aria-live="polite">
+            <small>Checking installed components…</small>
+          </div>
+          <div class="quality-notice is-hidden" id="quality-license-notice">
+            <strong id="quality-license-title">Non-commercial model</strong>
+            <p id="quality-license-body"></p>
+          </div>
+          <div class="quality-install" id="quality-install">
+            <label class="quality-ack-row" for="quality-ack">
+              <input type="checkbox" id="quality-ack">
+              <span>I have read the <button class="link-button" id="open-notices" type="button">third-party notices</button> and accept the listed licenses.</span>
+            </label>
+            <div class="setting-actions">
+              <button class="button button-primary" id="install-quality" type="button" disabled>Install</button>
+            </div>
+            <small id="quality-install-status"></small>
           </div>
         </div>
-      </div>
-      <div class="setting-card style-guide-card">
-        <div class="style-guide-heading">
-          <div>
-            <strong>Style guide</strong>
-            <p>Optionally apply approved rules from an imported guide.</p>
+      </details>
+      <details class="settings-group" id="style-guide-settings">
+        <summary><span><strong>Style guide</strong><small>Optional rules from an imported guide.</small></span><em>Optional</em></summary>
+        <div class="setting-card style-guide-card">
+          <div class="style-guide-heading">
+            <div>
+              <strong>Selected guide</strong>
+              <p>Apply imported rules when you choose.</p>
+            </div>
+            <div class="setting-actions">
+              <button class="button button-quiet" id="import-style-guide" type="button">Import guide…</button>
+              <button class="button button-quiet" id="refresh-style-guides" type="button">Refresh</button>
+            </div>
           </div>
-          <button class="button button-quiet" id="refresh-style-guides" type="button">Refresh</button>
+          <label class="style-guide-select-row" for="style-guide-select">
+            <span>
+              <strong>Default guide</strong>
+              <small id="style-guide-count">No guides imported</small>
+            </span>
+            <select id="style-guide-select" disabled>
+              <option value="">No imported guides</option>
+            </select>
+          </label>
+          <label class="setting-row style-guide-toggle-row">
+            <span>
+              <strong>Use selected guide</strong>
+              <small id="style-guide-status">Import and select a guide to enable style checks.</small>
+            </span>
+            <input type="checkbox" id="style-guide-toggle" disabled>
+          </label>
         </div>
-        <label class="style-guide-select-row" for="style-guide-select">
+      </details>
+      <details class="settings-group" id="checking-settings">
+        <summary><span><strong>Checking behavior</strong><small>Choose when checks run and what they surface.</small></span><em>Control</em></summary>
+        <div class="setting-card checking-card">
+          <label class="setting-row" for="checking-mode">
+            <span><strong>Check timing</strong><small>Automatic waits briefly after you stop typing. Manual checks run from Check.</small></span>
+            <select id="checking-mode"><option value="automatic">Automatic</option><option value="manual">Manual</option></select>
+          </label>
+          <label class="setting-row appearance-slider" for="checking-delay">
+            <span><strong>Typing pause</strong><small id="checking-delay-value">700 ms</small></span>
+            <input id="checking-delay" type="range" min="200" max="2000" step="50" value="700">
+          </label>
+          <label class="setting-row appearance-slider" for="checking-sensitivity">
+            <span><strong>Suggestion sensitivity</strong><small id="checking-sensitivity-value">55%</small></span>
+            <input id="checking-sensitivity" type="range" min="0" max="100" step="5" value="55">
+          </label>
+          <fieldset class="category-options">
+            <legend>Show issue types</legend>
+            <label><input type="checkbox" id="checking-category-grammar" checked><span>Grammar and agreement</span></label>
+            <label><input type="checkbox" id="checking-category-repetition" checked><span>Repeats and echoes</span></label>
+            <label><input type="checkbox" id="checking-category-style" checked><span>Style and guide rules</span></label>
+            <label><input type="checkbox" id="checking-category-languagetool" checked><span>LanguageTool suggestions</span></label>
+          </fieldset>
+        </div>
+      </details>
+      <details class="settings-group" id="native-spell-settings">
+        <summary><span><strong>Native macOS spell service</strong><small>Offer ikmal to apps that use Apple’s system checker.</small></span><em>Optional</em></summary>
+        <div class="setting-card spell-service-card">
+          <div class="style-guide-heading">
+            <div>
+              <strong>AppKit integration</strong>
+              <p>Text stays on this computer. Install to list ikmal in macOS spelling and grammar settings; ikmal editor must be running for its richer checks to appear.</p>
+            </div>
+            <div class="setting-actions">
+              <button class="button button-primary" id="install-spell-server" type="button">Install</button>
+              <button class="button button-quiet" id="remove-spell-server" type="button">Remove</button>
+            </div>
+          </div>
+          <button class="button button-quiet is-hidden" id="start-spell-services" type="button">Start ikmal services</button>
+          <small id="spell-server-status" aria-live="polite">Checking native spell-service availability…</small>
+        </div>
+      </details>
+      <details class="settings-group" id="appearance-settings">
+        <summary><span><strong>Highlighting</strong><small>Choose indicator shapes and color strength.</small></span><em>Display</em></summary>
+        <div class="setting-card appearance-card">
+          <label class="setting-row" for="annotation-indicator-style">
+            <span><strong>Indicator style</strong><small>Choose squiggles, lines, or lighter dashes.</small></span>
+            <select id="annotation-indicator-style">
+              <option value="squiggle">Squiggles</option>
+              <option value="line">Lines</option>
+              <option value="dash">Dashes</option>
+            </select>
+          </label>
+          <label class="setting-row" for="annotation-palette">
+            <span><strong>Color palette</strong><small>Choose how issue types and relationships are separated.</small></span>
+            <select id="annotation-palette">
+              <option value="balanced">Balanced</option>
+              <option value="warm">Warm</option>
+              <option value="cool">Cool</option>
+              <option value="contrast">High contrast</option>
+            </select>
+          </label>
+          <label class="setting-row appearance-slider" for="annotation-intensity">
+            <span><strong>Color intensity</strong><small id="annotation-intensity-value">55%</small></span>
+            <input id="annotation-intensity" type="range" min="0" max="100" step="5" value="55">
+          </label>
+        </div>
+      </details>
+      <details class="settings-group" id="presence-settings">
+        <summary><span><strong>App access</strong><small>Choose where ikmal editor appears.</small></span><em>Optional</em></summary>
+        <div class="setting-card presence-card">
+          <div class="presence-options">
+            <label class="setting-row presence-option" for="menubar-toggle">
+              <span><strong>Menubar icon</strong><small>On by default</small></span>
+              <input type="checkbox" id="menubar-toggle" checked>
+            </label>
+            <label class="setting-row presence-option" for="dock-toggle">
+              <span><strong>Dock icon</strong><small>Off by default</small></span>
+              <input type="checkbox" id="dock-toggle">
+            </label>
+          </div>
+          <div class="notice is-hidden" id="presence-notice"></div>
+        </div>
+      </details>
+      <details class="settings-group settings-group-advanced" id="advanced-settings">
+        <summary><span><strong>Advanced</strong><small>Startup and extension connection details.</small></span><em>Optional</em></summary>
+        <label class="setting-row">
           <span>
-            <strong>Default guide</strong>
-            <small id="style-guide-count">No guides imported</small>
+            <strong>Start at login</strong>
+            <small>Keep services ready in the background.</small>
           </span>
-          <select id="style-guide-select" disabled>
-            <option value="">No imported guides</option>
-          </select>
+          <input type="checkbox" id="launch-toggle">
         </label>
-        <label class="setting-row style-guide-toggle-row">
-          <span>
-            <strong>Use selected guide</strong>
-            <small id="style-guide-status">Import and select a guide to enable style checks.</small>
-          </span>
-          <input type="checkbox" id="style-guide-toggle" disabled>
-        </label>
-      </div>
-      <label class="setting-row">
-        <span>
-          <strong>Start at login</strong>
-          <small>Keep the local checker ready in the background.</small>
-        </span>
-        <input type="checkbox" id="launch-toggle">
-      </label>
-      <div class="endpoint-card">
-        <span class="section-kicker">ENDPOINTS</span>
-        <code id="proxy-endpoint">http://127.0.0.1:8096/v2</code>
-        <small>Use <code>http://127.0.0.1:8096/v2</code> in the LanguageTool extension.</small>
-      </div>
+        <div class="endpoint-card">
+          <span class="section-kicker">EXTENSION CONNECTION</span>
+          <code id="proxy-endpoint">http://127.0.0.1:8096/v2</code>
+          <small>Use this address in the LanguageTool extension.</small>
+        </div>
+      </details>
     </section>
 
-    <footer class="app-footer">
-      <span>Local-first writing quality</span>
+  <footer class="app-footer">
+        <span>Writing quality, with your privacy in mind</span>
       <span class="footer-version">0.9 beta</span>
-    </footer>
+  </footer>
+  <div class="celebration is-hidden" id="setup-celebration" role="status" aria-live="polite">
+    <div class="celebration-confetti" id="celebration-confetti" aria-hidden="true"></div>
+    <div class="celebration-card">
+      <span class="celebration-mark" aria-hidden="true">✓</span>
+      <div>
+        <strong>ikmal is ready for macOS</strong>
+        <p>Restart TextEdit, Mail, or Messages. Turn on <em>Check Grammar With Spelling</em>, then choose <em>English (ikmal editor)</em>.</p>
+      </div>
+      <button class="button button-quiet" id="dismiss-celebration" type="button">Got it</button>
+    </div>
+  </div>
   </main>
+  <script src="annotation_surface.js"></script>
+  <script src="annotation_preferences.js"></script>
+  <script src="notice_surface.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>
