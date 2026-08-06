@@ -12,3 +12,6 @@ desktop/node_modules/
 
 # Playwright MCP session artifacts (console logs, page dumps, downloaded .crx)
 .playwright-mcp/
+
+# Swift package build output (macOS spell server)
+macos-spellserver/.build/
