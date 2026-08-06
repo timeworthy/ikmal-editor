@@ -184,6 +184,23 @@ async function startOfficeBridge() {
     key: fs.readFileSync(state.keyPath),
     cert: fs.readFileSync(state.certificatePath),
   });
+  // A permanent listener, installed before listen(). 'error' on an EventEmitter
+  // with no listener is rethrown, and on a long-lived server that means a later
+  // accept failure (EMFILE, a dropped TLS handshake) would take down the whole
+  // main process. The start-up listeners below only decide the outcome of this
+  // call; this one has to outlive them.
+  server.on('error', (error) => {
+    console.error(`Office bridge error: ${error.message}`);
+    if (officeBridgeServer === server) {
+      officeBridgeServer = undefined;
+      server.close(() => {});
+    }
+  });
+  // tlsClientError is emitted per connection (an untrusted certificate, a probe
+  // on the port). It must not tear the server down.
+  server.on('tlsClientError', (error) => {
+    console.error(`Office bridge TLS handshake failed: ${error.message}`);
+  });
   await new Promise((resolve, reject) => {
     const onError = (error) => {
       server.removeListener('listening', onListening);
@@ -197,7 +214,7 @@ async function startOfficeBridge() {
     server.once('listening', onListening);
     server.listen(8765, '127.0.0.1');
   }).catch((error) => {
-    server.close();
+    server.close(() => {});
     throw new Error(`Could not start the local Office bridge: ${error.message}`);
   });
   officeBridgeServer = server;
@@ -217,11 +234,14 @@ function removeOfficeCertificate() {
   return officeBridgeModule('certificate.cjs').removeOfficeCertificate(officeCertificateDirectory());
 }
 
+const OFFICE_MANIFEST_HOSTS = { word: 'Word', excel: 'Excel', powerpoint: 'PowerPoint', outlook: 'Outlook', onenote: 'OneNote', project: 'Project' };
+
 function revealOfficeManifest(name = 'manifest-word.xml') {
-  const allowed = new Set(['manifest-word.xml', 'manifest-excel.xml', 'manifest-powerpoint.xml', 'manifest-outlook.xml', 'manifest-onenote.xml', 'manifest-project.xml']);
-  const manifestName = allowed.has(name) ? name : 'manifest-word.xml';
-  const manifestPath = path.join(officeBridgeResourcePath(), manifestName);
-  if (!fs.existsSync(manifestPath)) throw new Error('The Word Office manifest is not included in this build.');
+  const host = Object.keys(OFFICE_MANIFEST_HOSTS).find((key) => `manifest-${key}.xml` === name) || 'word';
+  const manifestPath = path.join(officeBridgeResourcePath(), `manifest-${host}.xml`);
+  // Name the host that was actually asked for. This said "Word" for all six,
+  // so a user who picked Outlook was told the Word manifest was missing.
+  if (!fs.existsSync(manifestPath)) throw new Error(`The ${OFFICE_MANIFEST_HOSTS[host]} Office manifest is not included in this build.`);
   shell.showItemInFolder(manifestPath);
   return manifestPath;
 }
@@ -403,6 +423,11 @@ function runManagerCommand(args, extraEnv = {}, options = {}) {
   });
 }
 
+// positionWindow places the popover next to the pointer. It belongs only to
+// *invocation* — a tray click or a quick check — never to a resize. The window
+// grows and shrinks as the user types, and re-running this on every resize made
+// it jump to wherever the mouse happened to be resting, sometimes onto another
+// display mid-sentence. Resizes use constrainWindowToDisplay instead.
 function positionWindow() {
   const point = screen.getCursorScreenPoint();
   const display = screen.getDisplayNearestPoint(point);
@@ -410,6 +435,17 @@ function positionWindow() {
   const x = Math.min(Math.max(display.bounds.x + 12, point.x - bounds.width + 24), display.bounds.x + display.bounds.width - bounds.width - 12);
   const y = Math.min(display.bounds.y + 42, point.y + 12);
   mainWindow.setPosition(Math.round(x), Math.round(y), false);
+}
+
+// Keep the window exactly where the user left it, and only pull it back when
+// its new size would push it off the screen it is already on.
+function constrainWindowToDisplay() {
+  if (!mainWindow) return;
+  const bounds = mainWindow.getBounds();
+  const area = screen.getDisplayMatching(bounds).workArea;
+  const x = Math.min(Math.max(area.x, bounds.x), area.x + Math.max(0, area.width - bounds.width));
+  const y = Math.min(Math.max(area.y, bounds.y), area.y + Math.max(0, area.height - bounds.height));
+  if (x !== bounds.x || y !== bounds.y) mainWindow.setPosition(Math.round(x), Math.round(y), false);
 }
 
 function toggleWindow() {
@@ -433,16 +469,22 @@ function showWindow() {
   publishServiceState();
 }
 
-function setCompactExpanded(expanded) {
+// activate is false when the renderer collapses the drawer on its own — for
+// instance once the last suggestion is applied. Only a real click on the toggle
+// should raise and focus the window; doing it on an automatic collapse would
+// pull focus out of whatever the user was typing in.
+function setCompactExpanded(expanded, activate = true) {
   if (!mainWindow) return false;
   const width = expanded ? 760 : 430;
   mainWindow.setMinimumSize(expanded ? 620 : 380, 440);
   const bounds = mainWindow.getBounds();
   const nextHeight = Math.max(440, bounds.height);
   if (bounds.width !== width || bounds.height !== nextHeight) mainWindow.setSize(width, nextHeight, true);
-  positionWindow();
-  mainWindow.show();
-  mainWindow.focus();
+  constrainWindowToDisplay();
+  if (activate) {
+    mainWindow.show();
+    mainWindow.focus();
+  }
   return true;
 }
 
@@ -452,7 +494,7 @@ function setCompactHeight(height) {
   const nextHeight = Math.max(440, Math.min(820, Math.round(Number(height) || bounds.height)));
   if (bounds.height === nextHeight) return true;
   mainWindow.setSize(bounds.width, nextHeight, true);
-  positionWindow();
+  constrainWindowToDisplay();
   return true;
 }
 
@@ -634,7 +676,7 @@ function registerIPC() {
   ipcMain.handle('service-state', readServiceState);
   ipcMain.handle('open-editor', (_, text) => { showEditorWindow(text); return true; });
   ipcMain.handle('open-compact', () => { showWindow(); return true; });
-  ipcMain.handle('set-compact-expanded', (_, expanded) => setCompactExpanded(Boolean(expanded)));
+  ipcMain.handle('set-compact-expanded', (_, expanded, activate) => setCompactExpanded(Boolean(expanded), activate !== false));
   ipcMain.handle('set-compact-height', (_, height) => setCompactHeight(height));
   ipcMain.handle('start-services', async () => {
     const state = await readServiceState();

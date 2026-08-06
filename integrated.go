@@ -87,6 +87,10 @@ func startIntegratedProxy() *exec.Cmd {
 // and never let it finish.
 const readinessGrace = 90 * time.Second
 
+// maxRestartFailures bounds how many times the supervisor will respawn a
+// service that never becomes healthy before it gives up and says so.
+const maxRestartFailures = 5
+
 // managedService supervises one child process. It owns how to start it, how to
 // tell whether it is answering, and when it exited.
 type managedService struct {
@@ -184,7 +188,18 @@ func (service *managedService) check() bool {
 	service.stop()
 	service.adopt(service.start())
 	if service.command != nil {
-		service.failures = 0
+		// A spawn is not yet a recovery. The counter is cleared above, once the
+		// service is actually observed answering; counting the attempt here
+		// bounds a child that starts cleanly and dies immediately — losing a
+		// port race to another process looks exactly like that, and without a
+		// bound the supervisor respawns it every tick forever.
+		service.failures++
+		if service.failures >= maxRestartFailures {
+			fmt.Printf("Managed %s restarted %d times without becoming healthy; no longer supervising it.\n", service.name, service.failures)
+			service.stop()
+			service.supervised = false
+			return false
+		}
 		return true
 	}
 
@@ -202,7 +217,7 @@ func (service *managedService) check() bool {
 	// service the user was relying on, and a silent exit is the one outcome
 	// they cannot act on.
 	fmt.Printf("Managed %s could not be restarted (attempt %d).\n", service.name, service.failures)
-	if service.failures >= 5 {
+	if service.failures >= maxRestartFailures {
 		fmt.Printf("Managed %s failed to restart %d times; no longer supervising it.\n", service.name, service.failures)
 		service.supervised = false
 		return false

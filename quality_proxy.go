@@ -314,18 +314,19 @@ func (proxy qualityProxy) debugRequest(r *http.Request, values url.Values, err e
 		r.Method, r.URL.Path, r.Header.Get("Content-Type"), r.ContentLength, keys, err)
 }
 
-// hopByHopHeaders describe the client-to-proxy connection rather than the
-// request, so they must not be passed on to the upstream server (RFC 9110).
-var hopByHopHeaders = []string{
-	"Connection",
-	"Keep-Alive",
-	"Proxy-Authenticate",
-	"Proxy-Authorization",
-	"Te",
-	"Trailer",
-	"Transfer-Encoding",
-	"Upgrade",
-	"Host",
+// forwardedHeaders is an allow-list: only these reach the upstream server.
+//
+// It replaces a deny-list of hop-by-hop names. A deny-list forwards everything
+// it has not been told to drop, which meant the calling page's Cookie,
+// Authorization, Origin and Referer were passed straight through. That is
+// harmless while IKMAL_LANGUAGETOOL_URL points at loopback and a standing
+// credential leak the moment it does not — and it is the kind of thing that is
+// set once and never revisited. Naming what a spell check actually needs keeps
+// any header added to a future browser request out of it by default.
+var forwardedHeaders = []string{
+	"Accept",
+	"Accept-Language",
+	"Content-Type",
 }
 
 func (proxy qualityProxy) forwardHandler(w http.ResponseWriter, r *http.Request) {
@@ -351,16 +352,17 @@ func (proxy qualityProxy) forwardHandler(w http.ResponseWriter, r *http.Request)
 		writeQualityJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
 		return
 	}
-	request.Header = r.Header.Clone()
-	for _, header := range hopByHopHeaders {
-		request.Header.Del(header)
+	for _, header := range forwardedHeaders {
+		if values, ok := r.Header[http.CanonicalHeaderKey(header)]; ok {
+			request.Header[http.CanonicalHeaderKey(header)] = append([]string(nil), values...)
+		}
 	}
-	// Dropping Accept-Encoding lets Go's Transport request and transparently
-	// decompress gzip itself. Forwarding the browser's value would disable
-	// that, leaving response.Body holding compressed bytes that this handler
-	// would copy through under the upstream's Content-Type — a gzip blob
-	// labelled application/json, which the caller cannot parse.
-	request.Header.Del("Accept-Encoding")
+	// Accept-Encoding is deliberately absent from the allow-list. Leaving it
+	// unset lets Go's Transport request and transparently decompress gzip
+	// itself; forwarding the browser's value would disable that, leaving
+	// response.Body holding compressed bytes that this handler would copy
+	// through under the upstream's Content-Type — a gzip blob labelled
+	// application/json, which the caller cannot parse.
 	response, err := proxy.client.Do(request)
 	if err != nil {
 		writeQualityJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
@@ -666,11 +668,19 @@ func proxyNumber(value any) (int, bool) {
 	}
 }
 
-func qualityEndpointReady() bool {
-	port := os.Getenv("IKMAL_QUALITY_PORT")
-	if port == "" {
-		port = "8098"
+// qualityServerPort is the single place the sidecar's port is resolved. It had
+// been spelled out as a literal here and as defaultQualityPort in
+// quality_server.go, so the two could drift and leave the readiness probe
+// looking at a port nothing listens on.
+func qualityServerPort() string {
+	if port := os.Getenv("IKMAL_QUALITY_PORT"); port != "" {
+		return port
 	}
+	return defaultQualityPort
+}
+
+func qualityEndpointReady() bool {
+	port := qualityServerPort()
 	client := &http.Client{Timeout: 300 * time.Millisecond}
 	response, err := client.Get("http://127.0.0.1:" + port + "/health")
 	if err != nil {
@@ -685,6 +695,14 @@ func startManagedQualityServer() *exec.Cmd {
 }
 
 func startManagedQualityServerWithTransformer(withTransformer bool) *exec.Cmd {
+	// Decline when the endpoint is already served, the way startIntegratedProxy
+	// does. Without this the readiness loop below sees another process's answer
+	// and reports success for a child that lost the port race and exited at
+	// once, which leaves a supervisor restarting a dead process forever.
+	if qualityEndpointReady() {
+		fmt.Println("Using the existing ikmal quality engine on port " + qualityServerPort() + ".")
+		return nil
+	}
 	args := []string{"--quality-server"}
 	if withTransformer {
 		args = append(args, "--quality-transformer")

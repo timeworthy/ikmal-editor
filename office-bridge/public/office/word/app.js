@@ -130,6 +130,7 @@
       await context.sync();
     }).catch(() => {});
     markedAnnotations = [];
+    clearButton.disabled = true;
   }
 
   async function applyMatch(match) {
@@ -137,6 +138,11 @@
     const needle = matchText(lastSelectionText, match);
     if (!replacement || !needle) return;
     try {
+      // Unmark first. Marks are restored by searching for the original text, so
+      // once a replacement lands the needle is gone and that word's underline
+      // can never be removed again — it stays in the user's document, and Word
+      // carries the formatting onto the inserted replacement too.
+      await clearMarks();
       await Word.run(async (context) => {
         const document = context.document;
         document.load('changeTrackingMode');

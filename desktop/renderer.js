@@ -111,7 +111,6 @@ let recentChecks = [];
 let checkTimer;
 let checkGeneration = 0;
 let ignoredMatches = new Set();
-let popoverHideTimer;
 let resizeFrame;
 let statusAnimationFrame;
 const annotationSurface = window.IkmalAnnotationSurface.attach({
@@ -602,99 +601,22 @@ function issueSummary(matches, getType) {
   return [...counts.entries()].map(([type, count]) => `${count} ${type.toLowerCase()}`).join(' · ');
 }
 
-function schedulePopoverHide() {
-  clearTimeout(popoverHideTimer);
-  popoverHideTimer = setTimeout(() => {
-    suggestionPopover.classList.remove('is-open');
-  }, 180);
-}
-
-function cancelPopoverHide() {
-  clearTimeout(popoverHideTimer);
-}
-
-function openSuggestionPopover(index, mark) {
-  cancelPopoverHide();
-  const match = lastResponse.matches?.[index];
-  if (!match) return;
-  const matchedText = input.value.slice(match.offset || 0, (match.offset || 0) + (match.length || 0));
-  const replacement = match.replacements?.[0]?.value || '';
-  const source = matchSource(match);
-  suggestionPopover.innerHTML = `
-    <div class="suggestion-popover-topline"><span>${escapeHTML(displaySource(source))}</span><button type="button" class="suggestion-popover-close" aria-label="Close suggestion">×</button></div>
-    <strong>${escapeHTML(match.message || 'Review this passage.')}</strong>
-    ${replacement ? `<div class="suggestion-popover-change"><del>${escapeHTML(matchedText)}</del><span>→</span><ins>${escapeHTML(replacement)}</ins></div>` : '<small class="suggestion-popover-note">There is no automatic replacement for this finding.</small>'}
-    <div class="suggestion-popover-actions">
-      <button type="button" class="button button-primary" data-popover-action="apply" ${replacement ? '' : 'disabled'}>${replacement ? 'Apply' : 'Review'}</button>
-      <button type="button" class="button button-quiet" data-popover-action="ignore">Ignore</button>
-    </div>`;
-  const surfaceRect = writingSurface.getBoundingClientRect();
-  const markRect = mark.getBoundingClientRect();
-  const width = 280;
-  const left = Math.max(8, Math.min(markRect.left - surfaceRect.left, writingSurface.clientWidth - width - 8));
-  suggestionPopover.style.left = `${left}px`;
-  suggestionPopover.style.top = `${markRect.bottom - surfaceRect.top + 8}px`;
-  suggestionPopover.classList.add('is-open');
-  suggestionPopover.querySelector('.suggestion-popover-close').addEventListener('click', () => suggestionPopover.classList.remove('is-open'));
-  suggestionPopover.querySelector('[data-popover-action="apply"]')?.addEventListener('click', () => applySuggestion(index));
-  suggestionPopover.querySelector('[data-popover-action="ignore"]').addEventListener('click', () => {
-    ignoredMatches.add(index);
-    suggestionPopover.classList.remove('is-open');
-    renderResults(lastResponse, input.value);
-  });
-}
-
 function renderInlineFindings(response, sourceText) {
   annotationSurface.render(response, sourceText, ignoredMatches);
-  return;
-  /* Legacy inline renderer retained temporarily for easy rollback. */
-  if (!sourceText) {
-    writingHighlights.innerHTML = '';
-    suggestionPopover.classList.remove('is-open');
-    return;
-  }
-  const spans = [];
-  (Array.isArray(response.matches) ? response.matches : []).forEach((match, index) => {
-    if (ignoredMatches.has(index)) return;
-    const offset = Number(match.offset) || 0;
-    const length = Number(match.length) || 0;
-    if (length > 0) spans.push({ offset, length, index, match });
-    (match.ikmalRelatedOccurrences || []).forEach((occurrence) => {
-      const occurrenceOffset = Number(occurrence.start ?? occurrence.offset) || 0;
-      const occurrenceLength = occurrence.end != null
-        ? Number(occurrence.end) - occurrenceOffset
-        : Number(occurrence.length) || 0;
-      if (occurrenceLength > 0) spans.push({ offset: occurrenceOffset, length: occurrenceLength, index, match });
-    });
-  });
-  spans.sort((left, right) => left.offset - right.offset || right.length - left.length);
-  let cursor = 0;
-  const parts = [];
-  spans.forEach((span) => {
-    if (span.offset < cursor || span.offset >= sourceText.length) return;
-    parts.push(escapeHTML(sourceText.slice(cursor, span.offset)));
-    parts.push(`<mark class="writing-underline ${matchClass(span.match)}" data-match-index="${span.index}" tabindex="0">${escapeHTML(sourceText.slice(span.offset, span.offset + span.length))}</mark>`);
-    cursor = span.offset + span.length;
-  });
-  parts.push(escapeHTML(sourceText.slice(cursor)));
-  writingHighlights.innerHTML = parts.join('');
-  writingHighlights.querySelectorAll('.writing-underline').forEach((mark) => {
-    const index = Number(mark.dataset.matchIndex);
-    mark.addEventListener('mouseenter', () => openSuggestionPopover(index, mark));
-    mark.addEventListener('mouseleave', schedulePopoverHide);
-    mark.addEventListener('focus', () => openSuggestionPopover(index, mark));
-    mark.addEventListener('click', (event) => { event.preventDefault(); openSuggestionPopover(index, mark); });
-  });
 }
 
-function setSuggestionsExpanded(expanded, resize = true) {
+// activate is false for a collapse the renderer decides on its own, so the
+// window resizes without being raised and focused. The main process must be
+// told either way: skipping it left the window at its 760px expanded width with
+// the drawer closed, and the next toggle click then appeared to do nothing.
+function setSuggestionsExpanded(expanded, activate = true) {
   const next = Boolean(expanded);
   document.querySelector('#writing-panel').classList.toggle('suggestions-expanded', next);
   writingStatusAction.textContent = next ? 'Close suggestions' : 'Open suggestions';
   writingStatusAction.setAttribute('aria-expanded', String(next));
   writingStatusAction.setAttribute('aria-label', writingStatusAction.textContent);
   if (next) writingStatusAction.disabled = false;
-  if (resize) window.ikmal.setCompactExpanded(next);
+  window.ikmal.setCompactExpanded(next, activate);
   resizeCompactWindow();
 }
 

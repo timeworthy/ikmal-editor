@@ -155,10 +155,7 @@ var qualityWordFamilies = map[string]string{
 }
 
 func runQualityServer() {
-	port := os.Getenv("IKMAL_QUALITY_PORT")
-	if port == "" {
-		port = defaultQualityPort
-	}
+	port := qualityServerPort()
 
 	var transformerProcess *exec.Cmd
 	if qualityTransformerRequested() && strings.TrimSpace(os.Getenv("IKMAL_TRANSFORMER_URL")) == "" {

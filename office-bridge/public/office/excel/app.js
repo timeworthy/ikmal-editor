@@ -93,23 +93,37 @@ function worksheet(context, name) {
 }
 
 async function markMatches(matches) {
+  // One entry per cell, not per finding. Two findings in the same cell used to
+  // record two "previous fills", and because the loop synced between them the
+  // second captured the highlight the first had just written — so restoring
+  // replayed original-then-highlight and left the cell highlighted for good.
+  const addresses = [];
+  for (const match of matches) {
+    const cell = cellForMatch(lastProjection, match);
+    if (cell && !addresses.includes(cell.address)) addresses.push(cell.address);
+  }
+  if (!addresses.length) return;
   await Excel.run(async (context) => {
-    for (const match of matches) {
-      const cell = cellForMatch(lastProjection, match);
-      if (!cell) continue;
-      const range = worksheet(context, lastSnapshot.worksheetName).getRange(cell.address);
+    const sheet = worksheet(context, lastSnapshot.worksheetName);
+    const ranges = addresses.map((address) => {
+      const range = sheet.getRange(address);
       range.load(['format/fill/color', 'format/font/underline']);
-      await context.sync();
+      return { address, range };
+    });
+    // One sync for every read, before any write, so nothing reads back a value
+    // this same pass has already changed.
+    await context.sync();
+    const color = styleSelect.value === 'highlight'
+      ? '#FFF2CC'
+      : styleSelect.value === 'dotted' ? '#E2F0D9' : '#FCE4D6';
+    for (const entry of ranges) {
       markedCells.push({
         worksheetName: lastSnapshot.worksheetName,
-        address: cell.address,
-        fill: range.format.fill.color,
-        underline: range.format.font.underline,
+        address: entry.address,
+        fill: entry.range.format.fill.color,
+        underline: entry.range.format.font.underline,
       });
-      const color = styleSelect.value === 'highlight'
-        ? '#FFF2CC'
-        : styleSelect.value === 'dotted' ? '#E2F0D9' : '#FCE4D6';
-      range.format.fill.color = color;
+      entry.range.format.fill.color = color;
     }
     await context.sync();
   });
@@ -120,7 +134,10 @@ async function clearMarks() {
   await Excel.run(async (context) => {
     for (const marked of markedCells) {
       const range = worksheet(context, marked.worksheetName).getRange(marked.address);
-      range.format.fill.color = marked.fill || null;
+      // A cell that had no fill reports an empty colour, and assigning that
+      // back is not a valid write — clear() is how "no fill" is expressed.
+      if (marked.fill) range.format.fill.color = marked.fill;
+      else range.format.fill.clear();
       range.format.font.underline = marked.underline || 'None';
     }
     await context.sync();
@@ -141,6 +158,11 @@ async function applyMatch(match) {
   const localStart = Number(match.offset) - cell.start;
   const next = `${cell.text.slice(0, localStart)}${replacement}${cell.text.slice(localStart + Number(match.length))}`;
   try {
+    // Restore the original fills before writing. Writing a value does not clear
+    // the highlight, and the recorded findings stop describing the sheet the
+    // moment one cell changes, so clearing afterwards would work from stale
+    // bookkeeping and leave highlights behind.
+    await clearMarks();
     await Excel.run(async (context) => {
       const range = worksheet(context, lastSnapshot.worksheetName).getRange(cell.address);
       range.values = [[next]];

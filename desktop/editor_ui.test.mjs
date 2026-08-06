@@ -133,7 +133,12 @@ test('compact shell offers the expanded editor entry point', () => {
   assert.match(renderer, /celebrateSpellServerInstall/);
   assert.match(renderer, /serviceState\.proxyReady/);
   assert.match(renderer, /checkingPreferences\.sensitivity/);
-  assert.match(renderer, /writing-underline/);
+  // The inline underline markup belongs to the shared annotation surface. The
+  // compact renderer used to carry a second, unreachable copy of it behind an
+  // unconditional return; assert on the surface that actually draws it so this
+  // cannot pass again on dead code.
+  assert.match(read('annotation_surface.js'), /writing-underline/);
+  assert.doesNotMatch(renderer, /writing-underline/);
   assert.match(renderer, /setCompactExpanded/);
   assert.match(renderer, /IkmalAnnotationSurface\.attach/);
   assert.match(renderer, /setWritingStatus/);

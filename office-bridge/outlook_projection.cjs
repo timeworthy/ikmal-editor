@@ -117,6 +117,22 @@ function applyHTMLMatch(projection, match, replacement) {
   return `${projection.html.slice(0, bounds.start)}${escapeHTML(replacement)}${projection.html.slice(bounds.end)}`;
 }
 
+// The edits are spliced into the raw HTML, so any two that share a character
+// would interleave their <span> tags and produce mismatched markup — and this
+// markup is written straight back into the user's draft or page. Checkers
+// routinely return overlapping findings (a repetition and a style note on the
+// same word, or two rules on the same phrase), so overlaps are the normal case
+// rather than an edge one. Keep the first finding on each region and drop the
+// rest; they remain visible in the task pane list either way.
+function nonOverlappingEdits(edits) {
+  const kept = [];
+  for (const edit of [...edits].sort((left, right) => left.start - right.start || right.end - left.end)) {
+    if (kept.some((existing) => edit.start < existing.end && existing.start < edit.end)) continue;
+    kept.push(edit);
+  }
+  return kept;
+}
+
 function decorateHTMLMatches(projection, matches, style = 'wave') {
   const edits = [];
   for (const match of matches) {
@@ -130,7 +146,10 @@ function decorateHTMLMatches(projection, matches, style = 'wave') {
         : 'text-decoration-line:underline;text-decoration-style:wavy;text-decoration-color:#c43c4a;';
     edits.push({ start: bounds.start, end: bounds.end, value: `<span data-ikmal-finding="1" style="${css}">${raw}</span>` });
   }
-  return edits.sort((left, right) => right.start - left.start).reduce((html, edit) => `${html.slice(0, edit.start)}${edit.value}${html.slice(edit.end)}`, projection.html);
+  // Splice from the end so each edit's offsets still refer to the original HTML.
+  return nonOverlappingEdits(edits)
+    .sort((left, right) => right.start - left.start)
+    .reduce((html, edit) => `${html.slice(0, edit.start)}${edit.value}${html.slice(edit.end)}`, projection.html);
 }
 
 function removeHTMLMarks(html) {

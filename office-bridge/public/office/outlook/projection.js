@@ -104,6 +104,19 @@ export function applyHTMLMatch(projection, match, replacement) {
   return `${projection.html.slice(0, bounds.start)}${escapeHTML(replacement)}${projection.html.slice(bounds.end)}`;
 }
 
+// Mirrors nonOverlappingEdits in office-bridge/outlook_projection.cjs. Two edits
+// that share a character would interleave their <span> tags and write broken
+// markup back into the user's draft or page, and overlapping findings are
+// normal output from the checkers. Keep the first on each region.
+function nonOverlappingEdits(edits) {
+  const kept = [];
+  for (const edit of [...edits].sort((left, right) => left.start - right.start || right.end - left.end)) {
+    if (kept.some((existing) => edit.start < existing.end && existing.start < edit.end)) continue;
+    kept.push(edit);
+  }
+  return kept;
+}
+
 export function decorateHTMLMatches(projection, matches, style = 'wave') {
   const edits = [];
   for (const match of matches) {
@@ -117,7 +130,10 @@ export function decorateHTMLMatches(projection, matches, style = 'wave') {
         : 'text-decoration-line:underline;text-decoration-style:wavy;text-decoration-color:#c43c4a;';
     edits.push({ start: bounds.start, end: bounds.end, value: `<span data-ikmal-finding="1" style="${css}">${raw}</span>` });
   }
-  return edits.sort((left, right) => right.start - left.start).reduce((html, edit) => `${html.slice(0, edit.start)}${edit.value}${html.slice(edit.end)}`, projection.html);
+  // Splice from the end so each edit's offsets still refer to the original HTML.
+  return nonOverlappingEdits(edits)
+    .sort((left, right) => right.start - left.start)
+    .reduce((html, edit) => `${html.slice(0, edit.start)}${edit.value}${html.slice(edit.end)}`, projection.html);
 }
 
 export function removeHTMLMarks(html) {

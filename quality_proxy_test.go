@@ -276,3 +276,49 @@ func TestForwardHandlerReturnsReadableJSONWhenTheClientAcceptsGzip(t *testing.T)
 		t.Fatalf("expected decompressed JSON, got %q", body)
 	}
 }
+
+// The proxy forwards only the headers a spell check needs. A deny-list passed
+// the calling page's credentials straight through to whatever
+// IKMAL_LANGUAGETOOL_URL happened to point at.
+func TestForwardHandlerSendsOnlyTheHeadersACheckNeeds(t *testing.T) {
+	seen := make(chan http.Header, 1)
+	backendHandler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		seen <- request.Header.Clone()
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write([]byte(`{"languages":[]}`))
+	})
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	backend := &http.Server{Handler: backendHandler}
+	go func() { _ = backend.Serve(listener) }()
+	defer backend.Close()
+
+	proxy := qualityProxy{languageToolURL: "http://" + listener.Addr().String() + "/v2/check", client: &http.Client{}}
+	request := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8096/v2/languages", nil)
+	request.Header.Set("Cookie", "session=secret")
+	request.Header.Set("Authorization", "Bearer secret")
+	request.Header.Set("Referer", "https://mail.example.com/inbox/42")
+	request.Header.Set("Origin", "https://mail.example.com")
+	request.Header.Set("Accept", "application/json")
+	request.Header.Set("Accept-Language", "en-GB")
+	response := httptest.NewRecorder()
+	proxy.forwardHandler(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("unexpected proxy status: HTTP %d %s", response.Code, response.Body.String())
+	}
+	forwarded := <-seen
+	for _, header := range []string{"Cookie", "Authorization", "Referer", "Origin"} {
+		if value := forwarded.Get(header); value != "" {
+			t.Errorf("proxy leaked %s upstream: %q", header, value)
+		}
+	}
+	if forwarded.Get("Accept") != "application/json" {
+		t.Errorf("expected Accept to be forwarded, got %q", forwarded.Get("Accept"))
+	}
+	if forwarded.Get("Accept-Language") != "en-GB" {
+		t.Errorf("expected Accept-Language to be forwarded, got %q", forwarded.Get("Accept-Language"))
+	}
+}

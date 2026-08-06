@@ -75,6 +75,7 @@ function postCheck(endpoint, body) {
 }
 
 async function checkDocument(document, diagnostics) {
+  if (!isCheckable(document)) return;
   const key = documentKey(document);
   const generation = nextGeneration(document);
   const text = document.getText();
@@ -123,7 +124,20 @@ function diagnosticFor(document, match, index) {
   return diagnostic;
 }
 
+// Only real editable buffers are checked. onDidOpen/onDidChange also fire for
+// Output channels, log tails, SCM diffs and the debug console; the Output
+// channel in particular changes constantly, which meant a steady stream of the
+// user's log content being POSTed to the local server for diagnostics that the
+// code-action provider (registered for these two schemes only) could never act
+// on anyway.
+const CHECKABLE_SCHEMES = new Set(['file', 'untitled']);
+
+function isCheckable(document) {
+  return Boolean(document) && CHECKABLE_SCHEMES.has(document.uri?.scheme);
+}
+
 function scheduleCheck(document, diagnostics) {
+  if (!isCheckable(document)) return;
   const key = documentKey(document);
   clearTimeout(timers.get(key));
   nextGeneration(document);
@@ -158,7 +172,7 @@ function provideCodeActions(document, _range, context) {
 
 function activate(context) {
   const diagnostics = vscode.languages.createDiagnosticCollection('ikmal');
-  const selector = [{ scheme: 'file' }, { scheme: 'untitled' }];
+  const selector = [...CHECKABLE_SCHEMES].map((scheme) => ({ scheme }));
   context.subscriptions.push(diagnostics);
   context.subscriptions.push(vscode.languages.registerCodeActionsProvider(selector, { provideCodeActions }, {
     providedCodeActionKinds: [vscode.CodeActionKind.QuickFix],

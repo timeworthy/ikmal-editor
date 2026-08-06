@@ -239,13 +239,32 @@ function createOfficeBridgeHandler(options = {}) {
   };
 }
 
+// The handler is async, so anything it throws becomes a rejected promise rather
+// than an exception the http server can see. Unhandled, that terminates the
+// process this bridge is embedded in (the Electron main process). Catch it here
+// and answer the request instead.
+function guardedHandler(handler) {
+  return (request, response) => {
+    Promise.resolve()
+      .then(() => handler(request, response))
+      .catch((error) => {
+        if (response.headersSent || response.writableEnded) {
+          response.destroy();
+          return;
+        }
+        sendJSON(response, 500, { error: 'office bridge failed to handle the request' });
+        console.error(`Office bridge handler error: ${error && error.message}`);
+      });
+  };
+}
+
 function createOfficeBridgeServer(options = {}) {
   if (!options.key || !options.cert) {
     throw new Error('Office bridge requires an explicit TLS key and certificate');
   }
   const server = https.createServer(
     { key: options.key, cert: options.cert },
-    createOfficeBridgeHandler(options),
+    guardedHandler(createOfficeBridgeHandler(options)),
   );
   return server;
 }

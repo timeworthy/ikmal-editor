@@ -62,13 +62,11 @@ public final class LocalCheckerClient {
         var request = URLRequest(url: endpoint, timeoutInterval: timeout)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        var components = URLComponents()
-        components.queryItems = [
-            URLQueryItem(name: "text", value: bounded),
-            URLQueryItem(name: "language", value: "en-US"),
-            URLQueryItem(name: "enabledOnly", value: "false"),
-        ]
-        request.httpBody = components.percentEncodedQuery?.data(using: .utf8)
+        request.httpBody = Self.formBody([
+            ("text", bounded),
+            ("language", "en-US"),
+            ("enabledOnly", "false"),
+        ]).data(using: .utf8)
 
         let semaphore = DispatchSemaphore(value: 0)
         var result: Result<(Data, URLResponse), Error>?
@@ -96,6 +94,22 @@ public final class LocalCheckerClient {
         guard data.count <= 2_000_000 else { throw SpellBridgeError.responseTooLarge }
         let decoded = try JSONDecoder().decode(ProxyResponse.self, from: data)
         return Self.findings(from: decoded.matches, baseOffset: offset, sourceUTF16Length: (bounded as NSString).length)
+    }
+
+    // URLComponents is the wrong tool for a form body: "+" is a legal query
+    // character so it is left unescaped, and the server decodes it as a space
+    // under application/x-www-form-urlencoded. Checking "C++" or "1+1" sent the
+    // checker text the user never wrote. Encode explicitly instead.
+    static func formBody(_ fields: [(String, String)]) -> String {
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-._~")
+        return fields
+            .map { name, value in
+                let encodedName = name.addingPercentEncoding(withAllowedCharacters: allowed) ?? name
+                let encodedValue = value.addingPercentEncoding(withAllowedCharacters: allowed) ?? ""
+                return "\(encodedName)=\(encodedValue)"
+            }
+            .joined(separator: "&")
     }
 
     public static func boundedText(_ text: String, maximumUTF16Length: Int) -> String {

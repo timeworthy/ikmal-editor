@@ -99,6 +99,60 @@ func TestSupervisorStandsDownWhenAnotherProcessProvidesTheService(t *testing.T) 
 	}
 }
 
+// The regression this guards: a start that spawns cleanly but whose child dies
+// at once — losing a port race to another process is exactly this shape — used
+// to reset the failure counter on every tick, so the supervisor respawned it
+// forever. A spawn is only a recovery once the service is observed answering.
+func TestSupervisorBoundsRestartsThatNeverBecomeHealthy(t *testing.T) {
+	starts := 0
+	service := newManagedService("quality engine", placeholderCommand(), func() *exec.Cmd {
+		starts++
+		return placeholderCommand()
+	}, func() bool { return false })
+
+	supervising := true
+	for i := 0; supervising && i < 50; i++ {
+		service.startedAt = time.Now().Add(-readinessGrace - time.Second)
+		supervising = service.check()
+	}
+	if supervising {
+		t.Fatal("expected supervision to stop rather than respawn a service that never answers")
+	}
+	if starts != maxRestartFailures {
+		t.Fatalf("expected %d spawns before giving up, got %d", maxRestartFailures, starts)
+	}
+}
+
+// A restart that does become healthy clears the counter, so an occasional crash
+// never accumulates towards the give-up bound.
+func TestSupervisorForgivesARestartThatRecovers(t *testing.T) {
+	healthy := false
+	starts := 0
+	service := newManagedService("quality proxy", placeholderCommand(), func() *exec.Cmd {
+		starts++
+		healthy = true
+		return placeholderCommand()
+	}, func() bool { return healthy })
+
+	for range 10 {
+		service.startedAt = time.Now().Add(-readinessGrace - time.Second)
+		if !service.check() {
+			t.Fatal("expected supervision to continue for a service that recovers")
+		}
+		// The next tick observes it answering, which is what clears the count.
+		if !service.check() {
+			t.Fatal("expected supervision to continue once the service answers")
+		}
+		healthy = false
+	}
+	if service.failures != 0 {
+		t.Fatalf("a recovered service must not carry failures, got %d", service.failures)
+	}
+	if starts != 10 {
+		t.Fatalf("expected one restart per crash, got %d", starts)
+	}
+}
+
 // A service that was never started must not be supervised into existence.
 func TestSupervisorIgnoresAServiceItDoesNotOwn(t *testing.T) {
 	starts := 0

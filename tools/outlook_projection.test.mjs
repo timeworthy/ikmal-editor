@@ -27,3 +27,30 @@ test('Outlook refuses findings that cross HTML text nodes', () => {
   const projection = projectHTML('<p>First</p><p>Second</p>');
   assert.equal(applyHTMLMatch(projection, { offset: 3, length: 6 }, 'x'), null);
 });
+
+test('Outlook decoration survives overlapping findings without breaking markup', () => {
+  // Checkers routinely report overlapping ranges on the same phrase. Splicing
+  // both would interleave the <span> tags and write mismatched markup into the
+  // user's draft, which removeHTMLMarks could then never undo.
+  const html = '<p>The results is ready today.</p>';
+  const projection = projectHTML(html);
+  const decorated = decorateHTMLMatches(projection, [
+    { offset: 4, length: 10 },
+    { offset: 8, length: 9 },
+    { offset: 4, length: 10 },
+  ], 'wave');
+  assert.equal(decorated.match(/<span\b/g).length, 1);
+  assert.equal(decorated.match(/<\/span>/g).length, 1);
+  assert.equal(removeHTMLMarks(decorated), html);
+});
+
+test('Outlook decorates every finding that does not overlap another', () => {
+  const html = '<p>The results is ready today.</p>';
+  const projection = projectHTML(html);
+  const decorated = decorateHTMLMatches(projection, [
+    { offset: 4, length: 7 },
+    { offset: 21, length: 5 },
+  ], 'wave');
+  assert.equal(decorated.match(/<span\b/g).length, 2);
+  assert.equal(removeHTMLMarks(decorated), html);
+});

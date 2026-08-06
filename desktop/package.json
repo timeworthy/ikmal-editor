@@ -10,7 +10,7 @@
     "start": "node launch_packaged.mjs",
     "dev": "node launch_packaged.mjs",
     "dev:electron": "electron .",
-    "check": "node --check main.cjs && node --check preload.cjs && node --check renderer.js && node --check editor-renderer.js && node --check annotation_surface.js && node --check render-assets.cjs",
+    "check": "node --check main.cjs && node --check preload.cjs && node --check renderer.js && node --check editor-renderer.js && node --check annotation_surface.js && node --check annotation_preferences.js && node --check notice_surface.js && node --check render-assets.cjs",
     "render-assets": "electron render-assets.cjs",
     "package": "node package_desktop.mjs",
     "smoke": "node electron_smoke.mjs",

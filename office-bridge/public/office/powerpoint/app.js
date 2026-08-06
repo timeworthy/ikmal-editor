@@ -120,10 +120,20 @@ async function forMatch(match, callback) {
 }
 
 async function markMatches(matches) {
+  // One entry per distinct substring. Overlapping findings on the same run
+  // would each record a "previous" font, and the later read sees the styling
+  // the earlier write just applied — restoring then replays the mark and
+  // leaves it in the deck permanently.
+  const seen = new Set();
   for (const match of matches) {
     const shape = shapeForMatch(lastProjection, match);
     if (!shape) continue;
-    const marked = await forMatch(match, async ({ targetRange }) => {
+    const start = Number(match.offset) - shape.start;
+    const length = Number(match.length);
+    const key = `${shape.slideNumber}:${shape.shapeId}:${start}:${length}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    await forMatch(match, async ({ targetRange }) => {
       targetRange.load('font/underline,font/color');
       await targetRange.context.sync();
       const previous = { underline: targetRange.font.underline, color: targetRange.font.color };
@@ -132,9 +142,8 @@ async function markMatches(matches) {
       } else {
         targetRange.font.underline = styleSelect.value === 'dotted' ? 'Dotted' : 'Wavy';
       }
-      markedRanges.push({ ...shape, start: Number(match.offset) - shape.start, length: Number(match.length), ...previous });
+      markedRanges.push({ ...shape, start, length, ...previous });
     });
-    if (!marked) continue;
   }
 }
 
@@ -160,6 +169,11 @@ async function applyMatch(match) {
   const replacement = replacementValue(match);
   if (!shape || !replacement) return;
   try {
+    // Marks are restored by character offset into each shape's text. A
+    // replacement of a different length shifts every offset after it, so
+    // clearing afterwards would repaint the wrong characters and leave the real
+    // marks in the deck. Unmark while the offsets still describe the slide.
+    await clearMarks();
     await forMatch(match, async ({ targetRange }) => {
       targetRange.text = replacement;
     });

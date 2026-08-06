@@ -7,7 +7,7 @@ contextBridge.exposeInMainWorld('ikmal', {
   stopServices: () => ipcRenderer.invoke('stop-services'),
   openEditor: (text) => ipcRenderer.invoke('open-editor', text || ''),
   openCompact: () => ipcRenderer.invoke('open-compact'),
-  setCompactExpanded: (expanded) => ipcRenderer.invoke('set-compact-expanded', Boolean(expanded)),
+  setCompactExpanded: (expanded, activate = true) => ipcRenderer.invoke('set-compact-expanded', Boolean(expanded), activate !== false),
   setCompactHeight: (height) => ipcRenderer.invoke('set-compact-height', Number(height)),
   getIntegrationStatus: () => ipcRenderer.invoke('integration-status'),
   getQualityStatus: () => ipcRenderer.invoke('quality-status'),
