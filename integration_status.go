@@ -146,13 +146,25 @@ func integrationUsesEndpoint(content, endpoint string) bool {
 	return expected != "" && actual == expected
 }
 
-var integrationURLPattern = regexp.MustCompile(`(?i)https?://[^"'\s]+`)
+// integrationServerURLPattern matches the server setting by name across the
+// formats this app writes and reads: Firefox managed storage ("serverUrl"),
+// Chrome/Edge policy ("server_url"), VS Code settings
+// ("languageTool.serverUrl"), and macOS defaults ("apiServer").
+var integrationServerURLPattern = regexp.MustCompile(`(?i)"(?:languagetool\.)?(?:serverurl|server_url|apiserver)"\s*:\s*"([^"]*)"`)
 
+// integrationEndpointFromContent reports the endpoint a host is configured to
+// call. It keys off the setting name rather than taking the first URL in the
+// file, because these files legitimately contain unrelated URLs: the Chrome
+// policy this app writes itself leads with Google's extension update URL, and
+// a real settings.json holds schema, proxy, and marketplace URLs. Taking the
+// first match reported a correctly configured host as misconfigured.
 func integrationEndpointFromContent(content string) string {
-	for _, candidate := range integrationURLPattern.FindAllString(content, -1) {
-		if normalized := normalizeIntegrationEndpoint(candidate); normalized != "" {
-			return normalized
-		}
+	if match := integrationServerURLPattern.FindStringSubmatch(content); match != nil {
+		return normalizeIntegrationEndpoint(match[1])
+	}
+	// macOS defaults and other bare-value sources have no surrounding key.
+	if trimmed := strings.TrimSpace(content); trimmed != "" && !strings.ContainsAny(trimmed, "{}\n") {
+		return normalizeIntegrationEndpoint(trimmed)
 	}
 	return ""
 }

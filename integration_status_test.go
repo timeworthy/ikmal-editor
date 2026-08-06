@@ -168,3 +168,40 @@ func TestIntegrationDetectionReportsMisconfiguredEndpoint(t *testing.T) {
 		t.Fatalf("expected misconfigured Firefox integration, got %+v", target)
 	}
 }
+
+func TestIntegrationEndpointIgnoresUnrelatedURLsInTheSameFile(t *testing.T) {
+	endpoint := "http://127.0.0.1:8096/v2"
+
+	// The exact Chrome policy this app writes in autoConfigureApps: the
+	// extension update URL comes first, the server URL second.
+	chromePolicy := `{
+  "external_update_url": "https://clients2.google.com/service/update2/crx",
+  "server_url": "http://127.0.0.1:8096/v2/check"
+}`
+	if !integrationUsesEndpoint(chromePolicy, endpoint) {
+		t.Fatalf("policy this app writes must read as configured, got endpoint %q", integrationEndpointFromContent(chromePolicy))
+	}
+
+	// VS Code settings where an unrelated URL precedes the setting.
+	vscodeSettings := `{
+  "$schema": "https://json.schemastore.org/settings.json",
+  "http.proxy": "http://proxy.internal:3128",
+  "languageTool.serverUrl": "http://127.0.0.1:8096/v2/check"
+}`
+	if !integrationUsesEndpoint(vscodeSettings, endpoint) {
+		t.Fatalf("settings with unrelated URLs must read as configured, got endpoint %q", integrationEndpointFromContent(vscodeSettings))
+	}
+
+	// A genuinely wrong server URL must still be reported, and reported as
+	// the server URL rather than as whatever unrelated URL came first.
+	wrong := `{
+  "external_update_url": "https://clients2.google.com/service/update2/crx",
+  "server_url": "http://127.0.0.1:8097/v2/check"
+}`
+	if integrationUsesEndpoint(wrong, endpoint) {
+		t.Fatal("a different server_url must not read as configured")
+	}
+	if got := integrationEndpointFromContent(wrong); got != "http://127.0.0.1:8097/v2" {
+		t.Fatalf("expected the server URL to be reported, got %q", got)
+	}
+}
