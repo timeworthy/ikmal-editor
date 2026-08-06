@@ -188,6 +188,15 @@ function officeBridgeModule(name) {
   return require(path.join(officeBridgeResourcePath(), name));
 }
 
+// One source for the port. office_bridge.cjs derives its allowed origins from
+// the same env var, so a hardcoded listen port meant the pane loaded on 8765
+// while the allow-list named a different one, and every check came back 403
+// with nothing to indicate why.
+function officeBridgePort() {
+  const port = Number(process.env.IKMAL_OFFICE_BRIDGE_PORT || 8765);
+  return Number.isInteger(port) && port > 0 && port < 65536 ? port : 8765;
+}
+
 function officeCertificateDirectory() {
   return path.join(app.getPath('userData'), 'office-bridge-certificate');
 }
@@ -197,7 +206,7 @@ function officeBridgeState() {
   return {
     supported: true,
     running: Boolean(officeBridgeServer),
-    url: 'https://localhost:8765/office/word/',
+    url: `https://localhost:${officeBridgePort()}/office/word/`,
     manifestPath: path.join(officeBridgeResourcePath(), 'manifest-word.xml'),
     ...certificate,
   };
@@ -215,6 +224,7 @@ async function startOfficeBridge() {
   }
   const bridge = officeBridgeModule('office_bridge.cjs');
   const server = bridge.createOfficeBridgeServer({
+    port: officeBridgePort(),
     key: fs.readFileSync(state.keyPath),
     cert: fs.readFileSync(state.certificatePath),
   });
@@ -246,7 +256,7 @@ async function startOfficeBridge() {
     };
     server.once('error', onError);
     server.once('listening', onListening);
-    server.listen(8765, '127.0.0.1');
+    server.listen(officeBridgePort(), '127.0.0.1');
   }).catch((error) => {
     server.close(() => {});
     throw new Error(`Could not start the local Office bridge: ${error.message}`);

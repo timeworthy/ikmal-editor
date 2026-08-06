@@ -322,3 +322,36 @@ func TestForwardHandlerSendsOnlyTheHeadersACheckNeeds(t *testing.T) {
 		t.Errorf("expected Accept-Language to be forwarded, got %q", forwarded.Get("Accept-Language"))
 	}
 }
+
+func TestWarnIfNotLoopbackOnlyWarnsWhenReachable(t *testing.T) {
+	capture := func(host string) string {
+		read, write, err := os.Pipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		original := os.Stdout
+		os.Stdout = write
+		warnIfNotLoopback("quality proxy", host)
+		write.Close()
+		os.Stdout = original
+		output, _ := io.ReadAll(read)
+		return string(output)
+	}
+
+	// Every spelling of "this machine only" must stay quiet, or the warning
+	// becomes noise people learn to ignore.
+	for _, host := range []string{"127.0.0.1", "localhost", "LOCALHOST", "::1", "[::1]"} {
+		if got := capture(host); got != "" {
+			t.Fatalf("expected no warning for %q, got %q", host, got)
+		}
+	}
+	for _, host := range []string{"0.0.0.0", "192.168.1.10", "::"} {
+		got := capture(host)
+		if !strings.Contains(got, "WARNING") || !strings.Contains(got, host) {
+			t.Fatalf("expected a warning naming %q, got %q", host, got)
+		}
+		if !strings.Contains(got, "IKMAL_BIND_HOST=127.0.0.1") {
+			t.Fatalf("the warning must say how to undo it, got %q", got)
+		}
+	}
+}

@@ -75,6 +75,10 @@ let lastResponse = { matches: [] };
 let rawResponse = { matches: [] };
 let checkingPreferences = { mode: 'automatic', delay: 700, sensitivity: 55, categories: { grammar: true, repetition: true, style: true, languagetool: true } };
 let ignoredMatches = new Set();
+// The expanded editor honours the same focus mode as the compact window: a
+// Pause set from the tray or the other window has to stop this one checking
+// too, or the mode is only half true.
+let focusState = { mode: 'active', until: null, label: 'Checking', effective: null };
 let checkTimer;
 let checkGeneration = 0;
 let editorStatusAnimationFrame;
@@ -109,14 +113,30 @@ function checkingCategory(match) {
   return 'languagetool';
 }
 
+// The user's own settings with the current focus mode applied, computed in the
+// main process so the preset rules keep a single implementation.
+function effectiveCheckingPreferences() {
+  return focusState.effective || checkingPreferences;
+}
+
 function filteredResponse(response) {
   const value = response || { matches: [] };
-  const threshold = 0.9 - (checkingPreferences.sensitivity / 100) * 0.4;
+  const effective = effectiveCheckingPreferences();
+  const threshold = 0.9 - (effective.sensitivity / 100) * 0.4;
   const matches = Array.isArray(value.matches) ? value.matches.filter((match) => {
     const confidence = Number(match.ikmalConfidence ?? match.confidence ?? 1);
-    return checkingPreferences.categories[checkingCategory(match)] !== false && (!Number.isFinite(confidence) || confidence >= threshold);
+    return effective.categories[checkingCategory(match)] !== false && (!Number.isFinite(confidence) || confidence >= threshold);
   }) : [];
   return { ...value, matches };
+}
+
+function renderEditorFocusState(state) {
+  focusState = state && typeof state === 'object' ? state : focusState;
+  document.documentElement.dataset.focusMode = focusState.mode;
+  // The mode changes which findings pass the filter, so redraw what is already
+  // on screen against the new effective settings.
+  renderSuggestions(rawResponse);
+  if (focusState.mode === 'paused') setEditorWritingStatus('idle', focusState.label || 'Paused');
 }
 
 function renderCheckingPreferences(preferences) {
@@ -348,14 +368,16 @@ function scheduleCheck() {
     editorCheckButton.disabled = false;
     return;
   }
-  if (checkingPreferences.mode === 'manual') {
-    setEditorWritingStatus('good', 'Ready to check');
+  // Pause resolves to manual, so this covers both the setting and the preset.
+  const effective = effectiveCheckingPreferences();
+  if (effective.mode === 'manual') {
+    setEditorWritingStatus('good', focusState.mode === 'paused' ? (focusState.label || 'Paused') : 'Ready to check');
     setNotice('', false);
     return;
   }
   setEditorWritingStatus('checking', 'Waiting to check…');
   setNotice('', false);
-  checkTimer = setTimeout(() => checkWriting(), checkingPreferences.delay);
+  checkTimer = setTimeout(() => checkWriting(), effective.delay);
 }
 
 function updateServiceState(state) {
@@ -610,7 +632,9 @@ async function startEditorServices() {
       retry: () => startEditorServices(),
       details: error.stack || error.message,
     });
-  } finally {
+    // Only on failure. On success updateServiceState has already set this from
+    // the status it received; re-enabling here would make "Already running"
+    // clickable.
     editorStartServicesButton.disabled = false;
   }
 }
@@ -625,7 +649,6 @@ async function stopEditorServices() {
       retry: () => stopEditorServices(),
       details: error.stack || error.message,
     });
-  } finally {
     editorStopServicesButton.disabled = false;
   }
 }
@@ -656,6 +679,8 @@ window.ikmal.getAnnotationPreferences().then((preferences) => editorAnnotationCo
 window.ikmal.onAnnotationPreferences((preferences) => editorAnnotationControls.apply(preferences));
 window.ikmal.getCheckingPreferences().then(renderCheckingPreferences).catch(() => renderCheckingPreferences(checkingPreferences));
 window.ikmal.onCheckingPreferences(renderCheckingPreferences);
+window.ikmal.getFocusMode().then(renderEditorFocusState).catch(() => {});
+window.ikmal.onFocusMode(renderEditorFocusState);
 loadStyleGuides();
 loadRecentSessions();
 renderSuggestions(lastResponse);

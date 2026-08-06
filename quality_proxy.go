@@ -82,6 +82,7 @@ func runQualityProxy() {
 		host = "127.0.0.1"
 	}
 	addr := host + ":" + port
+	warnIfNotLoopback("quality proxy", host)
 	fmt.Printf("ikmal LanguageTool quality proxy listening on http://%s\n", addr)
 	if err := http.ListenAndServe(addr, qualityCORS(mux)); err != nil {
 		fmt.Printf("Quality proxy stopped: %v\n", err)
@@ -727,4 +728,18 @@ func startManagedQualityServerWithTransformer(withTransformer bool) *exec.Cmd {
 	_ = command.Process.Kill()
 	_ = command.Wait()
 	return nil
+}
+
+// warnIfNotLoopback says so, once, when a listener has been pointed beyond the
+// machine. Both services answer without authentication and qualityCORS allows
+// any origin, so binding to 0.0.0.0 — the documented container path — puts an
+// unauthenticated text-processing and style-guide-editing surface on the
+// network. That may be exactly what the operator wants inside a container, but
+// it should never be something they discover later.
+func warnIfNotLoopback(service, host string) {
+	switch strings.ToLower(strings.Trim(host, "[]")) {
+	case "127.0.0.1", "localhost", "::1":
+		return
+	}
+	fmt.Printf("WARNING: the %s is bound to %s, not loopback. It has no authentication and accepts any origin, so anything that can reach this address can check text and change style guides. Set IKMAL_BIND_HOST=127.0.0.1 to restrict it to this machine.\n", service, host)
 }

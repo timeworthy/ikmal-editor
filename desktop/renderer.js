@@ -880,7 +880,9 @@ async function startServices() {
       retry: () => startServices(),
       details: error.stack || error.message,
     });
-  } finally {
+    // Only on failure. On success updateServiceState has already set this from
+    // the status it received; re-enabling here would make "Already running"
+    // clickable.
     startButton.disabled = false;
   }
 }
@@ -894,7 +896,6 @@ async function stopServices() {
       retry: () => stopServices(),
       details: error.stack || error.message,
     });
-  } finally {
     stopButton.disabled = false;
   }
 }
