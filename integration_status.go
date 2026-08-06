@@ -3,9 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 )
@@ -13,11 +15,13 @@ import (
 const languageToolExtensionID = "lhgkgpnhbakdcadgobkbbkoicdikgadj"
 
 type integrationTarget struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	Detected   bool   `json:"detected"`
-	Configured bool   `json:"configured"`
-	Details    string `json:"details"`
+	ID                 string `json:"id"`
+	Name               string `json:"name"`
+	Detected           bool   `json:"detected"`
+	Configured         bool   `json:"configured"`
+	State              string `json:"state"`
+	ConfiguredEndpoint string `json:"configuredEndpoint,omitempty"`
+	Details            string `json:"details"`
 }
 
 type integrationStatusResponse struct {
@@ -51,12 +55,12 @@ func detectIntegrationStatus() integrationStatusResponse {
 func detectMacIntegration(homeDir, endpoint string) integrationTarget {
 	target := integrationTarget{ID: "macos", Name: "macOS LanguageTool integrations", Details: "Safari, Mail, and system writing integrations"}
 	if runtime.GOOS != "darwin" {
-		return target
+		return finalizeIntegrationTarget(target, endpoint, "")
 	}
 	value := readMacDefaults("org.languagetool.mac", "apiServer")
 	target.Detected = value != ""
 	target.Configured = integrationUsesEndpoint(value, endpoint)
-	return target
+	return finalizeIntegrationTarget(target, endpoint, integrationEndpointFromContent(value))
 }
 
 func readMacDefaults(domain, key string) string {
@@ -83,7 +87,7 @@ func detectFirefoxIntegration(homeDir, endpoint string) integrationTarget {
 	installed := globContains(filepath.Join(root, "*", "extensions.json"), languageToolExtensionID) || len(globMatches(filepath.Join(root, "*", "extensions", "languagetool-webextension@languagetool.org*"))) > 0
 	target := integrationTarget{ID: "firefox", Name: "Firefox LanguageTool extension", Detected: installed || managedContent != "", Details: "Firefox extension and managed local-server settings"}
 	target.Configured = integrationUsesEndpoint(managedContent, endpoint)
-	return target
+	return finalizeIntegrationTarget(target, endpoint, integrationEndpointFromContent(managedContent))
 }
 
 func detectChromeIntegration(homeDir, endpoint string) integrationTarget {
@@ -98,13 +102,17 @@ func detectChromeIntegration(homeDir, endpoint string) integrationTarget {
 	}
 	configured := false
 	policyExists := false
+	configuredEndpoint := ""
 	for _, policyPath := range policyPaths {
 		content := readTextFile(policyPath)
 		policyExists = policyExists || content != ""
 		configured = configured || integrationUsesEndpoint(content, endpoint)
+		if configuredEndpoint == "" {
+			configuredEndpoint = integrationEndpointFromContent(content)
+		}
 	}
 	target := integrationTarget{ID: "chrome", Name: "Chrome-based LanguageTool extension", Detected: extensionInstalled || policyExists, Configured: configured, Details: "Chrome, Chromium, Brave, and Edge-compatible local-server settings"}
-	return target
+	return finalizeIntegrationTarget(target, endpoint, configuredEndpoint)
 }
 
 func detectVSCodeIntegration(homeDir, endpoint string) integrationTarget {
@@ -116,7 +124,7 @@ func detectVSCodeIntegration(homeDir, endpoint string) integrationTarget {
 	installed := len(globMatches(filepath.Join(homeDir, ".vscode", "extensions", "*languagetool*"))) > 0
 	target := integrationTarget{ID: "vscode", Name: "VS Code LanguageTool integration", Detected: installed || settings != "", Details: "VS Code extension and user settings"}
 	target.Configured = strings.Contains(settings, "languageTool.serverUrl") && integrationUsesEndpoint(settings, endpoint)
-	return target
+	return finalizeIntegrationTarget(target, endpoint, integrationEndpointFromContent(settings))
 }
 
 func integrationTargetEnabled(id string) bool {
@@ -133,7 +141,54 @@ func integrationTargetEnabled(id string) bool {
 }
 
 func integrationUsesEndpoint(content, endpoint string) bool {
-	return content != "" && endpoint != "" && strings.Contains(content, endpoint)
+	expected := normalizeIntegrationEndpoint(endpoint)
+	actual := integrationEndpointFromContent(content)
+	return expected != "" && actual == expected
+}
+
+var integrationURLPattern = regexp.MustCompile(`(?i)https?://[^"'\s]+`)
+
+func integrationEndpointFromContent(content string) string {
+	for _, candidate := range integrationURLPattern.FindAllString(content, -1) {
+		if normalized := normalizeIntegrationEndpoint(candidate); normalized != "" {
+			return normalized
+		}
+	}
+	return ""
+}
+
+func normalizeIntegrationEndpoint(raw string) string {
+	raw = strings.Trim(strings.TrimSpace(raw), `"'`)
+	if raw == "" {
+		return ""
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return ""
+	}
+	path := strings.TrimRight(parsed.Path, "/")
+	if strings.HasSuffix(path, "/check") {
+		path = strings.TrimSuffix(path, "/check")
+	}
+	if path == "" {
+		path = "/v2"
+	}
+	return strings.ToLower(parsed.Scheme) + "://" + strings.ToLower(parsed.Host) + path
+}
+
+func finalizeIntegrationTarget(target integrationTarget, endpoint, configuredEndpoint string) integrationTarget {
+	target.ConfiguredEndpoint = configuredEndpoint
+	switch {
+	case target.Configured:
+		target.State = "configured"
+	case !target.Detected:
+		target.State = "not-detected"
+	case configuredEndpoint != "" && configuredEndpoint != normalizeIntegrationEndpoint(endpoint):
+		target.State = "misconfigured"
+	default:
+		target.State = "detected"
+	}
+	return target
 }
 
 func readTextFile(path string) string {
