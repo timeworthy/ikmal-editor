@@ -14,7 +14,7 @@
     "render-assets": "electron render-assets.cjs",
     "package": "node package_desktop.mjs",
     "smoke": "node electron_smoke.mjs",
-    "verify": "node ../tools/verify_desktop.mjs && node ../tools/verify_extension.mjs && node ../tools/verify_vscode_extension.mjs && node ../tools/verify_office_bridge.mjs && node --test launch_at_login.test.cjs editor_ui.test.mjs ../tools/adapter_contract.test.mjs ../tools/office_bridge.test.mjs ../tools/office_certificate.test.mjs ../tools/office_https.test.mjs ../tools/excel_projection.test.mjs ../tools/powerpoint_projection.test.mjs ../tools/outlook_projection.test.mjs ../tools/onenote_projection.test.mjs ../tools/project_projection.test.mjs",
+    "verify": "node ../tools/verify_desktop.mjs && node ../tools/verify_extension.mjs && node ../tools/verify_vscode_extension.mjs && node ../tools/verify_office_bridge.mjs && node --test launch_at_login.test.cjs editor_ui.test.mjs ../tools/adapter_contract.test.mjs ../tools/focus_mode.test.mjs ../tools/office_bridge.test.mjs ../tools/office_certificate.test.mjs ../tools/office_https.test.mjs ../tools/excel_projection.test.mjs ../tools/powerpoint_projection.test.mjs ../tools/outlook_projection.test.mjs ../tools/onenote_projection.test.mjs ../tools/project_projection.test.mjs",
     "package:extension": "node ../tools/package_extension.mjs",
     "package:vscode": "node ../tools/package_vscode_extension.mjs"
   },
