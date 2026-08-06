@@ -564,6 +564,10 @@ async function updateCheckingPreferences() {
       categories: Object.fromEntries(Object.entries(checkingCategoryInputs).map(([category, control]) => [category, control.checked])),
     });
     renderCheckingPreferences(preferences);
+    // Ignored suggestions are tracked by their position in the filtered list,
+    // so a change to sensitivity or categories renumbers them. Keeping the old
+    // indices would hide unrelated suggestions the user never dismissed.
+    ignoredMatches = new Set();
     renderResults(rawResponse, input.value);
     if (checkingPreferences.mode === 'manual') setWritingStatus('good', input.value.trim() ? 'Ready to check' : 'Ready when you are');
     else if (input.value.trim()) scheduleCheck();

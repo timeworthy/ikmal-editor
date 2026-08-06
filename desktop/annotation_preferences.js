@@ -54,15 +54,24 @@
   }
 
   function bindControls({ style, palette, intensity, output, onChange }) {
-    const update = () => {
+    // preview repaints the document without persisting. The slider fires on
+    // every pixel of a drag, and persisting there wrote the preferences file
+    // on each one — and the awaited response reassigned the slider's value
+    // mid-drag, fighting the pointer.
+    const preview = () => {
       const preferences = applyToDocument({ style: style?.value, palette: palette?.value, intensity: intensity?.value });
       if (output) output.textContent = `${preferences.intensity}%`;
+      return preferences;
+    };
+    const update = () => {
+      const preferences = preview();
       onChange?.(preferences);
       return preferences;
     };
     style?.addEventListener('change', update);
     palette?.addEventListener('change', update);
-    intensity?.addEventListener('input', update);
+    intensity?.addEventListener('input', preview);
+    intensity?.addEventListener('change', update);
     return { apply: (value) => { const preferences = normalize(value); if (style) style.value = preferences.style; if (palette) palette.value = preferences.palette; if (intensity) intensity.value = String(preferences.intensity); if (output) output.textContent = `${preferences.intensity}%`; return applyToDocument(preferences); }, update };
   }
 

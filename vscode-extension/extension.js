@@ -33,7 +33,12 @@ function loopbackEndpoint(value) {
   if (!['http:', 'https:'].includes(endpoint.protocol) || !['127.0.0.1', 'localhost', '::1', '[::1]'].includes(endpoint.hostname)) {
     throw new Error('ikmal only connects to a loopback endpoint.');
   }
-  endpoint.pathname = endpoint.pathname.replace(/\/+$/, '');
+  // Everything else in this project documents the server as
+  // http://127.0.0.1:8096/v2 — that is the value in IKMAL_EDITOR_SERVER_URL
+  // and in the Firefox and Chrome policies. Pasting it here used to produce
+  // /v2/v2/check and a permanent 404, so the suffix is normalized away and
+  // re-added by postCheck.
+  endpoint.pathname = endpoint.pathname.replace(/\/+$/, '').replace(/\/v2(\/check)?$/i, '');
   return endpoint;
 }
 
