@@ -86,6 +86,10 @@ Aggregate download counts come from the GitHub Releases API, not from the binary
 
 ## Quick Start
 
+> Installing the desktop app, the browser extension, the VS Code adapter, the
+> Office task panes, or the macOS spell server? **[INSTALL.md](INSTALL.md)**
+> has step-by-step instructions for each, and explains how each one is shipped.
+
 ### Option A: Install via Homebrew (macOS & Linux)
 
 ```bash
@@ -383,11 +387,14 @@ text fields in your browser against the server on your own machine.
   written fresh against the documented HTTP API. See
   [extension/README.md](extension/README.md) for the full reasoning.
 
-Install it from the desktop app under **Settings → Browser extension**, which
-reveals the folder to point "Load unpacked" at, or build a distributable zip:
+It is not in the Chrome Web Store yet, so it installs unpacked. From the
+desktop app, **Settings → Browser extension → Show files** opens the folder to
+point "Load unpacked" at; `chrome://extensions` with Developer mode on does the
+rest. Firefox is not currently supported — the manifest is Chromium-shaped.
+Full steps, and every other surface, are in **[INSTALL.md](INSTALL.md)**.
 
 ```bash
-cd desktop && npm run package:extension
+cd desktop && npm run package:extension   # archive for a store listing
 ```
 
 ### VS Code adapter
@@ -399,10 +406,13 @@ content script:
 
 ```bash
 cd desktop && npm run package:vscode
+code --install-extension bin/vscode-extension/timeworthy-media.ikmal-editor-vscode-0.1.0.vsix
 ```
 
-The generated zip is written under `bin/vscode-extension/`. The adapter accepts
-only loopback endpoints and has no cloud or account path.
+The packager writes a real `.vsix` under `bin/vscode-extension/` and prints the
+install command with the current version. The adapter accepts only loopback
+endpoints and has no cloud or account path. It also contributes
+`ikmal: Pause checking`, `ikmal: Zen mode`, and `ikmal: Resume checking`.
 
 ### Third-party extensions
 

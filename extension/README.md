@@ -60,9 +60,12 @@ Then load the extension:
 2. Turn on **Developer mode**
 3. Choose **Load unpacked** and select this `extension/` directory
 
-**Firefox**
-1. Open `about:debugging#/runtime/this-firefox`
-2. Choose **Load Temporary Add-on** and select `manifest.json`
+**Firefox — not currently supported.** This manifest declares a background
+service worker, which is the Chromium shape. Firefox's MV3 uses event pages
+and also expects a `browser_specific_settings.gecko.id`, so loading it there
+needs both added and tested first. Use LanguageTool's own Firefox plugin
+pointed at your local server in the meantime — the desktop app's
+**LanguageTool plugins** card sets that up.
 
 That is the whole setup. The extension finds the server at
 `http://127.0.0.1:8096` and starts working. If the server is not running, the
