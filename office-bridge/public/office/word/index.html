@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ikmal editor for Word</title>
+    <link rel="stylesheet" href="/office/word/styles.css">
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">ikmal editor</p>
+        <h1>Review this selection</h1>
+        <p id="state">Waiting for Word…</p>
+      </header>
+      <section class="controls" aria-label="Finding style">
+        <label for="style">Inline style</label>
+        <select id="style">
+          <option value="wave">Wavy underline</option>
+          <option value="dotted">Dotted underline</option>
+          <option value="highlight">Highlight</option>
+        </select>
+        <button id="check" type="button" disabled>Check selection</button>
+        <button id="clear" type="button" disabled>Clear ikmal marks</button>
+      </section>
+      <section>
+        <h2>Suggestions</h2>
+        <ol id="findings" class="findings"><li class="empty">Select text in Word, then check it.</li></ol>
+      </section>
+    </main>
+    <script src="/office/word/app.js"></script>
+  </body>
+</html>

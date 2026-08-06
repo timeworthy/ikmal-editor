@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ikmal editor for Project</title>
+    <link rel="stylesheet" href="/office/project/styles.css">
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">ikmal editor</p>
+        <h1>Review this task</h1>
+        <p id="state">Waiting for Project…</p>
+      </header>
+      <section class="controls">
+        <button id="check" type="button" disabled>Check selected task</button>
+      </section>
+      <p class="note">Project exposes task fields rather than an editable document surface. Findings stay in this pane; replacements are written only to the selected task’s Name or Notes field after a fresh read.</p>
+      <section>
+        <h2>Suggestions</h2>
+        <ol id="findings" class="findings"><li class="empty">Select a task in Project, then check it.</li></ol>
+      </section>
+    </main>
+    <script type="module" src="/office/project/app.js"></script>
+  </body>
+</html>

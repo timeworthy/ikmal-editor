@@ -1,0 +1,17 @@
+:root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+body { margin: 0; background: #f7f4ef; color: #24212b; }
+main { padding: 22px; }
+.eyebrow { margin: 0 0 5px; color: #0078d4; font: 600 11px ui-monospace, SFMono-Regular, monospace; letter-spacing: .12em; text-transform: uppercase; }
+h1 { margin: 0; font: 500 24px Georgia, serif; }
+h2 { margin: 24px 0 10px; font-size: 14px; }
+#state { color: #696373; font-size: 13px; }
+.controls { display: grid; gap: 8px; }
+label { color: #696373; font-size: 12px; }
+select, button { min-height: 34px; border: 1px solid #d9d1df; border-radius: 8px; background: #fff; color: inherit; padding: 0 10px; }
+button { cursor: pointer; font-weight: 600; }
+button:disabled { cursor: not-allowed; opacity: .5; }
+.findings { display: grid; gap: 10px; margin: 0; padding-left: 20px; }
+.finding { padding: 10px; border: 1px solid #e2dbe7; border-radius: 9px; background: #fff; }
+.finding p { margin: 0 0 7px; font-size: 13px; }
+.finding button { min-height: 28px; font-size: 12px; }
+.empty { color: #696373; font-size: 13px; }

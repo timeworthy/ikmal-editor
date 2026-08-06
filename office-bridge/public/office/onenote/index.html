@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ikmal editor for OneNote</title>
+    <link rel="stylesheet" href="/office/onenote/styles.css">
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">ikmal editor</p>
+        <h1>Review this page</h1>
+        <p id="state">Waiting for OneNote…</p>
+      </header>
+      <section class="controls">
+        <label for="style">Inline style</label>
+        <select id="style">
+          <option value="wave">Wavy underline</option>
+          <option value="dotted">Dotted underline</option>
+          <option value="highlight">Highlight</option>
+        </select>
+        <button id="check" type="button" disabled>Check page</button>
+        <button id="clear" type="button" disabled>Clear selected marks</button>
+      </section>
+      <p class="note">Selecting text first enables inline marking and replacement. Whole-page review stays in this pane unless OneNote exposes a safe editable selection.</p>
+      <section>
+        <h2>Suggestions</h2>
+        <ol id="findings" class="findings"><li class="empty">Open the active page, then check it.</li></ol>
+      </section>
+    </main>
+    <script type="module" src="/office/onenote/app.js"></script>
+  </body>
+</html>
