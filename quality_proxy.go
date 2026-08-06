@@ -314,6 +314,20 @@ func (proxy qualityProxy) debugRequest(r *http.Request, values url.Values, err e
 		r.Method, r.URL.Path, r.Header.Get("Content-Type"), r.ContentLength, keys, err)
 }
 
+// hopByHopHeaders describe the client-to-proxy connection rather than the
+// request, so they must not be passed on to the upstream server (RFC 9110).
+var hopByHopHeaders = []string{
+	"Connection",
+	"Keep-Alive",
+	"Proxy-Authenticate",
+	"Proxy-Authorization",
+	"Te",
+	"Trailer",
+	"Transfer-Encoding",
+	"Upgrade",
+	"Host",
+}
+
 func (proxy qualityProxy) forwardHandler(w http.ResponseWriter, r *http.Request) {
 	target, err := url.Parse(proxy.languageToolURL)
 	if err != nil {
@@ -338,7 +352,15 @@ func (proxy qualityProxy) forwardHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	request.Header = r.Header.Clone()
-	request.Header.Del("Host")
+	for _, header := range hopByHopHeaders {
+		request.Header.Del(header)
+	}
+	// Dropping Accept-Encoding lets Go's Transport request and transparently
+	// decompress gzip itself. Forwarding the browser's value would disable
+	// that, leaving response.Body holding compressed bytes that this handler
+	// would copy through under the upstream's Content-Type — a gzip blob
+	// labelled application/json, which the caller cannot parse.
+	request.Header.Del("Accept-Encoding")
 	response, err := proxy.client.Do(request)
 	if err != nil {
 		writeQualityJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"io"
 	"net"
@@ -230,5 +231,48 @@ func TestForwardHandlerPreservesPOSTBodyAndHeaders(t *testing.T) {
 	proxy.forwardHandler(response, request)
 	if response.Code != http.StatusOK || response.Body.String() != `{"matches":[]}` {
 		t.Fatalf("unexpected proxy response: HTTP %d %s", response.Code, response.Body.String())
+	}
+}
+
+// A browser sends Accept-Encoding: gzip. If the proxy forwards it, Go stops
+// decompressing transparently and this handler copies compressed bytes through
+// under the upstream's Content-Type, so the caller receives a gzip blob
+// labelled application/json.
+func TestForwardHandlerReturnsReadableJSONWhenTheClientAcceptsGzip(t *testing.T) {
+	backendHandler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if encoding := request.Header.Get("Accept-Encoding"); strings.Contains(encoding, "br") {
+			http.Error(writer, "proxy forwarded the client's Accept-Encoding", http.StatusBadRequest)
+			return
+		}
+		if request.Header.Get("Connection") != "" {
+			http.Error(writer, "proxy forwarded a hop-by-hop header", http.StatusBadRequest)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		gzipWriter := gzip.NewWriter(writer)
+		writer.Header().Set("Content-Encoding", "gzip")
+		defer gzipWriter.Close()
+		_, _ = gzipWriter.Write([]byte(`{"languages":[]}`))
+	})
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	backend := &http.Server{Handler: backendHandler}
+	go func() { _ = backend.Serve(listener) }()
+	defer backend.Close()
+
+	proxy := qualityProxy{languageToolURL: "http://" + listener.Addr().String() + "/v2/check", client: &http.Client{}}
+	request := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8096/v2/languages", nil)
+	request.Header.Set("Accept-Encoding", "gzip, deflate, br")
+	request.Header.Set("Connection", "keep-alive")
+	response := httptest.NewRecorder()
+	proxy.forwardHandler(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("unexpected proxy status: HTTP %d %s", response.Code, response.Body.String())
+	}
+	if body := response.Body.String(); body != `{"languages":[]}` {
+		t.Fatalf("expected decompressed JSON, got %q", body)
 	}
 }
