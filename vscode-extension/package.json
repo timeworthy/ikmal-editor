@@ -1,0 +1,26 @@
+{
+  "name": "ikmal-editor-vscode",
+  "displayName": "ikmal editor",
+  "description": "Local grammar and style diagnostics backed by ikmal editor.",
+  "version": "0.1.0",
+  "publisher": "timeworthy-media",
+  "license": "MIT",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Linters", "Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "extension.js",
+  "contributes": {
+    "commands": [{ "command": "ikmal.checkDocument", "title": "ikmal: Check Document" }],
+    "configuration": {
+      "title": "ikmal editor",
+      "properties": {
+        "ikmal.enabled": { "type": "boolean", "default": true, "description": "Check text documents with the local ikmal service." },
+        "ikmal.endpoint": { "type": "string", "default": "http://127.0.0.1:8096", "description": "Loopback URL for the ikmal quality proxy." },
+        "ikmal.language": { "type": "string", "default": "auto", "description": "Language code sent to the local checker." },
+        "ikmal.checkDelayMs": { "type": "number", "default": 900, "minimum": 200, "maximum": 2000, "description": "Pause after typing before checking." },
+        "ikmal.minLength": { "type": "number", "default": 12, "minimum": 1, "maximum": 1000, "description": "Minimum non-whitespace text length to check." },
+        "ikmal.maxLength": { "type": "number", "default": 20000, "minimum": 1000, "maximum": 100000, "description": "Maximum document length sent to the local checker." }
+      }
+    }
+  }
+}
