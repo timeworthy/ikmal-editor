@@ -77,7 +77,11 @@ func runQualityProxy() {
 	if port == "" {
 		port = defaultQualityProxyPort
 	}
-	addr := "127.0.0.1:" + port
+	host := strings.TrimSpace(os.Getenv("IKMAL_BIND_HOST"))
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	addr := host + ":" + port
 	fmt.Printf("ikmal LanguageTool quality proxy listening on http://%s\n", addr)
 	if err := http.ListenAndServe(addr, qualityCORS(mux)); err != nil {
 		fmt.Printf("Quality proxy stopped: %v\n", err)
@@ -448,16 +452,17 @@ func qualitySuggestionLanguageToolMatch(text string, suggestion qualitySuggestio
 	}
 	ruleID := "IKMAL_" + strings.ToUpper(strings.ReplaceAll(suggestion.Category, "-", "_"))
 	match := map[string]any{
-		"message":      suggestion.Message,
-		"shortMessage": "Writing quality",
-		"replacements": replacements,
-		"offset":       suggestion.Start,
-		"length":       suggestion.End - suggestion.Start,
-		"context":      map[string]any{"text": text, "offset": 0, "length": qualityUTF16Offset(text, len(text))},
-		"sentence":     text,
-		"type":         map[string]any{"typeName": "Other"},
-		"rule":         map[string]any{"id": ruleID, "subId": "1", "description": suggestion.Category, "issueType": "style", "category": map[string]any{"id": "STYLE", "name": "Writing quality"}},
-		"ikmalSource":  suggestion.Source,
+		"message":         suggestion.Message,
+		"shortMessage":    "Writing quality",
+		"replacements":    replacements,
+		"offset":          suggestion.Start,
+		"length":          suggestion.End - suggestion.Start,
+		"context":         map[string]any{"text": text, "offset": 0, "length": qualityUTF16Offset(text, len(text))},
+		"sentence":        text,
+		"type":            map[string]any{"typeName": "Other"},
+		"rule":            map[string]any{"id": ruleID, "subId": "1", "description": suggestion.Category, "issueType": "style", "category": map[string]any{"id": "STYLE", "name": "Writing quality"}},
+		"ikmalSource":     suggestion.Source,
+		"ikmalConfidence": suggestion.Confidence,
 	}
 	if len(suggestion.RelatedOccurrences) > 0 {
 		match["ikmalRelatedOccurrences"] = suggestion.RelatedOccurrences
@@ -654,8 +659,12 @@ func qualityEndpointReady() bool {
 }
 
 func startManagedQualityServer() *exec.Cmd {
+	return startManagedQualityServerWithTransformer(qualityTransformerRequested())
+}
+
+func startManagedQualityServerWithTransformer(withTransformer bool) *exec.Cmd {
 	args := []string{"--quality-server"}
-	if qualityTransformerRequested() {
+	if withTransformer {
 		args = append(args, "--quality-transformer")
 	}
 	command := exec.Command(os.Args[0], args...)

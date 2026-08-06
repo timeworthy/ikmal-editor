@@ -29,8 +29,18 @@ func runIntegrated() {
 		}
 	}
 
-	proxyProcess := startIntegratedProxy()
-	if proxyProcess == nil && !httpReady("http://127.0.0.1:8096/health") {
+	var proxyProcess *exec.Cmd
+	var qualityProcess *exec.Cmd
+	if httpReady("http://127.0.0.1:8096/health") {
+		fmt.Println("Using the existing ikmal quality proxy on port 8096.")
+		if !qualityEndpointReady() {
+			fmt.Println("Existing quality proxy is ready, but the quality engine is unavailable. Starting the managed quality engine.")
+			qualityProcess = startManagedQualityServerWithTransformer(true)
+		}
+	} else {
+		proxyProcess = startIntegratedProxy()
+	}
+	if proxyProcess == nil && qualityProcess == nil && !httpReady("http://127.0.0.1:8096/health") {
 		return
 	}
 
@@ -39,11 +49,10 @@ func runIntegrated() {
 	fmt.Println("Integrated ikmal services are running:")
 	fmt.Println("  LanguageTool: http://127.0.0.1:8097")
 	fmt.Println("  Browser proxy: http://127.0.0.1:8096/v2")
-	if proxyProcess == nil {
+	if proxyProcess == nil && qualityProcess == nil {
 		return
 	}
-	defer stopManagedQualityTransformer(proxyProcess)
-	_ = proxyProcess.Wait()
+	monitorIntegratedServices(&proxyProcess, &qualityProcess)
 }
 
 func languageToolReady() bool {
@@ -69,6 +78,40 @@ func startIntegratedProxy() *exec.Cmd {
 		return nil
 	}
 	return command
+}
+
+func monitorIntegratedServices(proxyProcess **exec.Cmd, qualityProcess **exec.Cmd) {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		if *proxyProcess != nil {
+			proxyExited := (*proxyProcess).ProcessState != nil
+			if proxyExited || !httpReady("http://127.0.0.1:8096/health") || !qualityEndpointReady() {
+				if proxyExited {
+					fmt.Println("Managed quality proxy stopped; restarting it.")
+				} else {
+					fmt.Println("Managed quality services are unhealthy; restarting the managed proxy and quality engine.")
+				}
+				stopManagedQualityTransformer(*proxyProcess)
+				*proxyProcess = startIntegratedProxy()
+			}
+		}
+		if *qualityProcess != nil {
+			qualityExited := (*qualityProcess).ProcessState != nil
+			if qualityExited || !qualityEndpointReady() {
+				if qualityExited {
+					fmt.Println("Managed quality engine stopped; restarting it.")
+				} else {
+					fmt.Println("Managed quality engine is unhealthy; restarting it.")
+				}
+				stopManagedQualityTransformer(*qualityProcess)
+				*qualityProcess = startManagedQualityServerWithTransformer(true)
+			}
+		}
+		if *proxyProcess == nil && *qualityProcess == nil {
+			return
+		}
+	}
 }
 
 func waitForHTTP(endpoint string, timeout time.Duration) bool {
