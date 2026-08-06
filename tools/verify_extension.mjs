@@ -88,6 +88,28 @@ if (found.length) {
   );
 }
 
+// The underline overlay must never take pointer events. The marks now span the
+// whole word so it can be hovered and clicked anywhere, and a box that size
+// taking clicks would sit between the user and the page: clicking a flagged
+// word would stop placing the caret, and in a rich-text editor that makes the
+// field feel broken. content.js hit-tests the recorded geometry instead, so
+// this pairing is what keeps the host editor usable.
+const contentCSS = fs.readFileSync(path.join(extension, 'content.css'), 'utf8');
+const markBlock = contentCSS.match(/\.ikmal-mark\s*\{[^}]*\}/);
+if (!markBlock) throw new Error('content.css no longer defines .ikmal-mark.');
+if (!/pointer-events:\s*none/.test(markBlock[0])) {
+  throw new Error(
+    'content.css .ikmal-mark must set pointer-events: none. Underlines cover the ' +
+    'whole word, so taking pointer events would stop clicks reaching the page ' +
+    'and prevent the host editor placing its caret on a flagged word.',
+  );
+}
+
+const contentSource = stripComments(fs.readFileSync(path.join(extension, 'content.js'), 'utf8'));
+if (!/function markAt\s*\(/.test(contentSource)) {
+  throw new Error('content.js must hit-test marks itself; .ikmal-mark takes no pointer events.');
+}
+
 const referencedIcons = Object.values(manifest.icons || {});
 const missingIcons = referencedIcons.filter((icon) => !fs.existsSync(path.join(extension, icon)));
 if (missingIcons.length) throw new Error(`Manifest references missing icons: ${missingIcons.join(', ')}`);

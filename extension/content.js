@@ -24,6 +24,8 @@
   let card = null;
   let activeField = null;
   let settings = null;
+  let hoveredMark = null;
+  let pointerFrame = null;
 
   function ensureOverlay() {
     if (overlay?.isConnected) return overlay;
@@ -192,9 +194,13 @@
   function renderMarks(field) {
     const layer = ensureOverlay();
     if (activeField !== field) return;
+    // The hovered mark is about to be removed from the DOM, so drop the
+    // reference before it becomes a handle on a detached node.
+    setHoveredMark(null);
     layer.textContent = '';
 
     const record = state.get(field);
+    if (record) record.marks = [];
     if (!record?.matches?.length) return;
 
     const fieldBox = field.getBoundingClientRect();
@@ -210,22 +216,60 @@
         if (rect.top < fieldBox.top - 2 || rect.top + rect.height > fieldBox.bottom + 2) return;
         const mark = document.createElement('span');
         mark.className = `ikmal-mark ${severityOf(match)}`;
-        mark.style.top = `${rect.top + window.scrollY + rect.height - 2}px`;
+        // The mark spans the whole word rather than a 2px strip on the
+        // baseline, so hovering or clicking anywhere on the word finds it. The
+        // underline is drawn as this box's bottom border, which lands in the
+        // same place the old strip did.
+        //
+        // It stays pointer-events: none: a box that swallowed clicks over the
+        // word would stop the host editor placing its caret there, which is
+        // why the strip was 2px to begin with. Hover and activation are
+        // resolved by hit-testing the stored geometry in the listeners below,
+        // so the click still reaches the page.
+        mark.style.top = `${rect.top + window.scrollY}px`;
         mark.style.left = `${rect.left + window.scrollX}px`;
         mark.style.width = `${rect.width}px`;
+        mark.style.height = `${rect.height}px`;
         mark.dataset.index = String(index);
-        mark.addEventListener('mousedown', (event) => {
-          event.preventDefault();
-          openCard(field, index, rect);
-        });
         layer.appendChild(mark);
+        record.marks.push({
+          index,
+          element: mark,
+          left: rect.left + window.scrollX,
+          top: rect.top + window.scrollY,
+          width: rect.width,
+          height: rect.height,
+        });
       });
     });
   }
 
+  // --- pointer hit testing -----------------------------------------------
+
+  // Marks cannot be hit-tested by the browser because they do not take pointer
+  // events, so the geometry recorded during render is searched directly. Page
+  // coordinates are used throughout: renderMarks re-runs on scroll and resize,
+  // so the stored boxes track the text.
+  function markAt(field, pageX, pageY) {
+    const record = state.get(field);
+    if (!record?.marks?.length) return null;
+    return record.marks.find((mark) => pageX >= mark.left
+      && pageX <= mark.left + mark.width
+      && pageY >= mark.top
+      && pageY <= mark.top + mark.height) || null;
+  }
+
+  function setHoveredMark(mark) {
+    if (hoveredMark === mark) return;
+    hoveredMark?.element?.classList.remove('is-hover');
+    hoveredMark = mark;
+    hoveredMark?.element?.classList.add('is-hover');
+  }
+
   // --- suggestion card ---------------------------------------------------
 
-  function openCard(field, index, rect) {
+  // box is in page coordinates, matching what renderMarks recorded.
+  function openCard(field, index, box) {
     const record = state.get(field);
     const match = record?.matches?.[index];
     if (!match) return;
@@ -240,8 +284,8 @@
       closeCard();
     }));
 
-    element.style.top = `${rect.top + window.scrollY + rect.height + 8}px`;
-    element.style.left = `${Math.max(8, rect.left + window.scrollX)}px`;
+    element.style.top = `${box.top + box.height + 8}px`;
+    element.style.left = `${Math.max(8, box.left)}px`;
     element.classList.add('is-open');
   }
 
@@ -302,7 +346,7 @@
 
   function attach(field) {
     if (state.has(field)) return;
-    state.set(field, { matches: [], timer: null, mirror: null, checkedText: '' });
+    state.set(field, { matches: [], marks: [], timer: null, mirror: null, checkedText: '' });
 
     field.addEventListener('input', () => { closeCard(); scheduleCheck(field); });
     field.addEventListener('focus', () => { activeField = field; scheduleCheck(field); });
@@ -311,6 +355,7 @@
         activeField = null;
         ensureOverlay().textContent = '';
       }
+      setHoveredMark(null);
       closeCard();
     });
     field.addEventListener('scroll', () => { closeCard(); renderMarks(field); });
@@ -332,8 +377,29 @@
   });
   window.addEventListener('scroll', reposition, { passive: true });
   window.addEventListener('resize', reposition);
-  document.addEventListener('mousedown', (event) => {
-    if (!card?.contains(event.target) && !event.target.classList?.contains('ikmal-mark')) closeCard();
+  // Hover is applied from script because a pointer-events: none element never
+  // matches :hover. One rAF per burst of movement keeps this off the hot path.
+  document.addEventListener('mousemove', (event) => {
+    if (!activeField) {
+      setHoveredMark(null);
+      return;
+    }
+    if (pointerFrame) return;
+    const { pageX, pageY } = event;
+    pointerFrame = requestAnimationFrame(() => {
+      pointerFrame = null;
+      setHoveredMark(activeField ? markAt(activeField, pageX, pageY) : null);
+    });
+  }, { passive: true });
+
+  // click, not mousedown, and without preventDefault: the host editor must
+  // still get the event so clicking a flagged word places the caret there the
+  // way clicking any other word does.
+  document.addEventListener('click', (event) => {
+    if (card?.contains(event.target)) return;
+    const mark = activeField ? markAt(activeField, event.pageX, event.pageY) : null;
+    if (mark) openCard(activeField, mark.index, mark);
+    else closeCard();
   });
 
   chrome.runtime.onMessage.addListener((message) => {

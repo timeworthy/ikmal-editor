@@ -9,18 +9,26 @@
   pointer-events: none;
 }
 
+/* The mark covers the whole word and draws the underline as its bottom border,
+   so the hover and click target is the word rather than a 2px strip. It must
+   not take pointer events: the host page still needs the click in order to
+   place its caret. content.js hit-tests the geometry and sets .is-hover. */
 .ikmal-mark {
   position: absolute;
-  height: 2px;
+  box-sizing: border-box;
+  border-bottom: 2px solid transparent;
   border-radius: 1px;
-  pointer-events: auto;
-  cursor: pointer;
+  pointer-events: none;
 }
 
-.ikmal-mark.is-spelling { background: #d67560; }
-.ikmal-mark.is-grammar  { background: #7b6cd9; }
-.ikmal-mark.is-style    { background: #e0a458; }
-.ikmal-mark:hover { height: 3px; }
+.ikmal-mark.is-spelling { border-bottom-color: #d67560; }
+.ikmal-mark.is-grammar  { border-bottom-color: #7b6cd9; }
+.ikmal-mark.is-style    { border-bottom-color: #e0a458; }
+
+.ikmal-mark.is-hover { border-bottom-width: 3px; }
+.ikmal-mark.is-spelling.is-hover { background: rgba(214, 117, 96, .16); }
+.ikmal-mark.is-grammar.is-hover  { background: rgba(123, 108, 217, .16); }
+.ikmal-mark.is-style.is-hover    { background: rgba(224, 164, 88, .16); }
 
 /* Off-screen replica used only to measure where characters land in a
    textarea. Never visible, never interactive. */
