@@ -1,0 +1,10 @@
+{
+  "name": "@ikmal/tools",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Packagers, verifiers, and test harnesses. Playwright lives here rather than in desktop/ so the release runner's `npm ci` never pulls a browser automation stack it has no use for, and so nothing that ships can depend on it.",
+  "devDependencies": {
+    "playwright": "^1.57.0"
+  }
+}

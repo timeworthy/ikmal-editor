@@ -57,7 +57,15 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: desktop/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            desktop/package-lock.json
+
+      # The verify and package steps below build the portable writing packages,
+      # which means they shell out to tsc. A runner has no global one, so the
+      # workspace install is what makes those steps work at all.
+      - name: Install workspace dependencies
+        run: npm ci
 
       - name: Install desktop dependencies
         working-directory: desktop

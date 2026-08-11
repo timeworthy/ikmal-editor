@@ -22,6 +22,28 @@ We welcome open-source contributions to `ikmal-editor`!
 
 ---
 
+## Setting Up the JavaScript Side
+
+The portable writing packages compile with TypeScript, and the packagers and
+verifiers shell out to `tsc`. It is a workspace dependency rather than
+something you are expected to have installed globally, so run this once from
+the repository root:
+
+```bash
+npm ci
+```
+
+That covers `npm run build`, `npm test`, and `npm run verify`, and it is needed
+before `desktop/`'s own `npm run verify` or `npm run package`, which build
+those packages too. The desktop app keeps a separate `npm ci` for Electron.
+
+For the browser extension harnesses, add the pinned Chromium and run them with
+`npm run smoke:browser`:
+
+```bash
+npx playwright install chromium
+```
+
 ## Building & Testing Cross-Platform Binaries
 
 ```bash
