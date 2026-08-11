@@ -105,22 +105,19 @@ async function run() {
     await waitFor('the correction to reach the document', async () => document.getText().includes('the draft'));
     assert.ok(!document.getText().includes('teh draft'), `the quick fix did not correct the text: ${document.getText()}`);
 
-    // Pause has to stop the checking, not just clear what is on screen. The
-    // request count is the only thing that can tell those apart.
-    await settings.update('focusMode', undefined, vscode.ConfigurationTarget.Global);
-    await vscode.commands.executeCommand('ikmal.resume');
-    const beforePause = CHECKED.length;
-    await vscode.commands.executeCommand('ikmal.pause');
-    // startMode opens a quick pick; dismissing it leaves the mode unchanged,
-    // which is the documented behaviour and not what this asserts. Resume is
-    // the reachable half, so the assertion is that checking still works after
-    // it — a paused extension that never resumes would be worse than one that
-    // never pauses.
-    await vscode.commands.executeCommand('workbench.action.closeQuickOpen');
+    // ikmal.pause is deliberately not invoked here. It opens a quick pick to
+    // choose a duration, and executeCommand awaits the handler, which awaits
+    // the pick — with nothing to answer it, the command never returns. On a
+    // desktop the pick dismisses itself when focus moves and the call happens
+    // to resolve; under a virtual display it does not, and the harness hangs
+    // until the runner is killed. A test that depends on which of those a
+    // machine does is worse than one that leaves the mode alone.
+    // Pause suppression is covered at the unit level by tools/focus_mode.test.mjs.
+    const beforeResume = CHECKED.length;
     await vscode.commands.executeCommand('ikmal.resume');
     const editor = vscode.window.activeTextEditor;
     await editor.edit((builder) => builder.insert(new vscode.Position(0, 0), 'Also teh other one. '));
-    await waitFor('a check after resuming', () => CHECKED.length > beforePause);
+    await waitFor('a check after an edit', () => CHECKED.length > beforeResume);
 
     console.log(`VS Code smoke: ${CHECKED.length} checks, diagnostic and quick fix verified.`);
   } finally {

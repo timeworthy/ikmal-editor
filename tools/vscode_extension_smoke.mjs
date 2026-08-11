@@ -41,14 +41,25 @@ fs.writeFileSync(
   `${JSON.stringify({ name: 'ikmal-writing-core', type: 'module', main: 'index.js', private: true }, null, 2)}\n`,
 );
 
-const exitCode = await runTests({
-  version: process.env.IKMAL_VSCODE_VERSION || 'stable',
-  extensionDevelopmentPath,
-  extensionTestsPath: path.join(root, 'tools', 'vscode_smoke_runner.cjs'),
-  // A clean profile with no other extension loaded, so a diagnostic that
-  // appears came from this one.
-  launchArgs: ['--disable-extensions', '--disable-gpu', '--no-sandbox'],
-});
+// A hang is the failure mode this harness is most exposed to: anything that
+// waits on the editor for input never returns, and a runner that never returns
+// occupies a CI job until the six-hour limit rather than reporting anything.
+// The budget is generous enough for a cold VS Code download.
+const TIMEOUT_MS = Number(process.env.IKMAL_VSCODE_TIMEOUT_MS || 10 * 60 * 1000);
+let timer;
+const exitCode = await Promise.race([
+  runTests({
+    version: process.env.IKMAL_VSCODE_VERSION || 'stable',
+    extensionDevelopmentPath,
+    extensionTestsPath: path.join(root, 'tools', 'vscode_smoke_runner.cjs'),
+    // A clean profile with no other extension loaded, so a diagnostic that
+    // appears came from this one.
+    launchArgs: ['--disable-extensions', '--disable-gpu', '--no-sandbox'],
+  }),
+  new Promise((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(`VS Code smoke did not finish within ${TIMEOUT_MS}ms. Something is waiting on the editor.`)), TIMEOUT_MS);
+  }),
+]).finally(() => clearTimeout(timer));
 
 if (exitCode !== 0) throw new Error(`VS Code smoke failed with exit code ${exitCode}.`);
 console.log('VS Code extension smoke passed.');

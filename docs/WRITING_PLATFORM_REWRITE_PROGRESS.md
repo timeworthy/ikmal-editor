@@ -1139,11 +1139,16 @@ Evidence:
   it. It now matches on the `ikmal.applyIssue` command.
 
 Unknowns / risks:
-- Pause opens a quick pick, which the harness cannot drive, so what is asserted
-  is that checking resumes rather than that a pause suppresses it. The
-  suppression itself is covered by `tools/focus_mode.test.mjs` at the unit
-  level, not end to end.
-- The `vscode` CI job has not run on a Linux runner yet.
+- Pause is not invoked at all. It opens a quick pick to choose a duration and
+  `executeCommand` awaits the handler, which awaits the pick; with nothing to
+  answer it the command never returns. On a desktop the pick dismisses itself
+  when focus moves and the call happens to resolve, which is why the first
+  version passed locally and then hung the CI job for twenty minutes until it
+  was cancelled. The harness now leaves the mode alone, and the launcher fails
+  after ten minutes rather than occupying a runner until the six-hour limit.
+  Pause suppression stays covered at the unit level by
+  `tools/focus_mode.test.mjs`.
+- The `vscode` CI job has not completed on a Linux runner yet.
 
 Next action:
 - `.github/workflows/desktop-release.yml` is the last unexercised path; a
