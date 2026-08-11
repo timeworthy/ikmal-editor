@@ -174,10 +174,41 @@ try {
   if (visualState.background === 'rgba(0, 0, 0, 0)' || visualState.padding === '0px' || visualState.role !== 'dialog' || visualState.theme !== 'light') {
     throw new Error(`Injected popover visual/security state failed: ${JSON.stringify(visualState)}`);
   }
-  await page.screenshot({ path: path.join(packageDir, 'browser-rewrite-light.png') });
+  // Evidence, not an assertion — the visual state was checked above. A headed
+  // browser on a virtual display cannot always capture, and losing the picture
+  // is not a reason to fail a run that proved the thing the picture shows.
+  await page.screenshot({ path: path.join(packageDir, 'browser-rewrite-light.png') })
+    .catch((error) => console.warn(`Screenshot evidence skipped: ${error.message.split('\n')[0]}`));
   let finalText = await field.inputValue();
-  if (actions.some(({ action }) => action === 'apply')) {
-    await popover.evaluate((host) => host.shadowRoot.querySelector('[data-action=apply]').click());
+  // Apply gets its own clean run rather than reusing the popover above. That
+  // one has been deliberately abused — Escape, Tab cycling, a disclosure left
+  // open — and each of those re-checks the field, so a correction applied
+  // against it races the answer that arrives next. A controller that refuses to
+  // apply a correction derived from a superseded check is behaving correctly;
+  // asserting Apply on top of that measures the race, not the feature.
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('#ikmal-rewrite-popover'), null, { timeout: 3000 });
+  await field.focus();
+  // Cleared and retyped so the finding being applied comes from a check of the
+  // text as it stands. Refilling the same value advances the field without
+  // producing a new result, and a controller is right to refuse a correction
+  // derived from a check that no longer describes the document.
+  await field.fill('');
+  await page.waitForFunction(() => document.querySelector('#ikmal-rewrite-indicator')?.shadowRoot?.querySelector('.indicator')?.dataset.status !== 'issues', null, { timeout: 7000 });
+  await field.fill('teh');
+  await page.waitForFunction(() => document.querySelector('#ikmal-rewrite-indicator')?.shadowRoot?.querySelector('.indicator')?.dataset.status === 'issues', null, { timeout: 7000 });
+  await indicator.evaluate((host) => host.shadowRoot.querySelector('.indicator').click());
+  await popover.waitFor({ state: 'attached', timeout: 3000 });
+  // A review-first finding keeps its apply behind the disclosure, so the
+  // control is present but not visible. Asking the DOM rather than the visible
+  // control list is what keeps this branch alive.
+  const applyAction = await popover.evaluate((host) => Boolean(host.shadowRoot.querySelector('[data-action=apply]')));
+  if (applyAction) {
+    await popover.evaluate((host) => {
+      const details = host.shadowRoot.querySelector('details.writing-issue-alternatives');
+      if (details) details.open = true;
+      host.shadowRoot.querySelector('[data-action=apply]').click();
+    });
     await page.waitForFunction(() => document.querySelector('#editor').value === 'the' && document.querySelector('#ikmal-rewrite-indicator')?.shadowRoot?.querySelector('.indicator')?.dataset.status === 'clean', null, { timeout: 7000 }).catch(async (error) => {
       const state = await page.evaluate(() => document.querySelector('#editor')?.value + ' / ' + document.querySelector('#ikmal-rewrite-indicator')?.shadowRoot?.querySelector('.indicator')?.dataset.status);
       throw new Error(`${error.message}; checkerRequests=${checkerRequests}; state=${state}`);
