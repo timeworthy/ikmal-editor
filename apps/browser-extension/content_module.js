@@ -79,7 +79,15 @@ function openPopover() {
     const action = control?.dataset?.action;
     const value = control?.dataset?.value || issue.replacements?.[0]?.value || '';
     if (action === 'apply' && value) {
-      state.controller.applyIssue(issue.id, value);
+      // A correction derived from a check the field has since moved past is
+      // refused, which is right. Closing the card anyway is not: the writer
+      // clicked Apply, the card went away, and the text did not change, which
+      // is indistinguishable from a broken button. Re-check and put the card
+      // back on the current finding so the next click is the one that works.
+      if (!state.controller.applyIssue(issue.id, value)?.applied) {
+        void runCheck().then(openPopover);
+        return;
+      }
       closePopover();
       void runCheck();
     }

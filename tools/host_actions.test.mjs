@@ -93,3 +93,20 @@ test('the browser extension checks around the caret and keeps the rest of the fi
   assert.match(content, /ikmalFullCheckPending/);
   assert.match(content, /runCheck\(field, 'document'\)/);
 });
+
+// A correction the controller refuses is a different outcome from one it
+// applies, and a host that treats them the same reads as a broken button: the
+// card closes, the text does not change, and nothing says why. The controllers
+// already report it; these check that the hosts read the answer.
+test('a refused correction is not presented as an applied one', () => {
+  const cases = [
+    ['apps/browser-extension/content_module.js', /if \(!state\.controller\.applyIssue\(issue\.id, value\)\?\.applied\)/],
+    ['apps/desktop-editor/renderer.js', /if \(!controller\.applyIssue\(issue\.id, value\)\?\.applied\)/],
+  ];
+  for (const [file, guard] of cases) {
+    assert.match(read(file), guard, `${file} discards whether the correction was applied`);
+  }
+
+  // The refusal is only meaningful if the controller actually reports it.
+  assert.match(read('packages/writing-adapters/src/browser_slice.ts'), /return \{ applied: false \}/);
+});

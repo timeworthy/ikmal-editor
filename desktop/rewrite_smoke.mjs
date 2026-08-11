@@ -163,7 +163,16 @@ try {
   editor = await connect(await waitForTarget((entry) => entry.url.includes('/apps/desktop-editor/index.html') || (packagedSmoke && entry.url.includes('/Resources/desktop-editor/index.html')), 'fresh editor target'));
   await waitForState(editor, "Boolean(document.querySelector('#editor-input') && document.querySelector('#indicator-anchor')?.shadowRoot)", Boolean, 'Fresh renderer did not mount');
   const preloadSurface = await editor.evaluate("Object.keys(window.ikmal || {}).sort()");
-  if (preloadSurface.join('|') !== 'checkText|onEditorText') throw new Error(`Fresh renderer received an unexpected preload surface: ${JSON.stringify(preloadSurface)}`);
+  // The fresh renderer must receive its own narrow preload rather than the
+  // legacy app's. What matters is that nothing outside this set reaches it; an
+  // exact match instead failed the moment the slice gained the dictionary
+  // capability its popover legitimately offers, which is how it came to be
+  // wrong rather than protective.
+  const allowedPreload = ['addDictionaryWord', 'checkText', 'onEditorText'];
+  const unexpectedPreload = preloadSurface.filter((key) => !allowedPreload.includes(key));
+  if (unexpectedPreload.length || !preloadSurface.includes('checkText')) {
+    throw new Error(`Fresh renderer received an unexpected preload surface: ${JSON.stringify(preloadSurface)}`);
+  }
 
   const initial = await waitForState(editor, `({
     text: document.querySelector('#editor-input').value,

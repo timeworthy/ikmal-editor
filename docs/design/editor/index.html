@@ -201,7 +201,7 @@
       <div class="layer"><span class="lnum">05 · Quality checks</span><div><h4>Repetition and antecedent analysis</h4><p>A local companion service looks across whole paragraphs for repetition, word-family echo, and pronouns with no clear referent — the sentence-level things a per-sentence checker cannot see.</p></div><div class="tags"><span class="tag">deterministic</span><span class="tag">local</span></div></div>
       <div class="layer opt"><span class="lnum">06 · Optional</span><div><h4>A local transformer model, if you want one</h4><p>A quantized grammar-correction model can run on your machine for harder rewrites. It is opt-in, downloaded only when you ask for it, and it still never sends text anywhere. Skip it and everything else works.</p></div><div class="tags"><span class="tag">opt-in</span><span class="tag">~650 MB</span></div></div>
     </div>
-    <p class="stack-note">All of it answers on one address on your own machine, which is what makes the add-ons work. If you want the ports, flags, and daemon details, they live in the <a href="https://github.com/timeworthymedia/ikmal-editor">README on GitHub</a>.</p>
+    <p class="stack-note">All of it answers on one address on your own machine, which is what makes the add-ons work. If you want the ports, flags, and daemon details, they live in the <a href="https://github.com/timeworthy/ikmal-editor">README on GitHub</a>.</p>
   </div>
 </section>
 
@@ -234,18 +234,18 @@
       <p>First launch sets itself up: it finds the Java runtime or Docker you have, downloads the language model, installs a small background service, and points your add-ons at it. About 350 MB on disk, and then nothing to think about.</p>
     </div>
     <div class="plats reveal">
-      <div class="plat"><div class="plat-top"><h3>macOS</h3><em>Apple silicon · Intel</em></div><p>Menu-bar app with a background service that starts at login.</p><a class="btn btn-primary" href="https://github.com/timeworthymedia/ikmal-editor/releases">Download</a></div>
-      <div class="plat"><div class="plat-top"><h3>Windows</h3><em>10 · 11</em></div><p>Native 64-bit app. No WSL, no Docker Desktop, no firewall prompts.</p><a class="btn btn-primary" href="https://github.com/timeworthymedia/ikmal-editor/releases">Download</a></div>
-      <div class="plat"><div class="plat-top"><h3>Linux</h3><em>x86 · ARM · Pi</em></div><p>Single binary with a systemd unit. Raspberry Pi 3, 4, and 5 included.</p><a class="btn btn-primary" href="https://github.com/timeworthymedia/ikmal-editor/releases">Download</a></div>
+      <div class="plat"><div class="plat-top"><h3>macOS</h3><em>Apple silicon · Intel</em></div><p>Menu-bar app with a background service that starts at login.</p><a class="btn btn-primary" href="https://github.com/timeworthy/ikmal-editor/releases">Download</a></div>
+      <div class="plat"><div class="plat-top"><h3>Windows</h3><em>10 · 11</em></div><p>Native 64-bit app. No WSL, no Docker Desktop, no firewall prompts.</p><a class="btn btn-primary" href="https://github.com/timeworthy/ikmal-editor/releases">Download</a></div>
+      <div class="plat"><div class="plat-top"><h3>Linux</h3><em>x86 · ARM · Pi</em></div><p>Single binary with a systemd unit. Raspberry Pi 3, 4, and 5 included.</p><a class="btn btn-primary" href="https://github.com/timeworthy/ikmal-editor/releases">Download</a></div>
     </div>
     <details class="adv">
       <summary><span>Package managers, Docker, and self-hosting</span></summary>
       <div class="advbody">
-        <div class="advcard"><h4>Homebrew</h4><pre><code><i>$ </i>brew tap timeworthymedia/tap
-<i>$ </i>brew install timeworthymedia/tap/ikmal-editor
+        <div class="advcard"><h4>Homebrew</h4><pre><code><i>$ </i>brew tap timeworthy/tap
+<i>$ </i>brew install timeworthy/tap/ikmal-editor
 <i>$ </i>ikmal-editor -configure-apps</code></pre></div>
         <div class="advcard"><h4>Scoop</h4><pre><code><i>$ </i>scoop install ikmal-editor</code></pre><p>Windows bucket in the repo.</p></div>
-        <div class="advcard"><h4>Docker</h4><pre><code><i>$ </i>docker pull ghcr.io/timeworthymedia/ikmal-editor</code></pre><p>Images update through normal pulls.</p></div>
+        <div class="advcard"><h4>Docker</h4><pre><code><i>$ </i>docker pull ghcr.io/timeworthy/ikmal-editor</code></pre><p>Images update through normal pulls.</p></div>
         <div class="advcard"><h4>Unraid</h4><pre><code><i>  </i>Community Applications →
 <i>  </i>Add template URL:
 <i>  </i><b>…/unraid/my-ikmal-editor.xml</b></code></pre></div>
@@ -281,7 +281,7 @@
     <h2>Write like someone is editing.<br/>Without anyone reading.</h2>
     <p>Free, open source, and running on your own machine in a few minutes.</p>
     <div class="cta-row">
-      <a class="btn btn-primary btn-lg" href="https://github.com/timeworthymedia/ikmal-editor/releases">Download for macOS</a>
+      <a class="btn btn-primary btn-lg" href="https://github.com/timeworthy/ikmal-editor/releases">Download for macOS</a>
       <a class="btn btn-ghost btn-lg" href="#get">Windows &amp; Linux</a>
     </div>
     <p class="cta-sub">MIT licensed · no account · nothing leaves 127.0.0.1</p>
@@ -299,8 +299,8 @@
       </div>
       <div class="footer-links">
         <div><b>Product</b><a href="#what">What it does</a><a href="#inside">What's inside</a><a href="#privacy">Privacy</a><a href="#get">Download</a></div>
-        <div><b>Project</b><a href="https://github.com/timeworthymedia/ikmal-editor">GitHub</a><a href="https://github.com/timeworthymedia/ikmal-editor/releases">Releases</a><a href="https://github.com/timeworthymedia/ikmal-editor/blob/main/FAQ.md">Developer FAQ</a><a href="https://dev.languagetool.org/">LanguageTool docs</a></div>
-        <div><b>License</b><a href="https://github.com/timeworthymedia/ikmal-editor/blob/main/LICENSE">MIT</a><a href="https://github.com/timeworthymedia/ikmal-editor/blob/main/CONTRIBUTING.md">Contributing</a></div>
+        <div><b>Project</b><a href="https://github.com/timeworthy/ikmal-editor">GitHub</a><a href="https://github.com/timeworthy/ikmal-editor/releases">Releases</a><a href="https://github.com/timeworthy/ikmal-editor/blob/main/FAQ.md">Developer FAQ</a><a href="https://dev.languagetool.org/">LanguageTool docs</a></div>
+        <div><b>License</b><a href="https://github.com/timeworthy/ikmal-editor/blob/main/LICENSE">MIT</a><a href="https://github.com/timeworthy/ikmal-editor/blob/main/CONTRIBUTING.md">Contributing</a></div>
       </div>
     </div>
     <p class="disclaimer">Ikmal Editor is an independent third-party tool. It is not affiliated with, endorsed by, or sponsored by LanguageTooler GmbH. LanguageTool is a registered trademark of LanguageTooler GmbH. Language identification uses Meta's FastText <code class="mono">lid.176.bin</code> model. Plain-English rules adapted from PlainLanguage.gov and Vale.</p>

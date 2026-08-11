@@ -985,14 +985,15 @@ Evidence:
 
 Unknowns / risks:
 - `applyIssue` returning `{ applied: false }` is discarded by the popover click
-  handler in `apps/browser-extension/content_module.js`: it calls
-  `closePopover()` either way. A correction refused for being derived from a
-  superseded check therefore looks exactly like one that worked — the card
-  closes and the text does not change. Refusing the stale correction is right;
-  saying nothing about it is the same silent-no-op failure that
-  `tools/host_actions.test.mjs` exists to prevent. Not fixed here.
-- `desktop/main.cjs`, `tools/package_debian.mjs`, and `vscode-extension/LICENSE`
-  still say `timeworthymedia`; the org rename looks incomplete.
+  handlers, which close the card either way. A correction refused for being
+  derived from a superseded check therefore looks exactly like one that worked —
+  the card closes and the text does not change. Refusing the stale correction is
+  right; saying nothing about it is the same silent-no-op failure that
+  `tools/host_actions.test.mjs` exists to prevent. Corrected below: this is in
+  both slices, not only the browser one, and it is now fixed.
+- ~~`desktop/main.cjs`, `tools/package_debian.mjs`, and
+  `vscode-extension/LICENSE` still say `timeworthymedia`; the org rename looks
+  incomplete.~~ Wrong, see the correction below.
 
 Next action:
 - Port chunking and retention to `apps/browser-extension`, with a harness
@@ -1000,3 +1001,48 @@ Next action:
   no equivalent of the legacy `caretOf`, which handles `selectionEnd` for inputs
   and a Range measurement for contenteditable.
 - Decide whether the popover should surface a refused apply.
+
+### 2026-08-11 — Agent / refused corrections, and two corrections of my own
+
+Gate: `3` vertical slice / `8` final review
+Status: `complete`
+
+Corrections to the entry above:
+- The claim that the org rename is incomplete was wrong. `com.timeworthymedia.*`
+  are macOS bundle identifiers, `ian@timeworthymedia.com` is the maintainer
+  address, and the LICENSE lines name the company. All are correct, and changing
+  the bundle identifiers would break code signing and existing installs. The
+  only genuinely stale references were GitHub, ghcr, and Homebrew-tap URLs in
+  `docs/design/editor/*.html`, now pointed at `timeworthy` to match the README,
+  the container workflow, and the remote.
+- The silent refused-apply is in both rewrite slices, not only the browser one.
+  `apps/desktop-editor/renderer.js` discarded the same answer.
+
+Changed:
+- Both slices now read whether the correction was applied. A refusal re-checks
+  and leaves the card on the current finding instead of closing on a correction
+  that did not happen, so the next click is the one that works. No new visual
+  primitive was introduced for this.
+- `tools/host_actions.test.mjs` gains a case tying both handlers to that answer,
+  and to the controller that reports it.
+- `desktop/rewrite_smoke.mjs` pinned the fresh preload surface to an exact
+  `checkText|onEditorText`, so it had been failing since the slice gained the
+  dictionary capability its own popover offers. It now asserts nothing outside
+  an allowed set reaches the renderer, which is the isolation the check was for.
+- Workflow actions moved off the Node 20 runtimes, and the Go job stops asking
+  for a `go.sum` cache in a module with no dependencies.
+
+Evidence:
+- `node --test tools/host_actions.test.mjs` — 6 pass. Removing either guard
+  fails it with `discards whether the correction was applied`; source restored
+  and byte-compared.
+- `node desktop/rewrite_smoke.mjs` — passes, reporting
+  `"applied":{"text":"The results are ready."}`, so Apply still works.
+- `npm run smoke:browser` — 3 passed.
+
+Unknowns / risks:
+- `.github/workflows/desktop-release.yml` still only runs on a published
+  release, so its action bumps and its workspace install step remain unexercised.
+
+Next action:
+- Port chunking and retention to `apps/browser-extension`.

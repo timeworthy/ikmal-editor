@@ -103,7 +103,14 @@ issuePopover.addEventListener('click', (event) => {
   const issue = controller.state().result?.matches?.[0];
   const value = control?.dataset.value || issue?.replacements?.[0]?.value || '';
   if (action === 'apply' && issue && value) {
-    controller.applyIssue(issue.id, value);
+    // Refusing a correction whose finding no longer describes the draft is
+    // right; hiding the popover as though it had been applied is not. The
+    // writer would see the card close with the text unchanged and no reason
+    // given. Re-check and leave the card up on the current finding instead.
+    if (!controller.applyIssue(issue.id, value)?.applied) {
+      void checkDraft();
+      return;
+    }
     issuePopover.hidden = true;
     void checkDraft();
   }

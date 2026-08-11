@@ -34,8 +34,8 @@
       <h1 style="margin-top:22px">LanguageTool on your machine.<br/><span class="accent">Without the setup.</span></h1>
       <p class="lead">ikmal editor is a standalone supervisor for LanguageTool. It detects your Java or Docker install, downloads Meta's language-identification model, embeds plain-English rule packs, and configures a persistent background service on macOS, Linux, and Windows — then stays out of the way.</p>
       <div class="cmd-row">
-        <div class="cmd"><code><i>$</i>brew install timeworthymedia/tap/ikmal-editor</code><button class="copy" id="copy-btn">Copy</button></div>
-        <a class="btn btn-ghost" href="https://github.com/timeworthymedia/ikmal-editor/releases">Download a binary</a>
+        <div class="cmd"><code><i>$</i>brew install timeworthy/tap/ikmal-editor</code><button class="copy" id="copy-btn">Copy</button></div>
+        <a class="btn btn-ghost" href="https://github.com/timeworthy/ikmal-editor/releases">Download a binary</a>
       </div>
       <p class="hero-note">Requires Java 17+ or Docker · ~350 MB on first run · loopback only</p>
     </div>
@@ -126,17 +126,17 @@
       <p>Updates stay with whatever manager you already use: <code class="mono">brew upgrade languagetool</code>, <code class="mono">docker pull</code>, or <code class="mono">apt upgrade</code> update the engine independently, and ikmal editor picks up the new binary without touching your daemon.</p>
     </div>
     <div class="cards">
-      <div class="card"><div class="ct"><h3>Homebrew</h3><em>macOS · Linux</em></div><pre><code><i>$ </i>brew tap timeworthymedia/tap
-<i>$ </i>brew install timeworthymedia/tap/ikmal-editor
+      <div class="card"><div class="ct"><h3>Homebrew</h3><em>macOS · Linux</em></div><pre><code><i>$ </i>brew tap timeworthy/tap
+<i>$ </i>brew install timeworthy/tap/ikmal-editor
 <i>$ </i>ikmal-editor -configure-apps</code></pre></div>
       <div class="card"><div class="ct"><h3>Scoop</h3><em>Windows 10 · 11</em></div><pre><code><i>$ </i>scoop bucket add ikmal <b>…</b>
 <i>$ </i>scoop install ikmal-editor</code></pre><p>Native 64-bit executable. No WSL, no Docker Desktop, no virtual machine.</p></div>
-      <div class="card"><div class="ct"><h3>Docker</h3><em>any host</em></div><pre><code><i>$ </i>docker pull ghcr.io/timeworthymedia/ikmal-editor</code></pre><p>Containerised LanguageTool images update independently through standard image pulls.</p></div>
+      <div class="card"><div class="ct"><h3>Docker</h3><em>any host</em></div><pre><code><i>$ </i>docker pull ghcr.io/timeworthy/ikmal-editor</code></pre><p>Containerised LanguageTool images update independently through standard image pulls.</p></div>
       <div class="card"><div class="ct"><h3>Raspberry Pi</h3><em>arm64 · armv7</em></div><pre><code><i>$ </i>./ikmal-editor-linux-arm64</code></pre><p>Pre-compiled binaries for Pi 3, 4, and 5 — 1-click execution, no cross-compilation.</p></div>
       <div class="card"><div class="ct"><h3>Unraid</h3><em>home server</em></div><pre><code><i>  </i>Community Applications →
 <i>  </i>Add template URL:
 <i>  </i><b>…/unraid/my-ikmal-editor.xml</b></code></pre></div>
-      <div class="card"><div class="ct"><h3>From source</h3><em>Go 1.22+</em></div><pre><code><i>$ </i>git clone github.com/timeworthymedia/ikmal-editor
+      <div class="card"><div class="ct"><h3>From source</h3><em>Go 1.22+</em></div><pre><code><i>$ </i>git clone github.com/timeworthy/ikmal-editor
 <i>$ </i>go build -o ikmal-editor .
 <i>$ </i>./ikmal-editor --integrated</code></pre><p>Built from the Go standard library only — no third-party module dependencies.</p></div>
     </div>
@@ -220,9 +220,9 @@
         <p style="font-size:13.5px;color:var(--fg-4);max-width:34ch;line-height:1.6">A launch manager for LanguageTool. Part of the ikmal family, alongside <a class="link" href="../index.html">ikmal tasks</a>.</p>
       </div>
       <div class="footer-links">
-        <div><b>Project</b><a href="https://github.com/timeworthymedia/ikmal-editor">GitHub</a><a href="https://github.com/timeworthymedia/ikmal-editor/releases">Releases</a><a href="#install">Install</a><a href="#faq">FAQ</a></div>
+        <div><b>Project</b><a href="https://github.com/timeworthy/ikmal-editor">GitHub</a><a href="https://github.com/timeworthy/ikmal-editor/releases">Releases</a><a href="#install">Install</a><a href="#faq">FAQ</a></div>
         <div><b>Docs</b><a href="https://dev.languagetool.org/">LanguageTool docs</a><a href="#rules">Rule packs</a><a href="#quality">Quality model</a><a href="#privacy">Privacy</a></div>
-        <div><b>License</b><a href="https://github.com/timeworthymedia/ikmal-editor/blob/main/LICENSE">MIT</a><a href="https://github.com/timeworthymedia/ikmal-editor/blob/main/CONTRIBUTING.md">Contributing</a></div>
+        <div><b>License</b><a href="https://github.com/timeworthy/ikmal-editor/blob/main/LICENSE">MIT</a><a href="https://github.com/timeworthy/ikmal-editor/blob/main/CONTRIBUTING.md">Contributing</a></div>
       </div>
     </div>
     <p class="disclaimer">Ikmal Editor is an independent third-party tool. It is not affiliated with, endorsed by, or sponsored by LanguageTooler GmbH. LanguageTool is a registered trademark of LanguageTooler GmbH. Language identification uses Meta's FastText <code class="mono">lid.176.bin</code> model.</p>
@@ -251,7 +251,7 @@ document.getElementById("hm-tray").outerHTML = A.tray();
 
 
 document.getElementById("copy-btn").addEventListener("click", (e) => {
-  navigator.clipboard && navigator.clipboard.writeText("brew install timeworthymedia/tap/ikmal-editor");
+  navigator.clipboard && navigator.clipboard.writeText("brew install timeworthy/tap/ikmal-editor");
   e.target.textContent = "Copied";
   setTimeout(() => { e.target.textContent = "Copy"; }, 1600);
 });
