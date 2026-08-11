@@ -1,0 +1,9 @@
+{
+  "name": "@ikmal/design-system",
+  "private": true,
+  "type": "module",
+  "description": "Portable Continental tokens and editor primitives for the ikmal rewrite.",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}

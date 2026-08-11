@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ikmal editor — LanguageTool on your machine, without the setup</title>
+<link rel="stylesheet" href="../styles/site.css" />
+<link rel="stylesheet" href="hero-mock.css" />
+<link rel="stylesheet" href="site-sections.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <a class="brand" href="#top"><span class="mark" id="nav-mark"></span><span>ikmal <em>editor</em></span></a>
+  <div class="navlinks">
+    <a href="#compare">Why</a>
+    <a href="#rules">Rules</a>
+    <a href="#quality">Quality model</a>
+    <a href="#install">Install</a>
+    <a href="#privacy">Privacy</a>
+    <a href="#faq">FAQ</a>
+  </div>
+  <div class="nav-right">
+    <button class="iconbtn" id="theme-toggle" aria-label="Toggle theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
+    <a class="btn btn-primary" href="#install">Install</a>
+  </div>
+</nav>
+
+<header id="top">
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="pill"><span class="dot"></span>Local-first · MIT · single Go binary</span>
+      <h1 style="margin-top:22px">LanguageTool on your machine.<br/><span class="accent">Without the setup.</span></h1>
+      <p class="lead">ikmal editor is a standalone supervisor for LanguageTool. It detects your Java or Docker install, downloads Meta's language-identification model, embeds plain-English rule packs, and configures a persistent background service on macOS, Linux, and Windows — then stays out of the way.</p>
+      <div class="cmd-row">
+        <div class="cmd"><code><i>$</i>brew install timeworthymedia/tap/ikmal-editor</code><button class="copy" id="copy-btn">Copy</button></div>
+        <a class="btn btn-ghost" href="https://github.com/timeworthymedia/ikmal-editor/releases">Download a binary</a>
+      </div>
+      <p class="hero-note">Requires Java 17+ or Docker · ~350 MB on first run · loopback only</p>
+    </div>
+    <div class="hero-stage">
+      <div class="hero-glow"></div>
+      <div class="mockwrap" id="hero-mock" aria-hidden="true">
+        <div class="win"><div class="win-bar"><i></i><i></i><i></i><span>Ikmal Editor</span></div><div id="hm-shell"></div></div>
+        <div id="hm-tray"></div>
+      </div>
+    </div>
+  </div>
+</section>
+</header>
+
+<main>
+
+<!-- compare -->
+<section class="section-pad" id="compare">
+  <div class="wrap">
+    <div class="sechead">
+      <span class="overline">Why it exists</span>
+      <h2>LanguageTool is powerful. Running it locally is a chore.</h2>
+      <p>A local server means managing Java runtimes, long command-line flags, CORS headers, FastText model paths, and a background daemon you have to keep alive yourself. ikmal editor does that part.</p>
+    </div>
+    <div class="cmp">
+      <div class="cmp-row cmp-head"><div>Feature</div><div>Standard manual setup</div><div>ikmal editor</div></div>
+      <div class="cmp-row"><div><strong>One-command launch</strong></div><div><p>Manual <code class="mono">java -jar</code> commands or Docker YAML</p></div><div class="yes"><p><strong>Single binary</strong> auto-detects Homebrew, Docker, or Java</p></div></div>
+      <div class="cmp-row"><div><strong>Plain English conciseness</strong></div><div><p>Stock grammar rules only</p></div><div class="yes"><p><strong>Embedded XML rule pack</strong> — 30+ rules from PlainLanguage.gov &amp; Vale</p></div></div>
+      <div class="cmp-row"><div><strong>FastText model download</strong></div><div><p>Manual 120 MB download from Meta FTP</p></div><div class="yes"><p><strong>Auto-downloads</strong> <code class="mono">lid.176.bin</code> to <code class="mono">~/.ikmal-editor/models/</code></p></div></div>
+      <div class="cmp-row"><div><strong>Persistent service</strong></div><div><p>Requires keeping a terminal window open</p></div><div class="yes"><p><strong>Auto-installs</strong> a background macOS LaunchAgent, systemd unit, or Windows daemon <em class="mono" style="font-style:normal;font-size:11px;color:var(--fg-4)">[BETA]</em></p></div></div>
+      <div class="cmp-row"><div><strong>CORS for web extensions</strong></div><div><p>Manual <code class="mono">--allow-origin</code> flags</p></div><div class="yes"><p>Pre-configured <code class="mono">--allow-origin *</code> on port <code class="mono">8097</code></p></div></div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- rules -->
+<section class="section-pad" id="rules">
+  <div class="wrap">
+    <div class="sechead">
+      <span class="overline">Rule packs</span>
+      <h2>Grammar is table stakes. This also cuts the padding.</h2>
+      <p>Alongside the stock LanguageTool rules, ikmal editor embeds an XML pack of more than thirty plain-English and conciseness rules drawn from PlainLanguage.gov and Vale — the sort of thing a copy editor flags and a spell checker never will.</p>
+    </div>
+    <div class="rules">
+      <div class="rule-ex">
+        <div><span class="rule-src">Conciseness</span><p class="before"><span>In order to</span> facilitate the utilisation of the local server…</p><p class="after">To use the local server…</p></div>
+        <div><span class="rule-src">Plain English</span><p class="before">The daemon will <span>make an attempt to</span> restart.</p><p class="after">The daemon will try to restart.</p></div>
+        <div><span class="rule-src">Style · Vale</span><p class="before">Configuration is handled <span>in a manner that is</span> automatic.</p><p class="after">Configuration is automatic.</p></div>
+      </div>
+      <div class="factlist">
+        <div class="fact"><b>30+</b><div><strong>Rules, embedded in the binary</strong><p>No config to copy in. The pack ships inside the executable and is written to <code class="mono">~/.ikmal-editor/rules/style_conciseness.xml</code>, where you can edit it.</p></div></div>
+        <div class="fact"><b>YOURS</b><div><strong>Your own rules sit alongside</strong><p>Add custom LanguageTool XML to the same file, or import a company style guide from PDF, HTML, Markdown, or a plain text list.</p></div></div>
+        <div class="fact"><b>NATIVE</b><div><strong>Delivered as normal matches</strong><p>Rules come back through the standard LanguageTool response, so every extension and plug-in you already use renders them without changes.</p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- quality model -->
+<section class="section-pad" id="quality">
+  <div class="wrap">
+    <div class="sechead">
+      <span class="overline">Optional · opt-in</span>
+      <h2>A local quality model, if you want one.</h2>
+      <p>The quality sidecar runs on port 8098 and adds deterministic paragraph-window repetition, word-family echo, and conservative pronoun–antecedent analysis. It does not send text anywhere. A separate Transformers.js / ONNX adapter can add local transformer suggestions through the same sidecar.</p>
+    </div>
+    <div class="cards">
+      <div class="card"><div class="ct"><h3>Start the sidecar</h3><em>port 8098</em></div><pre><code><i>$ </i>ikmal-editor <b>--quality-server</b></code></pre><p>Deterministic checks only. Nothing is downloaded.</p></div>
+      <div class="card"><div class="ct"><h3>Add the transformer</h3><em>opt-in · ~650 MB</em></div><pre><code><i>$ </i>ikmal-editor <b>--quality-setup</b></code></pre><p>Installs the adapter under <code class="mono">~/.ikmal-editor/quality/</code> and caches the quantized model. Downloaded only when you run this — never during normal startup.</p></div>
+      <div class="card"><div class="ct"><h3>One endpoint for extensions</h3><em>port 8096</em></div><pre><code><i>$ </i>ikmal-editor <b>--quality-proxy</b>
+<i>  </i>http://127.0.0.1:8096/v2</code></pre><p>The proxy forwards native LanguageTool matches from 8097, adds quality matches from 8098, removes duplicate edits, and resolves overlaps in favour of the native result.</p></div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- install -->
+<section class="section-pad" id="install">
+  <div class="wrap">
+    <div class="sechead">
+      <span class="overline">Install</span>
+      <h2>Six ways in. All of them one line.</h2>
+      <p>Updates stay with whatever manager you already use: <code class="mono">brew upgrade languagetool</code>, <code class="mono">docker pull</code>, or <code class="mono">apt upgrade</code> update the engine independently, and ikmal editor picks up the new binary without touching your daemon.</p>
+    </div>
+    <div class="cards">
+      <div class="card"><div class="ct"><h3>Homebrew</h3><em>macOS · Linux</em></div><pre><code><i>$ </i>brew tap timeworthymedia/tap
+<i>$ </i>brew install timeworthymedia/tap/ikmal-editor
+<i>$ </i>ikmal-editor -configure-apps</code></pre></div>
+      <div class="card"><div class="ct"><h3>Scoop</h3><em>Windows 10 · 11</em></div><pre><code><i>$ </i>scoop bucket add ikmal <b>…</b>
+<i>$ </i>scoop install ikmal-editor</code></pre><p>Native 64-bit executable. No WSL, no Docker Desktop, no virtual machine.</p></div>
+      <div class="card"><div class="ct"><h3>Docker</h3><em>any host</em></div><pre><code><i>$ </i>docker pull ghcr.io/timeworthymedia/ikmal-editor</code></pre><p>Containerised LanguageTool images update independently through standard image pulls.</p></div>
+      <div class="card"><div class="ct"><h3>Raspberry Pi</h3><em>arm64 · armv7</em></div><pre><code><i>$ </i>./ikmal-editor-linux-arm64</code></pre><p>Pre-compiled binaries for Pi 3, 4, and 5 — 1-click execution, no cross-compilation.</p></div>
+      <div class="card"><div class="ct"><h3>Unraid</h3><em>home server</em></div><pre><code><i>  </i>Community Applications →
+<i>  </i>Add template URL:
+<i>  </i><b>…/unraid/my-ikmal-editor.xml</b></code></pre></div>
+      <div class="card"><div class="ct"><h3>From source</h3><em>Go 1.22+</em></div><pre><code><i>$ </i>git clone github.com/timeworthymedia/ikmal-editor
+<i>$ </i>go build -o ikmal-editor .
+<i>$ </i>./ikmal-editor --integrated</code></pre><p>Built from the Go standard library only — no third-party module dependencies.</p></div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- apps -->
+<section class="section-pad">
+  <div class="wrap">
+    <div class="sechead">
+      <span class="overline">Connected apps</span>
+      <h2>One command points your tools at the local server.</h2>
+      <p><code class="mono">ikmal-editor -configure-apps</code> routes the extensions and plug-ins you already have to <code class="mono">http://127.0.0.1:8097/v2/check</code>. Installing those extensions stays your call — ikmal editor never downloads them for you.</p>
+    </div>
+    <div class="apps">
+      <span class="app-chip"><i></i>Chrome</span>
+      <span class="app-chip"><i></i>Firefox</span>
+      <span class="app-chip"><i></i>Safari</span>
+      <span class="app-chip"><i></i>Edge</span>
+      <span class="app-chip"><i></i>Apple Mail</span>
+      <span class="app-chip"><i></i>Microsoft Word</span>
+      <span class="app-chip"><i></i>LibreOffice</span>
+      <span class="app-chip"><i></i>VS Code</span>
+      <span class="app-chip"><i></i>Obsidian</span>
+      <span class="app-chip"><i></i>Trilium Notes</span>
+    </div>
+    <p style="margin-top:22px;font-size:13.5px;color:var(--fg-4);max-width:68ch;line-height:1.6">Anything that speaks the LanguageTool API works unchanged — including the community Obsidian plug-in and the Trilium Notes plug-in. Point it at your port and nothing else about your setup has to move.</p>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- privacy -->
+<section class="section-pad" id="privacy">
+  <div class="wrap">
+    <div class="privacy">
+      <div class="sechead" style="margin-bottom:0">
+        <span class="overline">Privacy</span>
+        <h2>Your text is never sent anywhere.</h2>
+        <p>The LanguageTool server ikmal editor manages listens on <code class="mono">127.0.0.1:8097</code> and nothing leaves the loopback interface. The one outbound request the binary makes on its own is a daily update check for a static JSON file.</p>
+      </div>
+      <div class="privacy-grid">
+        <div><strong>No identifier</strong><p>No UUID, no hostname, no username, no OS or hardware details. There is no request body and no query string.</p></div>
+        <div><strong>One timestamp</strong><p>It stores only a timestamp in <code class="mono">~/.ikmal-editor/.update-check</code> to rate-limit itself to once every 24 hours.</p></div>
+        <div><strong>Fails silently</strong><p>Three-second timeout, runs after the server is already up, and never blocks startup.</p></div>
+      </div>
+      <div class="cmd-row" style="margin-top:34px">
+        <div class="cmd" style="max-width:none"><code><i>$</i>ikmal-editor -no-update-check<span style="color:var(--fg-4)">   # per run</span></code></div>
+        <div class="cmd" style="max-width:none"><code><i>$</i>export IKMAL_EDITOR_NO_UPDATE_CHECK=1<span style="color:var(--fg-4)">   # permanently</span></code></div>
+      </div>
+      <p style="margin-top:18px;font-size:13px;color:var(--fg-4)">Aggregate download counts come from the GitHub Releases API, not from the binary.</p>
+    </div>
+  </div>
+</section>
+
+<!-- faq -->
+<section class="section-pad" id="faq">
+  <div class="wrap">
+    <div class="sechead"><span class="overline">FAQ</span><h2>Questions people actually ask.</h2></div>
+    <div class="faq">
+      <details open><summary>Does ikmal editor send my text to third-party cloud servers?</summary><div class="ans"><b>No.</b> It runs a 100% local LanguageTool server on <code>http://127.0.0.1:8097</code>. All text analysis happens locally on your computer.</div></details>
+      <details><summary>Will anything break if I already use LanguageTool?</summary><div class="ans">No. ikmal editor is a supervisor, not a fork: it launches the official LanguageTool distribution and answers on the standard API, so existing extensions, plug-ins, and settings keep working. Rule packs arrive as ordinary matches, and you can turn them off.</div></details>
+      <details><summary>Does Windows require WSL?</summary><div class="ans"><b>No.</b> <code>ikmal-editor-windows-amd64.exe</code> is a native 64-bit Windows application that runs directly on Windows 10 and 11 without WSL, Docker Desktop, or Linux virtual machines. Java is auto-detected via <code>javaw.exe</code>, so the server runs silently with no command prompt windows.</div></details>
+      <details><summary>Will Windows Defender Firewall pop up an alert?</summary><div class="ans">No. The local server binds specifically to loopback (<code>http://127.0.0.1:8097/v2/check</code>), which prevents Windows Defender Firewall prompts.</div></details>
+      <details><summary>Does it download browser extensions for me?</summary><div class="ans"><b>No.</b> ikmal editor configures settings for the applications and extensions you have installed, but downloading browser extensions or office plug-ins is your responsibility. Once they are installed, <code>ikmal-editor -configure-apps</code> routes them to your local server.</div></details>
+      <details><summary>How do I add my own rules?</summary><div class="ans">Add custom LanguageTool XML rules to <code>~/.ikmal-editor/rules/style_conciseness.xml</code>, or edit <code>rules/style_conciseness.xml</code> in the repository directly.</div></details>
+      <details><summary>How do I uninstall it completely?</summary><div class="ans">Run <code>ikmal-editor -uninstall</code>. On macOS and Linux this unloads LaunchAgent and systemd daemons, deletes browser policy files, stops container instances, and purges <code>~/.ikmal-editor</code>. On Windows, <code>-uninstall</code> removes the startup registry key, clears Chrome and Edge managed policies, terminates background Java processes, and purges <code>%USERPROFILE%\.ikmal-editor</code>.</div></details>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div>
+        <a class="brand" href="#top" style="margin-bottom:12px"><span class="mark" id="foot-mark"></span><span>ikmal <em>editor</em></span></a>
+        <p style="font-size:13.5px;color:var(--fg-4);max-width:34ch;line-height:1.6">A launch manager for LanguageTool. Part of the ikmal family, alongside <a class="link" href="../index.html">ikmal tasks</a>.</p>
+      </div>
+      <div class="footer-links">
+        <div><b>Project</b><a href="https://github.com/timeworthymedia/ikmal-editor">GitHub</a><a href="https://github.com/timeworthymedia/ikmal-editor/releases">Releases</a><a href="#install">Install</a><a href="#faq">FAQ</a></div>
+        <div><b>Docs</b><a href="https://dev.languagetool.org/">LanguageTool docs</a><a href="#rules">Rule packs</a><a href="#quality">Quality model</a><a href="#privacy">Privacy</a></div>
+        <div><b>License</b><a href="https://github.com/timeworthymedia/ikmal-editor/blob/main/LICENSE">MIT</a><a href="https://github.com/timeworthymedia/ikmal-editor/blob/main/CONTRIBUTING.md">Contributing</a></div>
+      </div>
+    </div>
+    <p class="disclaimer">Ikmal Editor is an independent third-party tool. It is not affiliated with, endorsed by, or sponsored by LanguageTooler GmbH. LanguageTool is a registered trademark of LanguageTooler GmbH. Language identification uses Meta's FastText <code class="mono">lid.176.bin</code> model.</p>
+  </div>
+</footer>
+
+<template id="__bundler_thumbnail">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1e1e22"/><circle cx="50" cy="50" r="27" stroke="#4f4f58" stroke-width="6" fill="none"/><rect x="38" y="40" width="24" height="4" rx="2" fill="#c5c5cb"/><rect x="38" y="49" width="17" height="4" rx="2" fill="#c5c5cb"/><path d="M38 60q3-3 6 0t6 0" stroke="#8e80df" stroke-width="2.4" fill="none"/></svg>
+</template>
+
+<script src="../logo/markgen.js"></script>
+<script src="../logo/editorgen.js"></script>
+<script src="app-mock.js"></script>
+<script>
+const E = window.IkmalEditorMark, DIR = "squiggle";
+function paintMarks() {
+  const light = document.documentElement.dataset.theme === "light";
+  const svg = E.markSVG(DIR, { cw: light ? E.CW.lightUI : E.CW.darkUI, theme: E.THEMES.violet, s: 1.15 });
+  document.getElementById("nav-mark").innerHTML = svg;
+  document.getElementById("foot-mark").innerHTML = svg;
+}
+paintMarks();
+const A = window.IkmalEditorApp;
+document.getElementById("hm-shell").outerHTML = A.shell("writing-panel", A.writingPanel());
+document.getElementById("hm-tray").outerHTML = A.tray();
+
+
+document.getElementById("copy-btn").addEventListener("click", (e) => {
+  navigator.clipboard && navigator.clipboard.writeText("brew install timeworthymedia/tap/ikmal-editor");
+  e.target.textContent = "Copied";
+  setTimeout(() => { e.target.textContent = "Copy"; }, 1600);
+});
+
+document.getElementById("theme-toggle").addEventListener("click", () => {
+  const root = document.documentElement;
+  root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+  paintMarks();
+});
+</script>
+</body>
+</html>

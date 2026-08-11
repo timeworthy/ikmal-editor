@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ikmal editor — logo export studio</title>
+<link rel="stylesheet" href="../assets/colors_and_type.css" />
+<style>
+html,body{margin:0;background:#161519;color:var(--fg-1);font-family:var(--font-sans)}
+.wrap{display:grid;grid-template-columns:300px 1fr;min-height:100vh}
+.panel{background:#1a191e;border-right:1px solid #2c2b32;padding:22px 20px 60px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.panel h1{font-size:16px;font-weight:700;letter-spacing:-.02em;margin:0 0 4px}
+.panel .sub{font-size:12px;color:var(--fg-4);line-height:1.5;margin:0 0 20px}
+.grp{border-top:1px solid #2c2b32;padding:14px 0 4px}
+.grp>b{display:block;font-family:var(--font-mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--violet-300);margin-bottom:12px}
+.row{display:grid;grid-template-columns:1fr 46px;gap:8px;align-items:center;margin-bottom:10px}
+.row label{font-size:12px;color:var(--fg-3)}
+.row output{font-family:var(--font-mono);font-size:10.5px;color:var(--fg-4);text-align:right}
+.row input[type=range]{grid-column:1/-1;width:100%;height:3px;appearance:none;background:#33323a;border-radius:2px;margin:0}
+.row input[type=range]::-webkit-slider-thumb{appearance:none;width:13px;height:13px;border-radius:50%;background:var(--violet-400);cursor:pointer}
+.seg{display:flex;gap:4px;margin-bottom:12px}
+.seg button{flex:1;appearance:none;background:#232228;border:1px solid #2c2b32;color:var(--fg-3);border-radius:7px;padding:6px 4px;font-family:var(--font-sans);font-size:11.5px;cursor:pointer}
+.seg button.on{background:var(--violet-500);border-color:var(--violet-500);color:#fff}
+.act{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+.act button{appearance:none;border:1px solid #3a3a42;background:#232228;color:var(--fg-1);border-radius:8px;padding:9px;font-family:var(--font-sans);font-size:12.5px;font-weight:600;cursor:pointer}
+.act button.pri{background:var(--violet-500);border-color:var(--violet-500);color:#fff}
+.act button:hover{border-color:var(--violet-400)}
+.status{font-family:var(--font-mono);font-size:10px;color:var(--sage-500);margin-top:10px;min-height:14px}
+.stage{padding:34px 40px 120px;max-width:1180px}
+h2{font-family:var(--font-sans);font-size:20px;font-weight:700;letter-spacing:-.02em;margin:0 0 4px}
+.sd{font-size:13px;color:var(--fg-4);line-height:1.6;max-width:660px;margin:0 0 26px;text-wrap:pretty}
+section{border-top:1px solid #2c2b32;padding:30px 0}
+section:first-of-type{border-top:none;padding-top:0}
+.sh{display:flex;align-items:baseline;gap:12px;margin-bottom:5px}
+.sn{font-family:var(--font-mono);font-size:12px;color:var(--violet-300)}
+h3{font-size:17px;font-weight:700;letter-spacing:-.02em;margin:0}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+.cell{border:1px solid #2c2b32;border-radius:12px;background:#1e1e22;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:26px 14px 16px;min-height:150px}
+.cell.lt{background:#f4f1e9;border-color:#ddd6c6}
+.cell .cap{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-4)}
+.cell.lt .cap{color:#8a8472}
+.ramp{display:flex;align-items:flex-end;gap:22px}
+.ramp .u{display:flex;flex-direction:column;align-items:center;gap:8px}
+.t{font-family:var(--font-mono);font-size:9.5px;color:var(--fg-4)}
+.bar{display:flex;align-items:center;gap:10px;background:#131217;border-radius:8px;padding:7px 12px;font-size:12px;color:#c5c5cb}
+.bar .mk{width:19px;height:19px;flex:0 0 auto}
+.wide{border:1px solid #2c2b32;border-radius:12px;overflow:hidden}
+.wide svg{display:block;width:100%;height:auto}
+svg{display:block}
+a{color:var(--violet-300)}a:hover{color:var(--violet-200)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <aside class="panel">
+    <h1>Editor mark studio</h1>
+    <p class="sub">The locked two-tier mark, live. Dial it, lock it, and the asset sheet picks up the same numbers.</p>
+    <div class="grp"><b>Tier preview</b>
+      <div class="seg" id="seg-tier"><button data-v="auto" class="on">Auto</button><button data-v="full">Full</button><button data-v="min">Min</button></div>
+      <div class="row"><label>Switch point</label><output id="o-switchPx"></output><input type="range" id="r-switchPx" min="24" max="72" step="2"></div>
+    </div>
+    <div class="grp"><b>Ring</b>
+      <div class="row"><label>Radius</label><output id="o-ringR"></output><input type="range" id="r-ringR" min="26" max="40" step="0.5"></div>
+      <div class="row"><label>Stroke</label><output id="o-ringW"></output><input type="range" id="r-ringW" min="3" max="11" step="0.25"></div>
+      <div class="row"><label>Opacity</label><output id="o-ringOp"></output><input type="range" id="r-ringOp" min="0.1" max="1" step="0.02"></div>
+    </div>
+    <div class="grp"><b>Full tier — the word</b>
+      <div class="row"><label>Size</label><output id="o-wordSize"></output><input type="range" id="r-wordSize" min="14" max="28" step="0.5"></div>
+      <div class="row"><label>Baseline</label><output id="o-wordY"></output><input type="range" id="r-wordY" min="44" max="60" step="0.5"></div>
+      <div class="row"><label>Squiggle Y</label><output id="o-fullSqY"></output><input type="range" id="r-fullSqY" min="55" max="72" step="0.5"></div>
+      <div class="row"><label>Squiggle width</label><output id="o-fullSqW"></output><input type="range" id="r-fullSqW" min="1.6" max="5" step="0.1"></div>
+      <div class="row"><label>Amplitude</label><output id="o-fullSqAmp"></output><input type="range" id="r-fullSqAmp" min="1" max="4" step="0.1"></div>
+      <div class="row"><label>Period</label><output id="o-fullSqPeriod"></output><input type="range" id="r-fullSqPeriod" min="5" max="14" step="0.2"></div>
+      <div class="row"><label>Inset</label><output id="o-fullSqInset"></output><input type="range" id="r-fullSqInset" min="14" max="30" step="0.5"></div>
+    </div>
+    <div class="grp"><b>Min tier — line + break</b>
+      <div class="row"><label>Line Y</label><output id="o-lineY"></output><input type="range" id="r-lineY" min="30" max="48" step="0.5"></div>
+      <div class="row"><label>Line width</label><output id="o-lineW"></output><input type="range" id="r-lineW" min="28" max="50" step="0.5"></div>
+      <div class="row"><label>Line height</label><output id="o-lineH"></output><input type="range" id="r-lineH" min="3" max="9" step="0.25"></div>
+      <div class="row"><label>Line opacity</label><output id="o-lineOp"></output><input type="range" id="r-lineOp" min="0.2" max="1" step="0.02"></div>
+      <div class="row"><label>Squiggle Y</label><output id="o-minSqY"></output><input type="range" id="r-minSqY" min="48" max="66" step="0.5"></div>
+      <div class="row"><label>Squiggle width</label><output id="o-minSqW"></output><input type="range" id="r-minSqW" min="1.8" max="5.5" step="0.1"></div>
+      <div class="row"><label>Amplitude</label><output id="o-minSqAmp"></output><input type="range" id="r-minSqAmp" min="1.2" max="4.4" step="0.1"></div>
+      <div class="row"><label>Period</label><output id="o-minSqPeriod"></output><input type="range" id="r-minSqPeriod" min="6" max="15" step="0.2"></div>
+      <div class="row"><label>Break start</label><output id="o-brA"></output><input type="range" id="r-brA" min="0.4" max="0.9" step="0.01"></div>
+      <div class="row"><label>Break end</label><output id="o-brB"></output><input type="range" id="r-brB" min="0.5" max="0.97" step="0.01"></div>
+    </div>
+    <div class="grp"><b>Accent</b>
+      <div class="seg" id="seg-theme"></div>
+    </div>
+    <div class="act">
+      <button class="pri" id="btn-lock">Lock as master</button>
+      <button id="btn-reset">Reset to default</button>
+      <button id="btn-copy">Copy params as JSON</button>
+    </div>
+    <div class="status" id="status"></div>
+  </aside>
+
+  <main class="stage">
+    <h2>Two tiers, one system</h2>
+    <p class="sd">Above the switch point the name sits in the ring with the squiggle under it. Below it, the word closes up and the mark drops to one line of prose with the squiggle broken at 64 / 78%. Everything on this page is generated from the panel — nothing is drawn by hand.</p>
+
+    <section>
+      <div class="sh"><span class="sn">01</span><h3>The pair</h3></div>
+      <p class="sd">Full and minimum side by side, dark and light.</p>
+      <div class="grid g4" id="pair"></div>
+    </section>
+
+    <section>
+      <div class="sh"><span class="sn">02</span><h3>Size ramp</h3></div>
+      <p class="sd">Auto tier at each size — this is what the switch point actually does.</p>
+      <div class="cell" style="min-height:0"><div class="ramp" id="ramp"></div></div>
+    </section>
+
+    <section>
+      <div class="sh"><span class="sn">03</span><h3>In place</h3></div>
+      <p class="sd">Menu bar, dock, and favicon are where the minimum tier earns its keep.</p>
+      <div class="grid g3" id="place"></div>
+    </section>
+
+    <section>
+      <div class="sh"><span class="sn">04</span><h3>App icons</h3></div>
+      <div class="grid g4" id="icons"></div>
+    </section>
+
+    <section>
+      <div class="sh"><span class="sn">05</span><h3>Lockups</h3></div>
+      <div class="grid g2" id="locks"></div>
+    </section>
+
+    <section>
+      <div class="sh"><span class="sn">06</span><h3>Banners</h3></div>
+      <div class="grid" style="gap:14px" id="banners"></div>
+    </section>
+  </main>
+</div>
+
+<template id="__bundler_thumbnail">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1e1e22"/><circle cx="50" cy="50" r="33" stroke="#4f4f58" stroke-width="7" fill="none"/><rect x="30" y="40" width="40" height="6" rx="3" fill="#c5c5cb"/><path d="M31 55q3-3 6 0t6 0" stroke="#6fa37c" stroke-width="3.4" fill="none"/><path d="M62 55q3-3 6 0" stroke="#6fa37c" stroke-width="3.4" fill="none"/></svg>
+</template>
+
+<script src="markgen.js"></script>
+<script src="edmark.js"></script>
+<script>
+const E = window.IkmalEditor, CW = E.COLORWAYS, TH = E.THEMES;
+const el = (h) => { const d = document.createElement("div"); d.innerHTML = h.trim(); return d.firstElementChild; };
+const box = (h, w) => `<div style="width:${w}px;height:${w}px;flex:0 0 auto">${h}</div>`;
+let P = E.loadMaster(), theme = TH.sage;
+
+const KEYS = ["switchPx","ringR","ringW","ringOp","wordSize","wordY","fullSqY","fullSqW","fullSqAmp","fullSqPeriod","fullSqInset","lineY","lineW","lineH","lineOp","minSqY","minSqW","minSqAmp","minSqPeriod","brA","brB"];
+
+// accent buttons
+const segTheme = document.getElementById("seg-theme");
+["sage","violet","steel","amber","terracotta"].forEach((id) => {
+  const b = el(`<button data-v="${id}"${id === "sage" ? ' class="on"' : ""}>${TH[id].name}</button>`);
+  b.addEventListener("click", () => {
+    theme = TH[id];
+    Array.from(segTheme.children).forEach((c) => c.classList.toggle("on", c === b));
+    draw();
+  });
+  segTheme.appendChild(b);
+});
+document.getElementById("seg-tier").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  P.tier = b.dataset.v;
+  Array.from(b.parentElement.children).forEach((c) => c.classList.toggle("on", c === b));
+  draw();
+});
+
+function bind() {
+  KEYS.forEach((k) => {
+    const r = document.getElementById("r-" + k), o = document.getElementById("o-" + k);
+    r.value = P[k];
+    o.textContent = P[k];
+    r.addEventListener("input", () => { P[k] = parseFloat(r.value); o.textContent = r.value; draw(); });
+  });
+}
+
+function draw() {
+  const opts = (extra) => ({ theme, ...extra });
+
+  const pair = document.getElementById("pair"); pair.innerHTML = "";
+  [["full", CW.darkUI, ""], ["min", CW.darkUI, ""], ["full", CW.lightUI, "lt"], ["min", CW.lightUI, "lt"]].forEach(([tier, cw, cls]) => {
+    pair.appendChild(el(`<div class="cell ${cls}">${box(E.markSVG(P, opts({ cw, tier })), 108)}<span class="cap">${tier} · ${cw.mode}</span></div>`));
+  });
+
+  const ramp = document.getElementById("ramp"); ramp.innerHTML = "";
+  [96, 64, 48, 32, 24, 16].forEach((px) => {
+    ramp.appendChild(el(`<div class="u">${box(E.markSVG(P, opts({ cw: CW.darkUI, size: px, s: px < 26 ? 1.2 : 1 })), px)}<span class="t">${px}</span></div>`));
+  });
+
+  const place = document.getElementById("place"); place.innerHTML = "";
+  place.appendChild(el(`<div class="cell"><div class="bar"><span class="mk">${E.templateIconSVG(P, { size: 19, color: "#D7D7DD" })}</span>ikmal editor</div><span class="cap">menu bar · template</span></div>`));
+  place.appendChild(el(`<div class="cell">${box(E.macIconSVG(P, opts({ field: "ink", size: 92 })), 92)}<span class="cap">dock · 92px</span></div>`));
+  place.appendChild(el(`<div class="cell"><div style="display:flex;align-items:center;gap:9px;background:#131217;border-radius:7px 7px 0 0;padding:7px 12px 8px;font-size:11.5px;color:#9c9ca4"><span style="width:16px;height:16px;flex:0 0 auto">${E.appIconSVG(P, opts({ field: "ink", size: 16, round: 3 }))}</span>ikmal editor</div><span class="cap">favicon · 16px</span></div>`));
+
+  const icons = document.getElementById("icons"); icons.innerHTML = "";
+  [["gradient", "gradient"], ["ink", "ink"], ["solid", "solid"]].forEach(([f, nm]) => {
+    icons.appendChild(el(`<div class="cell"><div style="width:104px;height:104px;border-radius:23%;overflow:hidden;box-shadow:0 12px 26px -10px rgba(0,0,0,.7)">${E.iosIconSVG(P, opts({ field: f, size: 104 }))}</div><span class="cap">${nm}</span></div>`));
+  });
+  icons.appendChild(el(`<div class="cell">${box(E.avatarSVG(P, opts({ size: 104 })), 104)}<span class="cap">avatar</span></div>`));
+
+  const locks = document.getElementById("locks"); locks.innerHTML = "";
+  [[CW.darkUI, ""], [CW.lightUI, "lt"]].forEach(([cw, cls]) => {
+    locks.appendChild(el(`<div class="cell ${cls}" style="align-items:stretch"><div style="width:100%">${E.lockupSVG(P, opts({ cw }))}</div><span class="cap">horizontal · ${cw.mode}</span></div>`));
+  });
+  [[CW.darkUI, ""], [CW.lightUI, "lt"]].forEach(([cw, cls]) => {
+    locks.appendChild(el(`<div class="cell ${cls}"><div style="width:190px">${E.stackSVG(P, opts({ cw }))}</div><span class="cap">stacked · ${cw.mode}</span></div>`));
+  });
+
+  const ban = document.getElementById("banners"); ban.innerHTML = "";
+  ban.appendChild(el(`<div class="wide">${E.readmeBannerSVG(P, opts({}))}</div>`));
+  ban.appendChild(el(`<div class="wide" style="max-width:640px">${E.ogBannerSVG(P, opts({}))}</div>`));
+}
+
+const status = document.getElementById("status");
+const say = (m) => { status.textContent = m; setTimeout(() => { status.textContent = ""; }, 2400); };
+document.getElementById("btn-lock").addEventListener("click", () => {
+  say(E.saveMaster({ ...P, theme: theme.id }) ? "Locked. Asset sheet will use these." : "Could not save.");
+});
+document.getElementById("btn-reset").addEventListener("click", () => {
+  E.clearMaster(); P = { ...E.DEFAULT }; bind(); draw(); say("Reset to default.");
+});
+document.getElementById("btn-copy").addEventListener("click", () => {
+  navigator.clipboard && navigator.clipboard.writeText(JSON.stringify({ ...P, theme: theme.id }, null, 2));
+  say("Copied.");
+});
+
+bind(); draw();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "@ikmal/writing-core",
+  "private": true,
+  "type": "module",
+  "description": "Host-neutral document, checking, issue, and focus contracts for ikmal editor.",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --experimental-strip-types --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
