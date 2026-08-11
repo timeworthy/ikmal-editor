@@ -136,7 +136,7 @@ func styleGuideSelectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil || strings.TrimSpace(request.ID) == "" {
-		writeQualityJSON(w, http.StatusBadRequest, map[string]string{"error": "style guide id is required"})
+		writeQualityRequestError(w, err, "style guide id is required")
 		return
 	}
 	if err := selectStyleGuide(strings.TrimSpace(request.ID)); err != nil {
@@ -160,7 +160,7 @@ func styleGuideEnabledHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		writeQualityJSON(w, http.StatusBadRequest, map[string]string{"error": "enabled must be a boolean"})
+		writeQualityRequestError(w, err, "enabled must be a boolean")
 		return
 	}
 	if err := setStyleGuideEnabled(request.Enabled); err != nil {
@@ -219,7 +219,7 @@ func (proxy qualityProxy) checkHandler(w http.ResponseWriter, r *http.Request) {
 	values, err := parseQualityProxyRequest(r)
 	if err != nil {
 		proxy.debugRequest(r, values, err)
-		writeQualityJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid form request"})
+		writeQualityRequestError(w, err, "invalid form request")
 		return
 	}
 	text := values.Get("text")
@@ -245,6 +245,14 @@ func (proxy qualityProxy) checkHandler(w http.ResponseWriter, r *http.Request) {
 	if languageToolResponse == nil {
 		languageToolResponse = map[string]any{"matches": []any{}}
 	}
+	if languageToolErr != nil {
+		// A check that lost one of its two engines is still worth returning, but
+		// silence would present a half-empty result as a complete one: a user
+		// whose grammar engine is refusing every request would see a document
+		// that reads as clean. The warning travels beside the matches so a host
+		// can say which checks are missing.
+		languageToolResponse["ikmalLanguageToolWarning"] = languageToolErr.Error()
+	}
 
 	native := nativeProxyCandidates(languageToolResponse)
 	quality := qualityProxyCandidates(text, qualityResponse)
@@ -252,10 +260,29 @@ func (proxy qualityProxy) checkHandler(w http.ResponseWriter, r *http.Request) {
 	if qualityErr != nil {
 		languageToolResponse["ikmalQualityWarning"] = qualityErr.Error()
 	}
+	// The warnings above carry the reason, which belongs in a log or a details
+	// view. Hosts need to name the missing checks in a sentence, so the same
+	// answer travels in a form they can render without parsing an error string.
+	if degraded := degradedCheckSources(languageToolErr, qualityErr); len(degraded) > 0 {
+		languageToolResponse["ikmalDegradedChecks"] = degraded
+	}
 	if len(qualityResponse.Antecedents) > 0 {
 		languageToolResponse["ikmalAntecedents"] = qualityResponse.Antecedents
 	}
 	writeQualityJSON(w, http.StatusOK, languageToolResponse)
+}
+
+// degradedCheckSources names the engines that did not answer, in the vocabulary
+// a host shows a writer rather than the vocabulary of this file.
+func degradedCheckSources(languageToolErr, qualityErr error) []string {
+	sources := make([]string, 0, 2)
+	if languageToolErr != nil {
+		sources = append(sources, "grammar")
+	}
+	if qualityErr != nil {
+		sources = append(sources, "quality")
+	}
+	return sources
 }
 
 func cloneProxyValues(values url.Values) url.Values {
@@ -343,7 +370,7 @@ func (proxy qualityProxy) forwardHandler(w http.ResponseWriter, r *http.Request)
 		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 		payload, readErr := io.ReadAll(r.Body)
 		if readErr != nil {
-			writeQualityJSON(w, http.StatusBadRequest, map[string]string{"error": "request body is too large or unreadable"})
+			writeQualityRequestError(w, readErr, "request body is unreadable")
 			return
 		}
 		body = bytes.NewReader(payload)
@@ -476,6 +503,10 @@ func qualitySuggestionLanguageToolMatch(text string, suggestion qualitySuggestio
 		replacements = append(replacements, map[string]any{"value": suggestion.Replacement})
 	}
 	ruleID := "IKMAL_" + strings.ToUpper(strings.ReplaceAll(suggestion.Category, "-", "_"))
+	categoryID := "GRAMMAR"
+	if strings.Contains(suggestion.Category, "style") || strings.Contains(suggestion.Category, "repetition") || strings.Contains(suggestion.Category, "wordiness") {
+		categoryID = "STYLE"
+	}
 	match := map[string]any{
 		"message":         suggestion.Message,
 		"shortMessage":    "Writing quality",
@@ -485,7 +516,7 @@ func qualitySuggestionLanguageToolMatch(text string, suggestion qualitySuggestio
 		"context":         map[string]any{"text": text, "offset": 0, "length": qualityUTF16Offset(text, len(text))},
 		"sentence":        text,
 		"type":            map[string]any{"typeName": "Other"},
-		"rule":            map[string]any{"id": ruleID, "subId": "1", "description": suggestion.Category, "issueType": "style", "category": map[string]any{"id": "STYLE", "name": "Writing quality"}},
+		"rule":            map[string]any{"id": ruleID, "subId": "1", "description": suggestion.Category, "issueType": strings.ToLower(categoryID), "category": map[string]any{"id": categoryID, "name": "Writing quality"}},
 		"ikmalSource":     suggestion.Source,
 		"ikmalConfidence": suggestion.Confidence,
 	}

@@ -26,8 +26,14 @@
   {
     "id": "ambiguous-pronoun",
     "text": "The report was sent to the editor after it was revised.",
-    "expectNoSuggestions": true,
-    "localExpectNoSuggestions": true
+    "expectNoCategory": "transformer-grammar",
+    "localExpectCategory": "passive-voice"
+  },
+  {
+    "id": "passive-voice-review",
+    "text": "The report was reviewed by the editor.",
+    "expectNoCategory": "transformer-grammar",
+    "localExpectCategory": "passive-voice"
   },
   {
     "id": "nearby-repeat-is-text-level",
@@ -48,5 +54,50 @@
     "styleGuideReplacement": "video game",
     "localExpectCategory": "style-guide",
     "localExpectReplacement": "video game"
+  },
+  {
+    "id": "relative-clause-with-i-is-not-a-run-on",
+    "text": "This is the report I wrote last week.",
+    "localExpectNoSuggestions": true
+  },
+  {
+    "id": "irregular-plural-takes-no-article",
+    "text": "We have children at home.",
+    "localExpectNoSuggestions": true
+  },
+  {
+    "id": "irregular-plural-after-preposition",
+    "text": "I went to the store with children.",
+    "localExpectNoSuggestions": true
+  },
+  {
+    "id": "numeral-two-before-that",
+    "text": "I have two that fit my needs.",
+    "localExpectNoSuggestions": true
+  },
+  {
+    "id": "numeral-two-before-you",
+    "text": "I brought two you can borrow.",
+    "localExpectNoSuggestions": true
+  },
+  {
+    "id": "numeral-two-before-a-bare-verb",
+    "text": "The two get along well.",
+    "localExpectNoSuggestions": true
+  },
+  {
+    "id": "numeral-two-as-plural-subject",
+    "text": "Only two make the cut.",
+    "localExpectNoSuggestions": true
+  },
+  {
+    "id": "copular-past-participle-is-not-passive",
+    "text": "The door is closed and the light is off.",
+    "localExpectNoSuggestions": true
+  },
+  {
+    "id": "accustomed-to-is-not-passive",
+    "text": "I am used to the noise now.",
+    "localExpectNoSuggestions": true
   }
 ]
