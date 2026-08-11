@@ -1101,3 +1101,50 @@ Next action:
 - `vscode-extension` still has no end-to-end coverage; it is the last host
   checked only by contract assertions.
 - `.github/workflows/desktop-release.yml` remains unexercised until a release.
+
+### 2026-08-11 — Agent / the VS Code adapter gets a harness
+
+Gate: `3` vertical slice / `4` chaos
+Status: `complete`
+
+Changed:
+- `tools/vscode_extension_smoke.mjs` launches a real VS Code window with the
+  adapter loaded, and `tools/vscode_smoke_runner.cjs` runs inside the extension
+  host. The runner half is in `tools/` rather than under `vscode-extension/`
+  because the packager ships that directory wholesale and a test has no business
+  in a `.vsix`.
+- The assertions are what a user would see, and all of them go through the real
+  extension rather than importing a module of it: a document with a misspelling
+  acquires a diagnostic covering the right word, the quick fix offered for that
+  diagnostic corrects the text, and checking still runs afterwards.
+- `verify_vscode_extension.mjs` now requires both harness files, and a `vscode`
+  job runs the smoke under `xvfb`.
+
+Finding:
+- The adapter could not run from a checkout at all. `extension.js` imports
+  `./writing-core/index.js`, which only the packager created, and only inside a
+  staging directory — so **Run Extension** on a fresh clone would fail at
+  activation on an `import()` that nothing catches. The harness stages it, the
+  README says so, and the staged copy is now ignored like the other hosts'.
+
+Evidence:
+- `npm run smoke:vscode` — passed: `2 checks, diagnostic and quick fix
+  verified`.
+- Mutation checks: returning `[]` from `provideCodeActions` fails it with `no
+  ikmal quick fix was offered: ["Fix","Explain","Modify"]`; making `applyIssue`
+  a no-op fails it with `Timed out waiting for the correction to reach the
+  document`. Source restored and byte-compared after each.
+- That first mutation also showed the quick-fix assertion had been matching on
+  title text loosely enough that a built-in VS Code action could have satisfied
+  it. It now matches on the `ikmal.applyIssue` command.
+
+Unknowns / risks:
+- Pause opens a quick pick, which the harness cannot drive, so what is asserted
+  is that checking resumes rather than that a pause suppresses it. The
+  suppression itself is covered by `tools/focus_mode.test.mjs` at the unit
+  level, not end to end.
+- The `vscode` CI job has not run on a Linux runner yet.
+
+Next action:
+- `.github/workflows/desktop-release.yml` is the last unexercised path; a
+  `workflow_dispatch` run against an existing tag would settle it.

@@ -75,3 +75,21 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y xvfb
       - name: Browser extension smokes
         run: xvfb-run -a npm run smoke:browser
+
+  vscode:
+    name: VS Code adapter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      # The adapter runs inside a real VS Code window, which needs a display on
+      # a runner the same way the MV3 extensions do.
+      - name: Install a virtual display
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+      - name: VS Code extension smoke
+        run: xvfb-run -a npm run smoke:vscode

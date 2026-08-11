@@ -40,3 +40,11 @@ apps/desktop-editor/primitives.css
 # builds them rather than carrying a copy that can go stale.
 extension/adapters/
 extension/core/writing_core.js
+
+# VS Code builds downloaded by the adapter smoke harness. Hundreds of
+# megabytes of editor, not source.
+.vscode-test/
+
+# The compiled core the VS Code adapter imports. Only the packager and the
+# smoke harness stage it; a checkout builds it rather than carrying a copy.
+vscode-extension/writing-core/

@@ -30,6 +30,16 @@ if (!packageScript.includes('verify_vscode_extension.mjs') || !packageScript.inc
   throw new Error('VS Code adapter package script is missing verification or archive creation.');
 }
 
+// The adapter was the last host checked only by reading its source, which
+// cannot tell you whether it activates, reaches the checker, or renders a
+// diagnostic. The harness is opt-in because it downloads a VS Code build, and
+// that is exactly why its absence would otherwise go unnoticed.
+for (const harness of ['vscode_extension_smoke.mjs', 'vscode_smoke_runner.cjs']) {
+  if (!fs.existsSync(path.join(root, 'tools', harness))) {
+    throw new Error(`Missing the VS Code smoke harness: tools/${harness}`);
+  }
+}
+
 console.log(`VS Code adapter verified: ${manifest.name} v${manifest.version}.`);
 console.log(`  Files: ${requiredFiles.length}`);
 console.log('  Network reach: loopback only');
