@@ -1046,3 +1046,58 @@ Unknowns / risks:
 
 Next action:
 - Port chunking and retention to `apps/browser-extension`.
+
+### 2026-08-11 — Agent / one chunking policy across the hosts
+
+Gate: `3` vertical slice
+Status: `complete`
+
+Correction to the two entries above:
+- `apps/browser-extension` was never missing chunking, and the "port chunking to
+  the browser slice" next-action was wrong. It chunks and retains through
+  `createBrowserSliceController` — `core.chunkAround`, `core.mergeChunkResult`,
+  a caret tracked from both the selection and the position of the last edit, and
+  `fullCheckPending` driving the whole-document pass. The earlier claim came from
+  grepping `background.js` and `content_module.js`, where the behaviour is not
+  written, rather than the controller they import.
+
+Finding:
+- The two implementations disagreed about the first check of a long document.
+  `chunked_checks.ts` sends it whole because there is nothing to merge a slice
+  into; `browser_slice.ts` chunked immediately, so `mergeChunkResult` retained
+  nothing and everything outside the window came back empty until the full pass.
+  Measured on a 6705-character draft: the first request was 4004 characters and
+  never reached the opening paragraph.
+- This was deliberate on the rewrite side, asserted by a test reading `an
+  oversized document starts out chunked`, so it was a product decision rather
+  than a defect and was referred rather than changed unilaterally.
+
+Decision:
+- Both hosts now check whole until there are findings to carry. Gate 3 allows
+  the hosts to differ in anchoring but not in issue meaning, and a document that
+  reports a different issue count for a second and a half differs in issue
+  meaning. The cost is one slower first check on a long draft.
+- `desktop_slice.ts` passes `chunkBudget` through to the same controller, so
+  both rewrite hosts take the change together.
+
+Changed:
+- The guard in `browser_slice.ts`, and the test that asserted the old policy now
+  establishes findings first and asserts a chunk on the following edit.
+- Chunk retention in the browser slice gained coverage; it had none.
+- The proxy forwards the whole `/v2` subtree, so a LanguageTool plugin's
+  `/v2/words` reaches the upstream instead of a 404 invented here. No CORS
+  header comes with it, and the reason is recorded in `routes`.
+- `ikmal-floating-picker.png` removed from the repository root.
+
+Evidence:
+- 34 adapter tests, 141 node tests, `go test ./...`, all eight verifiers, three
+  browser smokes, the desktop rewrite smoke, and the Electron smoke — all pass.
+- Mutation checks: forcing `mergeChunkResult(null, …)` fails the retention test
+  with `the finding outside the rechecked chunk was dropped`; restoring
+  `/v2/languages` in place of the `/v2/` subtree fails the parity test. Sources
+  restored and byte-compared.
+
+Next action:
+- `vscode-extension` still has no end-to-end coverage; it is the last host
+  checked only by contract assertions.
+- `.github/workflows/desktop-release.yml` remains unexercised until a release.

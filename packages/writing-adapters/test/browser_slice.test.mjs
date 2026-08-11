@@ -150,13 +150,23 @@ test('browser slice can be told to check the whole document again', async () => 
     check: async (request) => { requests.push(request); return { matches: [] }; },
   });
 
+  // The first check is whole however long the document is: there are no
+  // findings to merge a slice into yet. Only once there are does an edit get
+  // answered with a chunk, and that is the state this test needs.
   await controller.check();
-  assert.ok(requests[0].selection, 'an oversized document starts out chunked');
+  assert.equal(requests[0].selection, undefined, 'the first check has nothing to carry, so it is whole');
+  assert.equal(controller.state().fullCheckPending, false);
+
+  field.value = `${LONG_TEXT} More.`;
+  field.selectionStart = field.value.length;
+  field.selectionEnd = field.value.length;
+  await controller.check();
+  assert.ok(requests[1].selection, 'an edit with findings to carry is answered with a chunk');
   assert.equal(controller.state().fullCheckPending, true);
 
   await controller.check({ mode: 'active', until: null }, { scope: 'document' });
-  assert.equal(requests[1].selection, undefined);
-  assert.equal(requests[1].text, LONG_TEXT);
+  assert.equal(requests[2].selection, undefined);
+  assert.equal(requests[2].text, field.value);
   assert.equal(controller.state().fullCheckPending, false, 'the idle full pass settles the debt');
 });
 
@@ -199,11 +209,10 @@ test('a short document is still checked whole', async () => {
   assert.equal(controller.state().fullCheckPending, false);
 });
 
-// The two chunking implementations in this package disagree about the first
-// check of a long document: chunked_checks.ts sends it whole because there is
-// nothing to merge a slice into, and this one starts chunked by design (see
-// 'an oversized document starts out chunked'). What both must do, and what this
-// covers, is carry the findings a later chunk never looked at.
+// Chunking and retention only make sense together. Both implementations in
+// this package now agree that a check with nothing to carry is a whole one;
+// what this covers is the other half, which is that a chunk keeps the findings
+// it never looked at.
 test('a chunked recheck carries the findings it did not look at', async () => {
   const filler = Array.from({ length: 60 }, (_, index) =>
     `Middle paragraph ${index} carries enough words that a chunk window centred here cannot reach the ends of the draft.`);

@@ -117,7 +117,13 @@ export function createBrowserSliceController({
     }
 
     const selected = snapshot.selection && snapshot.selection.length > 0 ? snapshot.selection : undefined;
-    const chunk = !selected && options.scope !== 'document'
+    // Nothing to merge a chunk into means the check has to be a whole one. A
+    // chunk here would answer for a slice and leave the rest of the document
+    // with no findings at all: not a shorter list, but a long draft that reads
+    // as clean until the full pass arrives, with an issue count to match. The
+    // hosts may differ in how they anchor a mark; they must not differ in what
+    // the document is said to contain. chunked_checks.ts makes the same choice.
+    const chunk = !selected && options.scope !== 'document' && result
       ? core.chunkAround(snapshot.text, caret, chunkBudget ? { budget: chunkBudget } : {})
       : undefined;
     // A document inside the budget comes back whole, and checking it as a
