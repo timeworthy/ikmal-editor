@@ -355,3 +355,90 @@ func TestWarnIfNotLoopbackOnlyWarnsWhenReachable(t *testing.T) {
 		}
 	}
 }
+
+// A body past the limit is something the caller can act on by sending less
+// text, but only if it is told that is what happened. LanguageTool answers its
+// own length limit with 413, so this proxy has to agree with it.
+func TestOversizedRequestBodiesAnswer413(t *testing.T) {
+	oversized := strings.Repeat("x", 2<<20)
+	proxy := qualityProxy{languageToolURL: "http://127.0.0.1:1/v2/check", client: &http.Client{}}
+
+	form := url.Values{"text": {oversized}}
+	check := httptest.NewRequest(http.MethodPost, "http://127.0.0.1:8096/v2/check", strings.NewReader(form.Encode()))
+	check.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	response := httptest.NewRecorder()
+	proxy.checkHandler(response, check)
+	if response.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected 413 from the check handler, got HTTP %d %s", response.Code, response.Body.String())
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("the 413 body must stay JSON: %v", err)
+	}
+	if payload["limit"] == nil || !strings.Contains(payload["error"].(string), "limit") {
+		t.Fatalf("a 413 must name the limit it enforced, got %v", payload)
+	}
+
+	forward := httptest.NewRequest(http.MethodPost, "http://127.0.0.1:8096/v2/words", strings.NewReader(oversized))
+	forward.Header.Set("Content-Type", "application/json")
+	forwarded := httptest.NewRecorder()
+	proxy.forwardHandler(forwarded, forward)
+	if forwarded.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected 413 from the forward handler, got HTTP %d %s", forwarded.Code, forwarded.Body.String())
+	}
+
+	// A body within the limit that is simply malformed is still a 400: the
+	// caller cannot fix it by sending less.
+	malformed := httptest.NewRequest(http.MethodPost, "http://127.0.0.1:8096/v2/check", strings.NewReader("%zz"))
+	malformed.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	badRequest := httptest.NewRecorder()
+	proxy.checkHandler(badRequest, malformed)
+	if badRequest.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for a malformed body, got HTTP %d %s", badRequest.Code, badRequest.Body.String())
+	}
+}
+
+// A check that lost LanguageTool but kept the quality sidecar returns fewer
+// findings than it should. Reporting that as an ordinary result would show a
+// document with grammar checking switched off as a clean one.
+func TestCheckHandlerReportsALostLanguageToolEngine(t *testing.T) {
+	backend := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		http.Error(writer, "Error: Your text exceeds this server's limit of 20000 characters", http.StatusRequestEntityTooLarge)
+	}))
+	defer backend.Close()
+	quality := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write([]byte(`{"backend":"quality","suggestions":[],"antecedents":[]}`))
+	}))
+	defer quality.Close()
+
+	proxy := qualityProxy{
+		languageToolURL: backend.URL + "/v2/check",
+		qualityURL:      quality.URL + "/v1/analyze",
+		client:          &http.Client{},
+	}
+	request := httptest.NewRequest(http.MethodPost, "http://127.0.0.1:8096/v2/check", strings.NewReader("text=Plants+produce+food.&language=en-US"))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	response := httptest.NewRecorder()
+	proxy.checkHandler(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("a partial check still returns its findings, got HTTP %d", response.Code)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	warning, ok := payload["ikmalLanguageToolWarning"].(string)
+	if !ok || !strings.Contains(warning, "413") {
+		t.Fatalf("expected the LanguageTool failure to be reported, got %v", payload)
+	}
+	// Hosts render this one rather than parsing the warning above.
+	degraded, ok := payload["ikmalDegradedChecks"].([]any)
+	if !ok || len(degraded) != 1 || degraded[0] != "grammar" {
+		t.Fatalf("expected the missing engine to be named for hosts, got %v", payload["ikmalDegradedChecks"])
+	}
+	if _, unexpected := payload["ikmalQualityWarning"]; unexpected {
+		t.Fatalf("the quality sidecar answered, so it must not be reported as failed: %v", payload)
+	}
+}

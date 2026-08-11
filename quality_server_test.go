@@ -136,6 +136,126 @@ func TestAnalyzeQualityTextFlagsNonNounRepeatAcrossSentences(t *testing.T) {
 	t.Fatal("expected repeated non-noun content word suggestion")
 }
 
+func TestAnalyzeQualityTextFindsHomophonesRunOnsAndMissingArticles(t *testing.T) {
+	response := analyzeQualityText("I went two the store. I have too kids. I work in factory I have a wife.")
+	seen := map[string]bool{}
+	for _, suggestion := range response.Suggestions {
+		seen[suggestion.Category] = true
+	}
+	if !seen["homophone"] {
+		t.Fatalf("expected a homophone suggestion, got %+v", response.Suggestions)
+	}
+	if !seen["sentence-structure"] {
+		t.Fatalf("expected a run-on sentence suggestion, got %+v", response.Suggestions)
+	}
+	if !seen["missing-word"] {
+		t.Fatalf("expected a missing-article suggestion, got %+v", response.Suggestions)
+	}
+	for _, suggestion := range response.Suggestions {
+		if suggestion.Category == "homophone" && suggestion.Replacement == "two" {
+			return
+		}
+	}
+	t.Fatalf("expected too -> two correction, got %+v", response.Suggestions)
+}
+
+// A numeral followed by its verb is not the preposition, so the automatic
+// "two" -> "to" rewrite must stay off it, and a clause break withdraws the
+// infinitive evidence the rule does accept.
+func TestAnalyzeQualityTextKeepsNumeralsBeforeBareVerbs(t *testing.T) {
+	for _, sentence := range []string{"The two get along well.", "Only two make the cut.", "I want two, get me one."} {
+		response := analyzeQualityText(sentence)
+		if hasQualityCategory(response.Suggestions, "homophone") {
+			t.Fatalf("unexpected homophone suggestion for %q, got %+v", sentence, response.Suggestions)
+		}
+	}
+}
+
+func TestAnalyzeQualityTextFlagsTwoBeforeAnInfinitive(t *testing.T) {
+	response := analyzeQualityText("I want two go home.")
+	for _, suggestion := range response.Suggestions {
+		if suggestion.Category == "homophone" && suggestion.Replacement == "to" {
+			return
+		}
+	}
+	t.Fatalf("expected two -> to after an infinitive head, got %+v", response.Suggestions)
+}
+
+// The replacement is applied verbatim by every host, so it has to be
+// grammatical: a vowel-initial noun takes "an".
+func TestAnalyzeQualityTextUsesAnBeforeVowelNouns(t *testing.T) {
+	response := analyzeQualityText("I have idea.")
+	for _, suggestion := range response.Suggestions {
+		if suggestion.Category != "missing-word" {
+			continue
+		}
+		if suggestion.Replacement != "an idea" {
+			t.Fatalf("expected %q, got %q", "an idea", suggestion.Replacement)
+		}
+		return
+	}
+	t.Fatalf("expected a missing-article suggestion, got %+v", response.Suggestions)
+}
+
+// The guards that stop "I" from reading as a sentence boundary, and stop a bare
+// -ed from reading as a passive, must stay narrow. These assert the true
+// positives they were carved around still fire.
+func TestAnalyzeQualityTextStillFlagsRunOnsBeforeI(t *testing.T) {
+	response := analyzeQualityText("I work in factory I have a wife.")
+	if !hasQualityCategory(response.Suggestions, "sentence-structure") {
+		t.Fatalf("expected a run-on before a bare noun, got %+v", response.Suggestions)
+	}
+}
+
+func TestAnalyzeQualityTextDoesNotTreatRelativeClauseIAsRunOn(t *testing.T) {
+	// A real passive is expected here; only the run-on reading is wrong.
+	response := analyzeQualityText("Everything I do is checked by the team.")
+	if hasQualityCategory(response.Suggestions, "sentence-structure") {
+		t.Fatalf("unexpected run-on for an indefinite pronoun head, got %+v", response.Suggestions)
+	}
+}
+
+func TestAnalyzeQualityTextTracksPassiveVoiceWithoutAutomaticRewrite(t *testing.T) {
+	response := analyzeQualityText("The report was reviewed by the editor. The editor reviewed the report. The results have been published. The setting can be enabled.")
+	var passive []qualitySuggestion
+	for _, suggestion := range response.Suggestions {
+		if suggestion.Category == "passive-voice" {
+			passive = append(passive, suggestion)
+		}
+	}
+	if len(passive) != 3 {
+		t.Fatalf("expected three passive-voice findings, got %+v", response.Suggestions)
+	}
+	if passive[0].Replacement != "" || passive[0].Confidence < 0.9 {
+		t.Fatalf("expected a review-only high-confidence passive finding, got %+v", passive[0])
+	}
+	if passive[0].End <= passive[0].Start || passive[1].End <= passive[1].Start || passive[2].End <= passive[2].Start {
+		t.Fatalf("expected non-empty UTF-16 spans, got %+v", passive)
+	}
+}
+
+func TestAnalyzeQualityTextDoesNotFlagCopularAdjectivesAsPassive(t *testing.T) {
+	response := analyzeQualityText("The team is tired. The result is clear. The editor reviewed the report.")
+	for _, suggestion := range response.Suggestions {
+		if suggestion.Category == "passive-voice" {
+			t.Fatalf("unexpected passive-voice suggestion: %+v", suggestion)
+		}
+	}
+}
+
+func TestAnalyzeQualityTextTracksContractedPassiveVoice(t *testing.T) {
+	response := analyzeQualityText("The feature is useful. It's designed for local use. That's been tested already.")
+	count := 0
+	for _, suggestion := range response.Suggestions {
+		if suggestion.Category == "passive-voice" {
+			count++
+		}
+	}
+	if count != 2 {
+		t.Fatalf("expected contracted passive constructions to be tracked, got %+v", response.Suggestions)
+	}
+}
+
 func TestAnalyzeQualityTextMergesTransformerSuggestions(t *testing.T) {
 	local := []qualitySuggestion{{
 		Start:    8,

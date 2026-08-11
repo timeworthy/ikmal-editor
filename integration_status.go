@@ -123,8 +123,13 @@ func detectVSCodeIntegration(homeDir, endpoint string) integrationTarget {
 	settings := readTextFile(settingsPath)
 	installed := len(globMatches(filepath.Join(homeDir, ".vscode", "extensions", "*languagetool*"))) > 0
 	target := integrationTarget{ID: "vscode", Name: "VS Code LanguageTool integration", Detected: installed || settings != "", Details: "VS Code extension and user settings"}
-	target.Configured = strings.Contains(settings, "languageTool.serverUrl") && integrationUsesEndpoint(settings, endpoint)
-	return finalizeIntegrationTarget(target, endpoint, integrationEndpointFromContent(settings))
+	// settings.json belongs to every installed extension, so the endpoint has to
+	// come from this integration's own key. Matching a bare "serverUrl" here
+	// would report an unrelated extension's server as this integration's, and a
+	// correctly configured host as misconfigured.
+	configuredEndpoint := integrationEndpointForKey(settings, vsCodeServerURLPattern)
+	target.Configured = configuredEndpoint != "" && configuredEndpoint == normalizeIntegrationEndpoint(endpoint)
+	return finalizeIntegrationTarget(target, endpoint, configuredEndpoint)
 }
 
 func integrationTargetEnabled(id string) bool {
@@ -147,10 +152,15 @@ func integrationUsesEndpoint(content, endpoint string) bool {
 }
 
 // integrationServerURLPattern matches the server setting by name across the
-// formats this app writes and reads: Firefox managed storage ("serverUrl"),
-// Chrome/Edge policy ("server_url"), VS Code settings
-// ("languageTool.serverUrl"), and macOS defaults ("apiServer").
-var integrationServerURLPattern = regexp.MustCompile(`(?i)"(?:languagetool\.)?(?:serverurl|server_url|apiserver)"\s*:\s*"([^"]*)"`)
+// single-purpose files this app writes and reads: Firefox managed storage
+// ("serverUrl"), Chrome/Edge policy ("server_url"), and macOS defaults
+// ("apiServer"). Those files belong to one integration each, so an unqualified
+// key is unambiguous there.
+var integrationServerURLPattern = regexp.MustCompile(`(?i)"(?:serverurl|server_url|apiserver)"\s*:\s*"([^"]*)"`)
+
+// vsCodeServerURLPattern keeps VS Code on its fully qualified key, because
+// settings.json is shared by every installed extension.
+var vsCodeServerURLPattern = regexp.MustCompile(`(?i)"languagetool\.serverurl"\s*:\s*"([^"]*)"`)
 
 // integrationEndpointFromContent reports the endpoint a host is configured to
 // call. It keys off the setting name rather than taking the first URL in the
@@ -159,12 +169,20 @@ var integrationServerURLPattern = regexp.MustCompile(`(?i)"(?:languagetool\.)?(?
 // a real settings.json holds schema, proxy, and marketplace URLs. Taking the
 // first match reported a correctly configured host as misconfigured.
 func integrationEndpointFromContent(content string) string {
-	if match := integrationServerURLPattern.FindStringSubmatch(content); match != nil {
-		return normalizeIntegrationEndpoint(match[1])
+	if endpoint := integrationEndpointForKey(content, integrationServerURLPattern); endpoint != "" {
+		return endpoint
 	}
 	// macOS defaults and other bare-value sources have no surrounding key.
 	if trimmed := strings.TrimSpace(content); trimmed != "" && !strings.ContainsAny(trimmed, "{}\n") {
 		return normalizeIntegrationEndpoint(trimmed)
+	}
+	return ""
+}
+
+// integrationEndpointForKey reads the endpoint a specific setting name holds.
+func integrationEndpointForKey(content string, pattern *regexp.Regexp) string {
+	if match := pattern.FindStringSubmatch(content); match != nil {
+		return normalizeIntegrationEndpoint(match[1])
 	}
 	return ""
 }

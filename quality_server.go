@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -137,6 +138,71 @@ var qualityVerbForms = map[string]bool{
 	"takes": true, "uses": true, "varies": true, "works": true,
 }
 
+var qualityTooAdjectives = map[string]bool{
+	"bad": true, "big": true, "close": true, "early": true, "far": true,
+	"fast": true, "few": true, "good": true, "hard": true, "late": true,
+	"little": true, "long": true, "many": true, "much": true, "often": true,
+	"quickly": true, "short": true, "slow": true, "soon": true, "tired": true,
+	"well": true, "young": true,
+}
+
+// Only followers that make the numeral reading impossible belong here. Words
+// like "that", "you", "work", "read", and "see" follow the numeral at least as
+// often as the preposition ("I have two that fit", "two work shifts"), so
+// including them turned correct text into a 0.91-confidence error. "them" stays
+// because "two them" is never grammatical.
+var qualityToFollowers = map[string]bool{
+	"a": true, "an": true, "her": true, "him": true, "his": true,
+	"me": true, "my": true, "our": true, "the": true, "their": true,
+	"them": true, "this": true, "us": true,
+}
+
+// Bare verbs are the infinitive reading of "to", but on their own they fail the
+// rule above: "The two get along well" and "Only two make the cut" are a plural
+// subject followed by its verb, so listing them as followers flagged correct
+// text. They only settle the reading after a verb that takes an infinitive
+// complement — "I want two go" — where "two" cannot be both that verb's object
+// and the subject of the next one.
+var qualityInfinitiveVerbs = map[string]bool{
+	"be": true, "do": true, "get": true, "go": true,
+	"learn": true, "make": true, "write": true,
+}
+
+var qualityInfinitiveHeads = map[string]bool{
+	"going": true, "had": true, "has": true, "have": true, "hope": true,
+	"hoped": true, "hopes": true, "like": true, "liked": true, "likes": true,
+	"need": true, "needed": true, "needs": true, "plan": true, "planned": true,
+	"plans": true, "tried": true, "tries": true, "try": true, "used": true,
+	"want": true, "wanted": true, "wants": true,
+}
+
+var qualityClauseStarters = map[string]bool{
+	"he": true, "i": true, "it": true, "my": true, "she": true,
+	"they": true, "this": true, "we": true, "you": true,
+}
+
+var qualityIndefinitePronouns = map[string]bool{
+	"anybody": true, "anyone": true, "anything": true, "everybody": true,
+	"everyone": true, "everything": true, "nobody": true, "nothing": true,
+	"somebody": true, "someone": true, "something": true,
+}
+
+// isPluralQualityNoun detects plurals by a trailing "s", which misses these.
+// That let "children" reach the missing-article rule and produce "a children",
+// and let irregular plurals take singular pronouns in the agreement check.
+var qualityIrregularPlurals = map[string]bool{
+	"children": true, "feet": true, "geese": true, "men": true,
+	"mice": true, "oxen": true, "people": true, "teeth": true,
+	"women": true,
+}
+
+var qualityArticleNouns = map[string]bool{
+	"car": true, "child": true, "children": true, "factory": true,
+	"family": true, "friend": true, "house": true, "idea": true,
+	"job": true, "name": true, "problem": true, "question": true,
+	"sentence": true, "story": true, "wife": true, "word": true,
+}
+
 var qualityWordFamilies = map[string]string{
 	"different":     "differ",
 	"difference":    "differ",
@@ -152,6 +218,64 @@ var qualityWordFamilies = map[string]string{
 	"importance":    "import",
 	"relevant":      "relev",
 	"relevance":     "relev",
+}
+
+var qualityPassiveAuxiliaries = map[string]bool{
+	"am": true, "are": true, "be": true, "been": true, "being": true,
+	"aren't": true, "get": true, "gets": true, "getting": true, "got": true,
+	"he's": true, "is": true, "isn't": true, "it's": true, "she's": true,
+	"that's": true, "there's": true, "was": true, "wasn't": true, "we're": true,
+	"were": true, "weren't": true, "what's": true, "who's": true, "they're": true,
+	"you're": true,
+}
+
+var qualityPassiveSupports = map[string]bool{
+	"can": true, "can't": true, "could": true, "couldn't": true, "had": true,
+	"hadn't": true, "has": true, "hasn't": true, "have": true, "haven't": true,
+	"may": true, "might": true, "mightn't": true, "must": true, "mustn't": true,
+	"shall": true, "should": true, "shouldn't": true, "will": true, "won't": true,
+	"would": true, "wouldn't": true,
+}
+
+var qualityPassiveAdverbs = map[string]bool{
+	"already": true, "also": true, "automatically": true, "commonly": true,
+	"directly": true, "fully": true, "generally": true, "never": true,
+	"not": true, "often": true, "partially": true, "quickly": true,
+	"still": true, "successfully": true, "typically": true, "usually": true,
+	"widely": true,
+}
+
+// This list covers irregular participles and common technical verbs whose
+// -ed forms are useful passive-voice signals. The suffix fallback below is
+// only used when an explicit by-agent makes the construction unambiguous.
+var qualityPassiveParticiples = map[string]bool{
+	"affected": true, "allowed": true, "approved": true, "assigned": true,
+	"based": true, "built": true, "called": true, "caused": true, "changed": true,
+	"chosen": true, "compared": true, "connected": true, "considered": true,
+	"created": true, "described": true, "designed": true, "developed": true,
+	"determined": true, "discovered": true, "enabled": true, "established": true,
+	"estimated": true, "expected": true, "explained": true, "found": true,
+	"formed": true, "given": true, "identified": true, "improved": true,
+	"included": true, "increased": true, "influenced": true, "installed": true,
+	"intended": true, "introduced": true, "involved": true, "known": true,
+	"limited": true, "located": true, "made": true, "managed": true,
+	"measured": true, "mentioned": true, "needed": true, "observed": true,
+	"offered": true, "opened": true, "operated": true, "organized": true,
+	"planned": true, "presented": true, "processed": true, "produced": true,
+	"protected": true, "provided": true, "published": true, "raised": true,
+	"read": true, "received": true, "reduced": true, "removed": true,
+	"replaced": true, "reported": true, "required": true, "resolved": true,
+	"returned": true, "revealed": true, "saved": true, "selected": true,
+	"sent": true, "shared": true, "shown": true, "signed": true,
+	"started": true, "stored": true, "supported": true, "tested": true,
+	"treated": true, "used": true, "updated": true, "verified": true,
+	"viewed": true, "written": true,
+}
+
+var qualityPassiveAdjectiveForms = map[string]bool{
+	"concerned": true, "convinced": true, "excited": true, "interested": true,
+	"married": true, "pleased": true, "related": true, "satisfied": true,
+	"surprised": true, "tired": true, "worried": true,
 }
 
 func runQualityServer() {
@@ -305,7 +429,7 @@ func qualityAnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 	var request qualityRequest
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&request); err != nil {
-		writeQualityJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON request"})
+		writeQualityRequestError(w, err, "invalid JSON request")
 		return
 	}
 	if strings.TrimSpace(request.Text) == "" {
@@ -321,6 +445,24 @@ func writeQualityJSON(w http.ResponseWriter, status int, value any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(value)
+}
+
+// writeQualityRequestError answers a request whose body could not be read.
+//
+// A body that exceeded the handler's limit is a different answer from a
+// malformed one: the caller can act on 413 by sending less text, and can do
+// nothing at all with 400. LanguageTool answers its own length limit with 413,
+// so a caller that already handles one handles both.
+func writeQualityRequestError(w http.ResponseWriter, err error, message string) {
+	var tooLarge *http.MaxBytesError
+	if errors.As(err, &tooLarge) {
+		writeQualityJSON(w, http.StatusRequestEntityTooLarge, map[string]any{
+			"error": fmt.Sprintf("request body exceeds this server's limit of %d bytes", tooLarge.Limit),
+			"limit": tooLarge.Limit,
+		})
+		return
+	}
+	writeQualityJSON(w, http.StatusBadRequest, map[string]string{"error": message})
 }
 
 func analyzeQualityText(text string) qualityResponse {
@@ -395,6 +537,10 @@ func analyzeQualityText(text string) qualityResponse {
 		}
 	}
 
+	suggestions = append(suggestions, analyzeQualityHomophones(text, tokens)...)
+	suggestions = append(suggestions, analyzeQualitySentenceStructure(text, tokens)...)
+	suggestions = append(suggestions, analyzeQualityMissingArticles(text, tokens)...)
+	suggestions = append(suggestions, analyzeQualityPassiveVoice(text, tokens)...)
 	suggestions = append(suggestions, analyzeQualityStyleGuide(text)...)
 
 	return qualityResponse{
@@ -402,6 +548,264 @@ func analyzeQualityText(text string) qualityResponse {
 		Suggestions: suggestions,
 		Antecedents: antecedents,
 	}
+}
+
+// analyzeQualityPassiveVoice reports the passive construction without trying
+// to invent an active rewrite. Passive voice is a valid choice in many
+// contexts; the signal is useful when the writer wants to check whether the
+// actor should be made more prominent.
+func analyzeQualityPassiveVoice(text string, tokens []qualityToken) []qualitySuggestion {
+	suggestions := make([]qualitySuggestion, 0)
+	seen := make(map[int]bool)
+	for index, token := range tokens {
+		if !isQualityWord(token) || !qualityPassiveAuxiliaries[token.Lower] {
+			continue
+		}
+
+		participleIndex := index + 1
+		for skipped := 0; participleIndex < len(tokens) && skipped < 3; skipped++ {
+			next := tokens[participleIndex]
+			if next.Sentence != token.Sentence || !isQualityWord(next) || !qualityPassiveAdverbs[next.Lower] {
+				break
+			}
+			participleIndex++
+		}
+		if participleIndex >= len(tokens) {
+			continue
+		}
+		participle := tokens[participleIndex]
+		if participle.Sentence != token.Sentence || !isQualityWord(participle) {
+			continue
+		}
+
+		byAgent := passiveHasByAgent(tokens, participleIndex)
+		// The -ed suffix alone does not distinguish a passive from a copular
+		// adjective ("the door is closed"), so that fallback is only used when
+		// an explicit by-agent makes the construction unambiguous. Known
+		// participles need no such evidence.
+		inList := qualityPassiveParticiples[participle.Lower]
+		suffixOK := strings.HasSuffix(participle.Lower, "ed") &&
+			!qualityPassiveAdjectiveForms[participle.Lower] && byAgent
+		if !inList && !suffixOK {
+			continue
+		}
+		// "be used to" is the accustomed-to idiom far more often than it is a
+		// passive with an instrumental infinitive, and "used" is on the
+		// participle list, so the by-agent rule above does not reach it.
+		if participle.Lower == "used" && !byAgent &&
+			participleIndex+1 < len(tokens) && tokens[participleIndex+1].Lower == "to" {
+			continue
+		}
+
+		startIndex := index
+		for startIndex > 0 {
+			previous := tokens[startIndex-1]
+			if previous.Sentence != token.Sentence {
+				break
+			}
+			if qualityPassiveSupports[previous.Lower] || qualityPassiveAuxiliaries[previous.Lower] || qualityPassiveAdverbs[previous.Lower] {
+				startIndex--
+				continue
+			}
+			break
+		}
+		start := tokens[startIndex].Start
+		if seen[start] {
+			continue
+		}
+		seen[start] = true
+		confidence := 0.84
+		message := "This phrase may use passive voice. Consider active voice if the actor matters."
+		if byAgent {
+			confidence = 0.96
+			message = "This clause uses passive voice. Consider naming the actor first if the actor matters."
+		}
+		suggestions = append(suggestions, qualitySuggestion{
+			Start:      qualityUTF16Offset(text, start),
+			End:        qualityUTF16Offset(text, participle.End),
+			Category:   "passive-voice",
+			Message:    message,
+			Confidence: confidence,
+			Source:     "quality-sidecar",
+		})
+	}
+	return suggestions
+}
+
+func passiveHasByAgent(tokens []qualityToken, participleIndex int) bool {
+	for index := participleIndex + 1; index < len(tokens) && index <= participleIndex+8; index++ {
+		token := tokens[index]
+		if token.Sentence != tokens[participleIndex].Sentence {
+			break
+		}
+		if token.Text == "." || token.Text == "!" || token.Text == "?" {
+			break
+		}
+		if token.Lower == "by" {
+			return true
+		}
+	}
+	return false
+}
+
+// These are deliberately narrow context rules. A checker should not rewrite
+// every occurrence of a homophone, but “too kids” and “two the store” are
+// strong enough signals to surface without a statistical grammar model.
+func analyzeQualityHomophones(text string, tokens []qualityToken) []qualitySuggestion {
+	suggestions := make([]qualitySuggestion, 0)
+	for index, token := range tokens {
+		if !isQualityWord(token) || index+1 >= len(tokens) || !isQualityWord(tokens[index+1]) {
+			continue
+		}
+		next := tokens[index+1]
+		switch token.Lower {
+		case "too":
+			if !isPluralQualityNoun(next.Lower) || qualityTooAdjectives[next.Lower] {
+				continue
+			}
+			suggestions = append(suggestions, qualitySuggestion{
+				Start: qualityUTF16Offset(text, token.Start), End: qualityUTF16Offset(text, token.End),
+				Replacement: "two", Category: "homophone", Confidence: 0.94, Source: "quality-sidecar",
+				Message: fmt.Sprintf("Use %q for the number; %q means also or excessively.", "two", "too"),
+			})
+		case "two":
+			if !qualityToFollowers[next.Lower] && !hasInfinitiveHead(text, tokens, index) {
+				continue
+			}
+			suggestions = append(suggestions, qualitySuggestion{
+				Start: qualityUTF16Offset(text, token.Start), End: qualityUTF16Offset(text, token.End),
+				Replacement: "to", Category: "homophone", Confidence: 0.91, Source: "quality-sidecar",
+				Message: fmt.Sprintf("Use %q here for the preposition or infinitive.", "to"),
+			})
+		}
+	}
+	return suggestions
+}
+
+// True when tokens[index] ("two") sits between a verb that takes an infinitive
+// complement and the bare verb that follows it: "I want two go". A clause break
+// in between makes it a numeral again — "I want two, get me one" — so any
+// separating punctuation withdraws the evidence.
+func hasInfinitiveHead(text string, tokens []qualityToken, index int) bool {
+	if index == 0 || !qualityInfinitiveVerbs[tokens[index+1].Lower] {
+		return false
+	}
+	previous := tokens[index-1]
+	if !isQualityWord(previous) || !qualityInfinitiveHeads[previous.Lower] {
+		return false
+	}
+	return !strings.ContainsAny(text[previous.End:tokens[index+1].Start], ".!?;:,\n")
+}
+
+func analyzeQualitySentenceStructure(text string, tokens []qualityToken) []qualitySuggestion {
+	suggestions := make([]qualitySuggestion, 0)
+	for index := 0; index+1 < len(tokens); index++ {
+		previous, current := tokens[index], tokens[index+1]
+		if !isQualityWord(previous) || !isQualityWord(current) || !qualityClauseStarters[current.Lower] {
+			continue
+		}
+		if previous.Lower == "and" || previous.Lower == "or" || previous.Lower == "but" {
+			continue
+		}
+		gap := text[previous.End:current.Start]
+		if strings.ContainsAny(gap, ".!?;:\n") || !startsWithUppercase(current.Text) {
+			continue
+		}
+		// A capitalized pronoun after “Ian and I” is the same clause, not a
+		// sentence boundary. Coordinating conjunctions make the boundary
+		// heuristic inapplicable.
+		if gapHasConjunction(gap) {
+			continue
+		}
+		// “I” is the one clause starter that is capitalized mid-sentence, so
+		// capitalization alone cannot separate a new sentence from a relative
+		// clause. When the previous token heads a noun phrase — “the report I
+		// wrote” — or is an indefinite pronoun — “Everything I do” — the
+		// relative-clause reading is the likely one and the boundary evidence
+		// is gone. Bare nouns keep firing, so “in factory I have a wife” is
+		// still caught.
+		if current.Lower == "i" && headsRelativeClause(tokens, index) {
+			continue
+		}
+		suggestions = append(suggestions, qualitySuggestion{
+			Start: qualityUTF16Offset(text, previous.Start), End: qualityUTF16Offset(text, previous.End),
+			Replacement: previous.Text + ".", Category: "sentence-structure", Confidence: 0.84, Source: "quality-sidecar",
+			Message: "This may be a run-on sentence. Consider ending the previous clause before the new sentence.",
+		})
+	}
+	return suggestions
+}
+
+func gapHasConjunction(gap string) bool {
+	for _, word := range strings.Fields(strings.ToLower(gap)) {
+		word = strings.Trim(word, ",")
+		if word == "and" || word == "or" || word == "but" {
+			return true
+		}
+	}
+	return false
+}
+
+// The article follows the sound rather than the spelling, but every noun in
+// qualityArticleNouns is regular, so the first letter decides: "an idea", not
+// the "a idea" a fixed "a " produced. Keep that true of anything added to the
+// list — a silent "h" ("an hour") or a consonant-sounding "u" ("a user") would
+// need the sound, not the letter.
+func qualityIndefiniteArticle(lower string) string {
+	switch {
+	case lower == "":
+		return "a"
+	case strings.ContainsRune("aeiou", rune(lower[0])):
+		return "an"
+	default:
+		return "a"
+	}
+}
+
+func analyzeQualityMissingArticles(text string, tokens []qualityToken) []qualitySuggestion {
+	suggestions := make([]qualitySuggestion, 0)
+	articleContexts := map[string]bool{"at": true, "have": true, "has": true, "in": true, "need": true, "on": true, "want": true, "with": true}
+	for index, token := range tokens {
+		if !articleContexts[token.Lower] || index+1 >= len(tokens) {
+			continue
+		}
+		next := tokens[index+1]
+		if !isQualityWord(next) || !qualityArticleNouns[next.Lower] || isPluralQualityNoun(next.Lower) {
+			continue
+		}
+		gap := text[token.End:next.Start]
+		if gap == "" || strings.ContainsAny(gap, ".!?;:\n") {
+			continue
+		}
+		suggestions = append(suggestions, qualitySuggestion{
+			Start: qualityUTF16Offset(text, next.Start), End: qualityUTF16Offset(text, next.End),
+			Replacement: qualityIndefiniteArticle(next.Lower) + " " + next.Text, Category: "missing-word", Confidence: 0.76, Source: "quality-sidecar",
+			Message: fmt.Sprintf("A missing article may be needed before %q.", next.Text),
+		})
+	}
+	return suggestions
+}
+
+// headsRelativeClause reports whether the token at index is the kind of noun
+// phrase a relative clause attaches to: either preceded by a determiner, or an
+// indefinite pronoun that takes one directly.
+func headsRelativeClause(tokens []qualityToken, index int) bool {
+	head := tokens[index]
+	if qualityIndefinitePronouns[head.Lower] {
+		return true
+	}
+	if index == 0 {
+		return false
+	}
+	previous := tokens[index-1]
+	return previous.Sentence == head.Sentence && qualityDeterminers[previous.Lower]
+}
+
+func startsWithUppercase(value string) bool {
+	for _, r := range value {
+		return unicode.IsUpper(r)
+	}
+	return false
 }
 
 type qualityStyleGuideRule struct {
@@ -777,6 +1181,9 @@ func antecedentAgreement(pronoun, antecedent string) string {
 }
 
 func isPluralQualityNoun(word string) bool {
+	if qualityIrregularPlurals[word] {
+		return true
+	}
 	return strings.HasSuffix(word, "s") && !strings.HasSuffix(word, "ss") &&
 		!strings.HasSuffix(word, "us") && !strings.HasSuffix(word, "is") && !qualityVerbForms[word]
 }

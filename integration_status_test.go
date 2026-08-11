@@ -94,6 +94,67 @@ func TestIntegrationDetectionRecognizesConfiguredFirefoxChromeAndVSCode(t *testi
 	}
 }
 
+func vsCodeSettingsPath(home string) string {
+	if runtime.GOOS == "linux" {
+		return filepath.Join(home, ".config", "Code", "User", "settings.json")
+	}
+	return appSupportPath(home, "Code", "User", "settings.json")
+}
+
+// settings.json belongs to every installed extension, so another extension's
+// server setting must not be read as this integration's.
+func TestVSCodeIntegrationReadsOnlyItsOwnServerSetting(t *testing.T) {
+	endpoint := "http://127.0.0.1:8096/v2"
+
+	write := func(t *testing.T, home, content string) {
+		t.Helper()
+		path := vsCodeSettingsPath(home)
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// An unrelated extension's bare "serverUrl" comes first in the file, and
+	// this integration's own setting is correct.
+	configured := t.TempDir()
+	write(t, configured, `{
+  "someTool.enabled": true,
+  "serverUrl": "http://10.0.0.5:9000",
+  "languageTool.serverUrl": "http://127.0.0.1:8096/v2/check"
+}`)
+	target := detectVSCodeIntegration(configured, endpoint)
+	if !target.Detected || !target.Configured || target.State != "configured" {
+		t.Fatalf("a correctly configured host must not be reported through another extension's setting, got %+v", target)
+	}
+	if target.ConfiguredEndpoint != endpoint {
+		t.Fatalf("expected this integration's endpoint, got %q", target.ConfiguredEndpoint)
+	}
+
+	// A genuinely wrong value for this integration is still reported, and
+	// reported as its own endpoint.
+	misconfigured := t.TempDir()
+	write(t, misconfigured, `{
+  "serverUrl": "http://10.0.0.5:9000",
+  "languageTool.serverUrl": "http://127.0.0.1:8097/v2/check"
+}`)
+	target = detectVSCodeIntegration(misconfigured, endpoint)
+	if target.Configured || target.State != "misconfigured" || target.ConfiguredEndpoint != "http://127.0.0.1:8097/v2" {
+		t.Fatalf("expected a misconfigured VS Code integration reported by its own setting, got %+v", target)
+	}
+
+	// Settings that only hold another extension's server URL say nothing about
+	// this integration.
+	unrelated := t.TempDir()
+	write(t, unrelated, `{"serverUrl": "http://10.0.0.5:9000"}`)
+	target = detectVSCodeIntegration(unrelated, endpoint)
+	if target.Configured || target.ConfiguredEndpoint != "" || target.State != "detected" {
+		t.Fatalf("expected no endpoint claim from an unrelated setting, got %+v", target)
+	}
+}
+
 func TestAutoConfigureAppsHonorsExplicitTargetSelection(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
@@ -180,16 +241,6 @@ func TestIntegrationEndpointIgnoresUnrelatedURLsInTheSameFile(t *testing.T) {
 }`
 	if !integrationUsesEndpoint(chromePolicy, endpoint) {
 		t.Fatalf("policy this app writes must read as configured, got endpoint %q", integrationEndpointFromContent(chromePolicy))
-	}
-
-	// VS Code settings where an unrelated URL precedes the setting.
-	vscodeSettings := `{
-  "$schema": "https://json.schemastore.org/settings.json",
-  "http.proxy": "http://proxy.internal:3128",
-  "languageTool.serverUrl": "http://127.0.0.1:8096/v2/check"
-}`
-	if !integrationUsesEndpoint(vscodeSettings, endpoint) {
-		t.Fatalf("settings with unrelated URLs must read as configured, got endpoint %q", integrationEndpointFromContent(vscodeSettings))
 	}
 
 	// A genuinely wrong server URL must still be reported, and reported as

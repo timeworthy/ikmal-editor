@@ -16,6 +16,17 @@ Paragraph-wide tracking of arbitrary repeated words requires the text-level
 quality sidecar, because a LanguageTool XML token rule cannot reliably compare
 an arbitrary word across sentence boundaries.
 
+The quality sidecar also reports a `passive-voice` finding for high-confidence
+passive constructions such as `was reviewed by ...`, `has been updated`, and
+`can be enabled`. These findings have no automatic replacement: passive voice
+is sometimes the clearest choice, and an active rewrite needs the surrounding
+meaning and intended emphasis.
+
+A past participle that is not on the known-participle list is only treated as
+passive when an explicit by-agent is present. The `-ed` suffix alone cannot
+separate a passive from a copular adjective, so `the door is closed` and
+`I am used to the noise` are deliberately not flagged.
+
 ---
 
 ## Rule Categories

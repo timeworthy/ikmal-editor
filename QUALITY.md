@@ -15,6 +15,10 @@ edits and broader writing-quality judgments.
   relationship is locally unambiguous.
 - The repetition category detects nearby non-noun content-word repeats and
   includes a first word-family echo rule for `different` / `difference`.
+- The passive-voice category tracks high-confidence passive constructions,
+  including agent-marked, perfect, and modal forms. It reports the passage for
+  review but does not generate an automatic rewrite because changing voice can
+  change emphasis or meaning.
 - An opt-in Go sidecar is available with `--quality-server`; it currently
   returns deterministic suggestions and antecedent links on port `8098`.
 - An optional Transformers.js/ONNX adapter is included. It loads a local
