@@ -955,3 +955,48 @@ Next action:
 - Push so `tests.yml` runs, and adjust the browser job against a real result.
 - Run `npx playwright install chromium` on an unrestricted network and re-run
   `npm run smoke:browser` to exercise the pinned-browser path.
+
+### 2026-08-11 — Agent / first CI run, and what it caught
+
+Gate: `7` packaging
+Status: `complete`
+
+Changed:
+- The rewrite was split into five branches merged into `dev` in dependency
+  order, after merging `main` in first. The conflict there was not the release
+  checksums — those matched — but `timeworthy` against `timeworthymedia` in the
+  download URLs; `dev`'s org rename is the newer commit and matches the remote.
+- `npm test` now stages the desktop slice before running. `host_actions.test.mjs`
+  reads `apps/desktop-editor/issue_popover.js`, which is generated and ignored,
+  so the suite only passed where an earlier package run had left it behind.
+- The injection smoke's Apply branch was dead: it tested a list of objects that
+  had become a list of strings, so the condition never fired and the apply path
+  went unexercised. It now runs against a freshly checked field, and its
+  screenshot is best-effort because a virtual display cannot always capture.
+
+Evidence:
+- Run 31533294871 — success on all three jobs. The browser job reports
+  `"browser":"pinned Playwright Chromium"`, which closes the previous entry's
+  open item: the pinned-browser path is exercised, headed under `xvfb`.
+- The revived branch now reports `"text":"the"`, so Apply is proven end to end
+  rather than skipped.
+- Run 31532455248 — the first attempt, failing on both items above. Recorded
+  because it is the evidence that the workflow was worth adding.
+
+Unknowns / risks:
+- `applyIssue` returning `{ applied: false }` is discarded by the popover click
+  handler in `apps/browser-extension/content_module.js`: it calls
+  `closePopover()` either way. A correction refused for being derived from a
+  superseded check therefore looks exactly like one that worked — the card
+  closes and the text does not change. Refusing the stale correction is right;
+  saying nothing about it is the same silent-no-op failure that
+  `tools/host_actions.test.mjs` exists to prevent. Not fixed here.
+- `desktop/main.cjs`, `tools/package_debian.mjs`, and `vscode-extension/LICENSE`
+  still say `timeworthymedia`; the org rename looks incomplete.
+
+Next action:
+- Port chunking and retention to `apps/browser-extension`, with a harness
+  pointed at it. The caret is the work, not the planner: `content_module.js` has
+  no equivalent of the legacy `caretOf`, which handles `selectionEnd` for inputs
+  and a Range measurement for contenteditable.
+- Decide whether the popover should surface a refused apply.
