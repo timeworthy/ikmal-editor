@@ -9,6 +9,13 @@ let lastProjection;
 let lastMatches = [];
 let markedRanges = [];
 
+// The bridge names the engines that did not answer. A pane that reported only
+// the count would present a partial check as a finished one.
+function degradedSuffix(result) {
+  const missing = Array.isArray(result?.ikmalDegradedChecks) ? result.ikmalDegradedChecks : [];
+  return missing.length ? ` · ${missing.join(' and ')} checks did not run` : '';
+}
+
 function setState(message) {
   state.textContent = message;
 }
@@ -99,7 +106,7 @@ async function checkPresentation() {
     await markMatches(lastMatches);
     renderFindings(lastMatches);
     clearButton.disabled = markedRanges.length === 0;
-    setState(`${lastMatches.length} finding${lastMatches.length === 1 ? '' : 's'} in presentation text`);
+    setState(`${lastMatches.length} finding${lastMatches.length === 1 ? '' : 's'} in presentation text${degradedSuffix(result)}`);
   } catch (error) {
     setState(error.message || 'The local check failed.');
   }

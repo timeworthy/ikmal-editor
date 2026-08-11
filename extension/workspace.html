@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ikmal editor · issues</title>
+  <link rel="stylesheet" href="workspace.css">
+</head>
+<body>
+  <main class="workspace">
+    <header class="workspace-header">
+      <div>
+        <p class="workspace-kicker">IKMAL EDITOR</p>
+        <h1>Issues in the active editor</h1>
+        <p class="workspace-subtitle" id="workspace-meta">Loading the current text…</p>
+      </div>
+      <button id="refresh" class="button button-quiet" type="button">Refresh</button>
+    </header>
+    <section id="state" class="workspace-state" role="status" aria-live="polite"></section>
+    <section id="issues" class="issues" aria-label="Issues"></section>
+  </main>
+  <script src="workspace.js" type="module"></script>
+</body>
+</html>

@@ -15,7 +15,11 @@ contextBridge.exposeInMainWorld('ikmal', {
   openThirdPartyNotices: () => ipcRenderer.invoke('open-third-party-notices'),
   revealExtension: () => ipcRenderer.invoke('reveal-extension'),
   configureIntegrations: (targetIDs) => ipcRenderer.invoke('configure-integrations', targetIDs),
-  checkText: (text) => ipcRenderer.invoke('check-text', text),
+  // options carries the caret, and a scope of 'document' for the idle pass that
+  // restores the findings a chunk cannot see. Omitted, the check is whole.
+  checkText: (text, options) => (options
+    ? ipcRenderer.invoke('check-text', text, options)
+    : ipcRenderer.invoke('check-text', text)),
   getRecentChecks: () => ipcRenderer.invoke('recent-checks'),
   clearRecentChecks: () => ipcRenderer.invoke('clear-recent-checks'),
   getStyleGuideState: () => ipcRenderer.invoke('style-guide-state'),
@@ -27,6 +31,7 @@ contextBridge.exposeInMainWorld('ikmal', {
   getDesktopPresence: () => ipcRenderer.invoke('desktop-presence-state'),
   setDesktopPresence: (settings) => ipcRenderer.invoke('set-desktop-presence', settings),
   getAnnotationPreferences: () => ipcRenderer.invoke('get-annotation-preferences'),
+  addDictionaryWord: (word) => ipcRenderer.invoke('add-dictionary-word', word),
   setAnnotationPreferences: (settings) => ipcRenderer.invoke('set-annotation-preferences', settings),
   getCheckingPreferences: () => ipcRenderer.invoke('get-checking-preferences'),
   setCheckingPreferences: (settings) => ipcRenderer.invoke('set-checking-preferences', settings),

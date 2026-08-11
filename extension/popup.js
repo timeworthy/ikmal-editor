@@ -3,11 +3,12 @@ import { SUPPORT_URL } from './support.js';
 const statusEl = document.querySelector('#status');
 const statusLabel = document.querySelector('#status-label');
 const serverNote = document.querySelector('#server-note');
-const endpointLabel = document.querySelector('#endpoint-label');
 const enabledToggle = document.querySelector('#enabled-toggle');
 const siteToggle = document.querySelector('#site-toggle');
 const siteLabel = document.querySelector('#site-label');
 const siteNote = document.querySelector('#site-note');
+const languageSelect = document.querySelector('#language-select');
+const languageNote = document.querySelector('#language-note');
 const support = document.querySelector('#support');
 
 let settings = null;
@@ -43,7 +44,12 @@ function renderHealth(health) {
 
 function renderSettings() {
   enabledToggle.checked = settings.enabled;
-  endpointLabel.textContent = settings.endpoint.replace(/^https?:\/\//, '');
+
+  languageSelect.value = settings.language || 'en-US';
+  const languageName = languageSelect.options[languageSelect.selectedIndex]?.textContent || 'English (US)';
+  languageNote.textContent = languageSelect.value === 'auto'
+    ? 'Automatic detection · short text uses your browser locale as a tie-break'
+    : `Checking as ${languageName}`;
 
   const disabled = (settings.disabledHosts || []).includes(host);
   siteLabel.textContent = host || 'This site';
@@ -92,6 +98,8 @@ siteToggle.addEventListener('change', () => {
   patch({ disabledHosts: [...disabled] });
 });
 
+languageSelect.addEventListener('change', () => patch({ language: languageSelect.value }));
+
 document.querySelector('#open-options').addEventListener('click', () => {
   chrome.runtime.openOptionsPage();
 });
@@ -117,15 +125,20 @@ function escapeHTML(value) {
 }
 
 const focusLabel = document.querySelector('#focus-label');
-const focusDuration = document.querySelector('#focus-duration');
-const focusButtons = [...document.querySelectorAll('.focus-mode-button')];
+const focusButton = document.querySelector('.focus-mode-button[data-mode="active"]');
+const focusPickers = [
+  { mode: 'paused', element: document.querySelector('.focus-picker[data-mode="paused"]') },
+  { mode: 'zen', element: document.querySelector('.focus-picker[data-mode="zen"]') },
+];
 
 function renderFocus(state) {
   if (!state) return;
-  focusLabel.textContent = state.label || 'Checking';
-  focusButtons.forEach((button) => {
-    button.classList.toggle('is-active', button.dataset.mode === state.mode);
-    button.setAttribute('aria-pressed', String(button.dataset.mode === state.mode));
+  focusLabel.textContent = state.mode === 'active' ? 'Automatic' : (state.label || 'Checking');
+  focusButton.classList.toggle('is-active', state.mode === 'active');
+  focusButton.setAttribute('aria-pressed', String(state.mode === 'active'));
+  focusPickers.forEach(({ mode, element }) => {
+    element.classList.toggle('is-active', mode === state.mode);
+    if (mode !== state.mode) element.removeAttribute('open');
   });
 }
 
@@ -134,21 +147,43 @@ async function loadFocus() {
     send({ type: 'focus' }),
     send({ type: 'focusDurations' }),
   ]);
-  if (durations?.ok && focusDuration.options.length === 0) {
-    durations.data.forEach((duration) => {
-      const option = document.createElement('option');
-      option.value = duration.id;
-      option.textContent = duration.label;
-      focusDuration.appendChild(option);
+  if (durations?.ok && Array.isArray(durations.data)) {
+    focusPickers.forEach(({ mode, element }) => {
+      const options = element.querySelector('.focus-picker-options');
+      if (options.children.length) return;
+      durations.data.forEach((duration) => {
+        const option = document.createElement('button');
+        option.type = 'button';
+        option.className = 'focus-picker-option';
+        option.textContent = duration.label;
+        option.addEventListener('click', async (event) => {
+          event.preventDefault();
+          const response = await send({ type: 'setFocus', mode, duration: duration.id });
+          if (response?.ok) {
+            renderFocus(response.data);
+            element.removeAttribute('open');
+          }
+        });
+        options.appendChild(option);
+      });
     });
   }
   if (focus?.ok) renderFocus(focus.data);
 }
 
-focusButtons.forEach((button) => button.addEventListener('click', async () => {
-  const response = await send({ type: 'setFocus', mode: button.dataset.mode, duration: focusDuration.value });
+focusButton.addEventListener('click', async () => {
+  const response = await send({ type: 'setFocus', mode: 'active' });
   if (response?.ok) renderFocus(response.data);
-}));
+});
+
+document.addEventListener('click', (event) => {
+  const currentPicker = event.target instanceof Element
+    ? event.target.closest('.focus-picker')
+    : null;
+  focusPickers.forEach(({ element }) => {
+    if (element !== currentPicker) element.removeAttribute('open');
+  });
+});
 
 loadFocus();
 refresh();

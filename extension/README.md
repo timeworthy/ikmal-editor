@@ -109,6 +109,38 @@ deliberate act by you.
 Underline colours follow the desktop app: violet for grammar, terracotta for
 spelling, amber for style.
 
+A long draft is not rechecked from the top every time you pause. The worker
+sends the text around the caret and keeps the findings that check never looked
+at, which is two behaviours that have to hold together: chunking without
+retention would quietly empty the rest of the draft of its findings.
+
+## Checking that it works
+
+`node tools/verify_extension.mjs` covers the structural promises, including the
+loopback-only one.
+
+The chunked-check behaviour above has an end-to-end harness, driven by
+Playwright from the workspace root:
+
+```
+npm ci
+npx playwright install chromium
+node tools/extension_chunked_check_smoke.mjs
+```
+
+It loads the packaged zip into Chromium and asserts on what actually reached
+the checker: that a caret in a long draft sends a slice which never saw the
+opening paragraph, and that the finding in that opening paragraph survives the
+merge anyway, still pointing at the right text.
+
+`npm run smoke:browser` runs it alongside the two harnesses for the browser
+rewrite slice. Each run reports which browser it used, because a pass from a
+rolling system Chromium is worth less than one from the pinned build: browsers
+change their accessibility mappings between versions. Skip the
+`playwright install` and a system Chromium is used instead; `IKMAL_CHROMIUM`
+overrides both, and `IKMAL_PLAYWRIGHT_MODULE` borrows a Playwright from
+elsewhere.
+
 ---
 
 ## On funding

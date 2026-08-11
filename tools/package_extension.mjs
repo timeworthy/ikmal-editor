@@ -12,6 +12,23 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const extension = path.join(root, 'extension');
 const outputDir = path.join(root, 'bin', 'extension');
+const writingAdapters = path.join(root, 'packages', 'writing-adapters');
+
+for (const packagePath of [path.join(root, 'packages', 'writing-core'), writingAdapters]) {
+  execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build', '--prefix', packagePath], { stdio: 'inherit' });
+}
+const stagedModules = [
+  [path.join(writingAdapters, 'dist', 'extension_messages.js'), path.join(extension, 'adapters', 'extension_messages.js')],
+  // The service worker chunks checks around the caret and carries findings
+  // across edits, using the same compiled modules the desktop app loads.
+  [path.join(writingAdapters, 'dist', 'raw_matches.js'), path.join(extension, 'adapters', 'raw_matches.js')],
+  [path.join(writingAdapters, 'dist', 'chunked_checks.js'), path.join(extension, 'adapters', 'chunked_checks.js')],
+  [path.join(root, 'packages', 'writing-core', 'dist', 'index.js'), path.join(extension, 'core', 'writing_core.js')],
+];
+for (const [source, target] of stagedModules) {
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.copyFileSync(source, target);
+}
 
 execFileSync(process.execPath, [path.join(root, 'tools', 'verify_extension.mjs')], { stdio: 'inherit' });
 

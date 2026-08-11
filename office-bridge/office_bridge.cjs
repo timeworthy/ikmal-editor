@@ -94,12 +94,20 @@ function applySecurityHeaders(response, origin, config) {
 function readBody(request, maxBytes) {
   return new Promise((resolve, reject) => {
     let size = 0;
+    let refused = false;
     const chunks = [];
     request.on('data', (chunk) => {
+      // Destroying the request here would tear down the socket before the
+      // handler can write its 413, leaving the task pane with a connection
+      // reset and nothing to show. Stop buffering instead and let the response
+      // close the exchange; sendJSON marks the connection for close so the
+      // remainder of an oversized body is never accumulated.
+      if (refused) return;
       size += chunk.length;
       if (size > maxBytes) {
+        refused = true;
+        chunks.length = 0;
         reject(Object.assign(new Error('request body is too large'), { code: 'BODY_TOO_LARGE' }));
-        request.destroy();
         return;
       }
       chunks.push(chunk);
@@ -141,7 +149,13 @@ async function handleCheck(request, response, config) {
   try {
     body = JSON.parse((await readBody(request, config.maxBodyBytes)).toString('utf8'));
   } catch (error) {
-    sendJSON(response, error.code === 'BODY_TOO_LARGE' ? 413 : 400, { error: 'invalid JSON request' });
+    if (error.code === 'BODY_TOO_LARGE') {
+      // Closing the connection stops the rest of an oversized upload rather
+      // than keeping the socket alive to drain it.
+      sendJSON(response, 413, { error: 'request body is too large' }, { connection: 'close' });
+      return;
+    }
+    sendJSON(response, 400, { error: 'invalid JSON request' });
     return;
   }
   if (typeof body.text !== 'string' || body.text.trim() === '') {

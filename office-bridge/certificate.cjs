@@ -58,10 +58,13 @@ function generateOfficeCertificate({ directory, opensslPath = 'openssl', execFil
       '-subj', '/CN=localhost',
       '-addext', 'subjectAltName=DNS:localhost,IP:127.0.0.1,IP:::1',
     ], { stdio: 'ignore' });
+    // Tighten the key before it is moved into place: openssl writes it with the
+    // process umask, so narrowing only after the rename leaves the private key
+    // readable for that window.
+    fs.chmodSync(temporaryKey, 0o600);
+    fs.chmodSync(temporaryCertificate, 0o644);
     fs.renameSync(temporaryKey, paths.keyPath);
     fs.renameSync(temporaryCertificate, paths.certificatePath);
-    fs.chmodSync(paths.keyPath, 0o600);
-    fs.chmodSync(paths.certificatePath, 0o644);
     return certificateState(paths.directory);
   } catch (error) {
     for (const temporaryPath of [temporaryKey, temporaryCertificate]) {

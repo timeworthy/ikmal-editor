@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=ikmal editor
+GenericName=Writing editor
+Comment=Local writing workspace
+Exec=ikmal-editor %U
+Icon=ikmal-editor
+Terminal=false
+Categories=Office;Utility;
+StartupNotify=true
+StartupWMClass=ikmal-editor

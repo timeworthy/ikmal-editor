@@ -36,6 +36,7 @@ function responseFor(text) {
 
 function createFakeServices() {
   let checkRequests = 0;
+  const checkTexts = [];
   const server = http.createServer(async (request, response) => {
     if (request.method === 'GET' && (request.url === '/health' || request.url === '/v2/languages')) {
       response.writeHead(200, { 'content-type': 'application/json' });
@@ -52,6 +53,7 @@ function createFakeServices() {
       let body = '';
       for await (const chunk of request) body += chunk;
       const text = new URLSearchParams(body).get('text') || '';
+      checkTexts.push(text);
       if (text.includes('failure')) {
         response.writeHead(503, { 'content-type': 'application/json' });
         response.end(JSON.stringify({ error: 'temporary test failure' }));
@@ -69,7 +71,12 @@ function createFakeServices() {
   });
   return new Promise((resolve, reject) => {
     server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => resolve({ server, port: server.address().port, requests: () => checkRequests }));
+    server.listen(0, '127.0.0.1', () => resolve({
+      server,
+      port: server.address().port,
+      requests: () => checkRequests,
+      checkTexts: () => [...checkTexts],
+    }));
   });
 }
 
@@ -484,9 +491,55 @@ try {
   if (!editorDockEnabled.dockIcon || editorMenubarDisabled.menubarIcon || !editorPresenceRestored.menubarIcon || editorPresenceRestored.dockIcon) {
     throw new Error(`Full-editor presence smoke failed: ${JSON.stringify({ editorDockEnabled, editorMenubarDisabled, editorPresenceRestored })}`);
   }
+  // A long draft is checked around the caret, and the findings the check never
+  // looked at are carried rather than dropped. Both halves matter: chunking
+  // without retention would silently delete every finding outside the window.
+  const filler = Array.from({ length: 40 }, (_, index) =>
+    `Middle paragraph ${index} carries enough words that a chunk window centred here cannot reach the ends of the draft.`);
+  const longDraft = ['Opening paragraph where the results is wrong.', ...filler, 'Closing paragraph of the draft.'].join('\n\n');
+
+  // The editor's own check path: typing and pressing Check must send a chunk,
+  // not the whole draft.
+  await editor.evaluate(`(() => {
+    const input = document.querySelector('#editor-input');
+    input.value = ${JSON.stringify(longDraft)};
+    input.setSelectionRange(0, 0);
+    document.querySelector('#editor-check').click();
+  })()`);
+  await waitForRendererState(
+    editor,
+    `document.querySelector('#editor-suggestion-count').textContent`,
+    (count) => count === '1',
+    'Chunked-check smoke failed to find the opening finding',
+    8000,
+  );
+  if (!fakeServices.checkTexts().some((text) => text.length < longDraft.length)) {
+    throw new Error('The editor sent whole documents; no chunk ever reached the checker.');
+  }
+
+  // Retention is asserted through the IPC directly, so the idle whole-document
+  // pass the renderer schedules cannot re-derive the finding and hide a
+  // regression behind its own timing.
+  const before = fakeServices.checkTexts().length;
+  const retained = await editor.evaluate(`window.ikmal.checkText(
+    ${JSON.stringify(longDraft)} + ' A closing sentence.',
+    { caret: ${longDraft.length + 20} }
+  )`);
+  const sent = fakeServices.checkTexts().slice(before);
+  if (!sent.length || sent.some((text) => text.includes('results is'))) {
+    throw new Error(`Expected a chunk that never saw the opening paragraph, got ${JSON.stringify(sent.map((text) => text.length))}.`);
+  }
+  const retainedMessages = (retained.matches || []).map((match) => match.message);
+  if (!retainedMessages.some((message) => message.includes('plural subject'))) {
+    throw new Error(`A finding outside the rechecked chunk was dropped: ${JSON.stringify(retainedMessages)}`);
+  }
+  if (!retained.ikmalFullCheckPending) {
+    throw new Error('A chunked check must tell the renderer a whole-document pass is still owed.');
+  }
+
   editor.socket.close();
   browser.socket.close();
-  console.log('Electron smoke passed: service state, compact/full-editor presence, stale responses, status tooltips, drawer geometry, and failure actions.');
+  console.log('Electron smoke passed: service state, compact/full-editor presence, stale responses, status tooltips, drawer geometry, failure actions, and chunked checks with retained findings.');
 } finally {
   if (electron.exitCode === null && !electron.killed) {
     electron.kill('SIGTERM');
