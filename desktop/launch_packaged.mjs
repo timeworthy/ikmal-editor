@@ -31,7 +31,7 @@ if (platform === 'darwin') {
   command = path.join(bundleRoot, 'ikmal editor.exe');
   args = [];
 } else {
-  command = path.join(bundleRoot, 'ikmal editor');
+  command = path.join(bundleRoot, 'ikmal-editor');
   args = [];
 }
 

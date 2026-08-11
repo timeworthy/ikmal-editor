@@ -80,6 +80,7 @@ let ignoredMatches = new Set();
 // too, or the mode is only half true.
 let focusState = { mode: 'active', until: null, label: 'Checking', effective: null };
 let checkTimer;
+let fullCheckTimer;
 let checkGeneration = 0;
 let editorStatusAnimationFrame;
 
@@ -101,6 +102,17 @@ function sourceClass(match) {
   if (source.includes('style') || category.includes('style')) return 'style';
   if (source.includes('quality') || category.includes('grammar') || category.includes('agreement')) return 'g';
   return '';
+}
+
+// The same classification the main process uses to decide which findings a
+// dictionary word suppresses, so the button only appears where adding a word
+// actually removes the finding.
+function isSpellingMatch(match) {
+  const issueType = String(match?.rule?.issueType || '').toLowerCase();
+  const category = String(match?.rule?.category?.id || '').toLowerCase();
+  const rule = String(match?.rule?.id || '').toLowerCase();
+  return issueType.includes('misspell') || category.includes('spell')
+    || category.includes('typo') || rule.includes('morfologik');
 }
 
 function checkingCategory(match) {
@@ -134,7 +146,11 @@ function renderEditorFocusState(state) {
   focusState = state && typeof state === 'object' ? state : focusState;
   document.documentElement.dataset.focusMode = focusState.mode;
   // The mode changes which findings pass the filter, so redraw what is already
-  // on screen against the new effective settings.
+  // on screen against the new effective settings. Ignored suggestions are
+  // tracked by their position in the filtered list, so the redraw renumbers
+  // them: keeping the old indices would hide unrelated suggestions the user
+  // never dismissed.
+  ignoredMatches = new Set();
   renderSuggestions(rawResponse);
   if (focusState.mode === 'paused') setEditorWritingStatus('idle', focusState.label || 'Paused');
 }
@@ -276,12 +292,17 @@ function renderSuggestions(response) {
       <div class="pro-sug-act">
         <button class="pro-btn pri" type="button" data-action="apply" ${replacement ? '' : 'disabled'}>Apply</button>
         <button class="pro-btn ghost" type="button" data-action="ignore">Ignore</button>
+        ${isSpellingMatch(match) && matchedText.trim() ? '<button class="pro-btn ghost" type="button" data-action="dictionary">Add to dictionary</button>' : ''}
         <button class="pro-btn ghost" type="button" data-action="rule">Rule</button>
       </div>`;
     card.addEventListener('click', (event) => {
       const action = event.target.closest('[data-action]')?.dataset.action;
       if (action === 'apply') {
         applySuggestion(index);
+        return;
+      }
+      if (action === 'dictionary') {
+        void addToDictionary(matchedText.trim());
         return;
       }
       if (action === 'ignore') {
@@ -311,6 +332,21 @@ function applySuggestion(index) {
   checkWriting();
 }
 
+// Dictionary words are applied by the main process when it filters a check
+// result, so the finding disappears on the next check rather than being removed
+// from the current one by hand.
+async function addToDictionary(word) {
+  if (!word) return;
+  try {
+    await window.ikmal.addDictionaryWord(word);
+    ignoredMatches = new Set();
+    setNotice(`“${word}” was added to your dictionary.`);
+    await checkWriting();
+  } catch (error) {
+    setNotice(error?.message || 'That word could not be added to your dictionary.', true);
+  }
+}
+
 function clearStaleSuggestions() {
   rawResponse = { matches: [] };
   lastResponse = { matches: [] };
@@ -320,7 +356,28 @@ function clearStaleSuggestions() {
   updateEditorMeta();
 }
 
-async function checkWriting() {
+// A check runs against two engines and returns whatever answered. Saying so
+// matters: a result missing its grammar engine looks exactly like a clean
+// document, and the user would keep writing against checks that are not running.
+function reportDegradedCheck(response) {
+  const missing = Array.isArray(response?.ikmalDegradedChecks) ? response.ikmalDegradedChecks : [];
+  if (!missing.length) return;
+  setNotice(`Some checks did not run: ${missing.join(' and ')}. Findings may be incomplete.`, true);
+}
+
+// A long draft is checked around the caret, so findings that span sentences —
+// repetition, an antecedent paragraphs above — are only visible to a pass over
+// the whole document. One runs when the writer pauses.
+function scheduleFullCheck(response) {
+  clearTimeout(fullCheckTimer);
+  if (!response?.ikmalFullCheckPending) return;
+  fullCheckTimer = setTimeout(() => checkWriting('document'), 1500);
+}
+
+async function checkWriting(requestedScope) {
+  // Called from listeners as well as directly, so only a scope this function
+  // understands is forwarded; an event object would not survive the IPC clone.
+  const scope = requestedScope === 'document' ? 'document' : undefined;
   clearTimeout(checkTimer);
   if (!editorAnnotationSurface.isCurrent()) clearStaleSuggestions();
   const generation = ++checkGeneration;
@@ -335,11 +392,13 @@ async function checkWriting() {
   setEditorWritingStatus('checking', 'Checking…');
   setNotice('', false);
   try {
-    const response = await window.ikmal.checkText(text);
+    const response = await window.ikmal.checkText(text, { caret: editorInput.selectionStart, scope });
     if (generation !== checkGeneration) return;
     rawResponse = response || { matches: [] };
     ignoredMatches = new Set();
     renderSuggestions(rawResponse);
+    reportDegradedCheck(rawResponse);
+    scheduleFullCheck(rawResponse);
     loadRecentSessions();
   } catch (error) {
     if (generation !== checkGeneration) return;
@@ -459,7 +518,7 @@ editorInput.addEventListener('keydown', (event) => {
     checkWriting();
   }
 });
-editorCheckButton.addEventListener('click', checkWriting);
+editorCheckButton.addEventListener('click', () => checkWriting());
 editorCheckingMode.addEventListener('change', updateCheckingPreferences);
 editorCheckingDelay.addEventListener('input', () => { editorCheckingDelayValue.textContent = `${editorCheckingDelay.value} ms`; });
 editorCheckingDelay.addEventListener('change', updateCheckingPreferences);

@@ -20,8 +20,34 @@ const goOS = platform === 'win32' ? 'windows' : platform;
 const goArch = arch === 'x64' ? 'amd64' : arch === 'arm64' ? 'arm64' : arch === 'armv7l' ? 'arm' : arch;
 if (!['darwin', 'linux', 'win32'].includes(platform)) throw new Error(`Unsupported desktop platform: ${platform}`);
 if (!['x64', 'arm64', 'armv7l'].includes(arch)) throw new Error(`Unsupported desktop architecture: ${arch}`);
-const macIconPath = path.join(root, 'assets', 'ikmal_languagetool.icns');
+// Electron Packager normalizes the icon option by appending the platform
+// extension. Pass the basename, not the already-suffixed .icns path, or it
+// looks for `ikmal_editor.icon` and silently skips the real asset.
+// The deprecated app keeps its historical LanguageTool-named aliases; the
+// fresh rewrite uses product-branded assets exclusively.
+const macIconBasePath = path.join(root, 'assets', 'ikmal_editor');
+const macIconPath = `${macIconBasePath}.icns`;
+const windowsIconPath = `${macIconBasePath}.ico`;
+const linuxDesktopPath = path.join(desktopRoot, 'linux');
 const spellServerBundlePath = path.join(root, 'bin', 'macos', 'ikmal editor spell server.service');
+const writingAdapters = path.join(root, 'packages', 'writing-adapters');
+
+execFileSync(process.execPath, [path.join(root, 'tools', 'package_desktop_rewrite.mjs')], { stdio: 'inherit' });
+execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build', '--prefix', writingAdapters], { stdio: 'inherit' });
+// The compiled contracts are ESM. Inside the bundle they land in
+// Contents/Resources/dist, where the nearest package.json is Electron's own
+// app manifest — which declares no "type", so the main process would load
+// desktop_ipc.js as CommonJS and fail on its first import. The marker travels
+// with the directory and makes it ESM wherever the bundle is installed.
+fs.writeFileSync(
+  path.join(writingAdapters, 'dist', 'package.json'),
+  `${JSON.stringify({ name: 'ikmal-writing-adapters', type: 'module', private: true }, null, 2)}\n`,
+);
+fs.mkdirSync(path.join(root, 'extension', 'adapters'), { recursive: true });
+fs.copyFileSync(
+  path.join(writingAdapters, 'dist', 'extension_messages.js'),
+  path.join(root, 'extension', 'adapters', 'extension_messages.js'),
+);
 
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ikmal-editor-desktop-'));
 const managerPath = path.join(tempDir, platform === 'win32' ? 'ikmal-editor.exe' : 'ikmal-editor');
@@ -44,7 +70,16 @@ try {
     electronVersion: packageJSON.devDependencies.electron,
     appVersion: version,
     appBundleId: 'com.timeworthymedia.ikmal-editor',
-    ...(platform === 'darwin' && fs.existsSync(macIconPath) ? { icon: macIconPath } : {}),
+    ...(platform === 'linux' ? { executableName: 'ikmal-editor' } : {}),
+    // Keep the bundle metadata aligned with the product name. Packager's
+    // default is Electron.icns even when a custom source icon is supplied.
+    ...(platform === 'darwin' ? { extendInfo: { CFBundleIconFile: 'ikmal editor.icns' } } : {}),
+    ...((platform === 'darwin' && fs.existsSync(macIconPath)) || (platform === 'win32' && fs.existsSync(windowsIconPath)) ? { icon: macIconBasePath } : {}),
+    // Packager 20 probes the newer macOS `.icon` format even when the valid
+    // `.icns` input is present. This workspace intentionally ships ICNS and
+    // has no Xcode actool asset-catalog source; suppress that non-fatal probe
+    // warning while the ICNS copy is verified below.
+    ...(platform === 'darwin' ? { quiet: true } : {}),
     overwrite: true,
     asar: true,
     prune: true,
@@ -56,18 +91,35 @@ try {
       managerPath,
       path.join(root, 'LICENSE'),
       path.join(root, 'THIRD-PARTY-NOTICES.md'),
+      // The Electron main process loads the compiled desktop IPC contract from
+      // Resources/dist before registering any handler.
+      path.join(writingAdapters, 'dist'),
       // Shipped unpacked so Settings > Browser extension can reveal a folder
       // the browser's "Load unpacked" can actually read.
       path.join(root, 'extension'),
+      // Fresh desktop rewrite renderer; selected only when explicitly enabled.
+      path.join(root, 'apps', 'desktop-editor'),
       // Office task-pane assets and the loopback bridge are kept outside the
       // Electron asar so a future certificate/setup flow can start the same
       // files in the packaged app.
       path.join(root, 'office-bridge'),
       ...(platform === 'darwin' && fs.existsSync(spellServerBundlePath) ? [spellServerBundlePath] : []),
+      ...(platform === 'linux' && fs.existsSync(linuxDesktopPath) ? [linuxDesktopPath] : []),
     ],
     ignore: /^\/launch_at_login\.test\.cjs$/,
   });
-  for (const bundle of bundles) console.log(`Desktop bundle ready: ${bundle}`);
+  for (const bundle of bundles) {
+    if (platform === 'darwin') {
+      // Electron's template leaves its unused default icon beside the app.
+      // The bundle plist points at the product-named icon above, so remove the
+      // stale template resource from the distributable artifact.
+      const appBundle = path.join(bundle, `${packageJSON.productName || packageJSON.name}.app`);
+      fs.rmSync(path.join(appBundle, 'Contents', 'Resources', 'electron.icns'), { force: true });
+      const productIcon = path.join(appBundle, 'Contents', 'Resources', 'ikmal editor.icns');
+      if (!fs.existsSync(productIcon)) throw new Error(`Packaged product icon is missing: ${productIcon}`);
+    }
+    console.log(`Desktop bundle ready: ${bundle}`);
+  }
 } finally {
   fs.rmSync(tempDir, { recursive: true, force: true });
 }

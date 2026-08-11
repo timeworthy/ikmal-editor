@@ -9,12 +9,15 @@
   "scripts": {
     "start": "node launch_packaged.mjs",
     "dev": "node launch_packaged.mjs",
-    "dev:electron": "electron .",
+    "dev:electron": "npm run build --prefix ../packages/writing-adapters && electron .",
     "check": "node --check main.cjs && node --check preload.cjs && node --check renderer.js && node --check editor-renderer.js && node --check annotation_surface.js && node --check annotation_preferences.js && node --check notice_surface.js && node --check render-assets.cjs",
     "render-assets": "electron render-assets.cjs",
     "package": "node package_desktop.mjs",
+    "package:rewrite": "node ../tools/package_desktop_rewrite.mjs",
     "smoke": "node electron_smoke.mjs",
-    "verify": "node ../tools/verify_desktop.mjs && node ../tools/verify_extension.mjs && node ../tools/verify_vscode_extension.mjs && node ../tools/verify_office_bridge.mjs && node --test launch_at_login.test.cjs editor_ui.test.mjs ../tools/adapter_contract.test.mjs ../tools/focus_mode.test.mjs ../tools/office_bridge.test.mjs ../tools/office_certificate.test.mjs ../tools/office_https.test.mjs ../tools/excel_projection.test.mjs ../tools/powerpoint_projection.test.mjs ../tools/outlook_projection.test.mjs ../tools/onenote_projection.test.mjs ../tools/project_projection.test.mjs",
+    "smoke:rewrite": "node rewrite_smoke.mjs",
+    "smoke:rewrite:packaged": "node rewrite_packaged_smoke.mjs",
+    "verify": "node ../tools/verify_desktop.mjs && node ../tools/verify_extension.mjs && node ../tools/verify_vscode_extension.mjs && node ../tools/verify_office_bridge.mjs && node --test launch_at_login.test.cjs editor_ui.test.mjs ../tools/adapter_contract.test.mjs ../tools/focus_mode.test.mjs ../tools/text_stats.test.mjs ../tools/editable_replacement.test.mjs ../tools/host_actions.test.mjs ../tools/degraded_checks.test.mjs ../tools/office_bridge.test.mjs ../tools/office_certificate.test.mjs ../tools/office_https.test.mjs ../tools/excel_projection.test.mjs ../tools/powerpoint_projection.test.mjs ../tools/outlook_projection.test.mjs ../tools/onenote_projection.test.mjs ../tools/project_projection.test.mjs",
     "package:extension": "node ../tools/package_extension.mjs",
     "package:vscode": "node ../tools/package_vscode_extension.mjs"
   },

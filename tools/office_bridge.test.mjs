@@ -71,6 +71,29 @@ test('Office bridge forwards only an exact-origin JSON check', async () => {
   }
 });
 
+test('Office bridge answers an oversized body with 413 instead of dropping the connection', async () => {
+  let forwarded = false;
+  const server = await startServer({
+    maxBodyBytes: 1024,
+    fetchImpl: async () => { forwarded = true; return new Response('{}', { status: 200 }); },
+  });
+  try {
+    const address = server.address();
+    // The task pane has to receive the error to show it. Tearing the socket
+    // down instead surfaces as a connection reset with nothing to display.
+    const response = await fetch(`http://${address.address}:${address.port}/office/api/check`, {
+      method: 'POST',
+      headers: { Origin: 'https://localhost:8765', 'content-type': 'application/json' },
+      body: JSON.stringify({ text: 'x'.repeat(4096) }),
+    });
+    assert.equal(response.status, 413);
+    assert.match((await response.json()).error, /too large/);
+    assert.equal(forwarded, false, 'an oversized body must never reach the checker');
+  } finally {
+    await stopServer(server);
+  }
+});
+
 test('Office bridge rejects non-loopback checker targets', () => {
   assert.throws(() => validateBackendURL('https://example.com/v2/check'), /loopback/);
   assert.throws(() => validateBackendURL('http://127.0.0.1:8096/other'), /\/v2\/check/);

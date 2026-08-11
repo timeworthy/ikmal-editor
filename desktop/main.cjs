@@ -2,7 +2,8 @@ const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, screen, clipboard,
 const { spawn, execFile, execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
-const { createLaunchAtLoginController } = require('./launch_at_login.cjs');
+const { pathToFileURL } = require('node:url');
+const { createLaunchAtLoginController, launchedAtLogin } = require('./launch_at_login.cjs');
 
 const QUALITY_PROXY_URL = process.env.IKMAL_DESKTOP_PROXY_URL || 'http://127.0.0.1:8096';
 const STYLE_GUIDE_URL = `${QUALITY_PROXY_URL}/v1/style-guides`;
@@ -36,6 +37,70 @@ let editorReady = false;
 let suppressAutoHide = false;
 let officeBridgeServer;
 let focusModeAPI;
+let desktopIPCAPI;
+let writingCoreAPI;
+let chunkedChecksAPI;
+// Findings the editor is currently showing, per renderer, so a chunk check can
+// keep everything it did not look at. Keyed by WebContents id because the
+// compact window and the expanded editor hold different documents.
+const checkStates = new Map();
+
+async function loadDesktopIPCContract() {
+  const packaged = process.env.IKMAL_DESKTOP_PACKAGED === '1' || app.isPackaged;
+  const modulePath = packaged
+    ? path.join(process.resourcesPath, 'dist', 'desktop_ipc.js')
+    : path.resolve(__dirname, '..', 'packages', 'writing-adapters', 'dist', 'desktop_ipc.js');
+  // The contract is compiled output, not a checked-in file, so a fresh clone
+  // running `npm run dev:electron` has nothing here. Name the build step rather
+  // than letting an ENOENT from import() describe it.
+  if (!fs.existsSync(modulePath)) {
+    throw new Error(packaged
+      ? `The compiled desktop IPC contract is missing from this bundle (${modulePath}).`
+      : `The compiled desktop IPC contract is missing at ${modulePath}. Build it with: npm run build --prefix packages/writing-adapters`);
+  }
+  desktopIPCAPI = await import(pathToFileURL(modulePath).href);
+  return desktopIPCAPI;
+}
+
+// The compiled core is staged beside the rewrite renderer, which the bundle
+// already ships, so chunking needs no new packaged resource.
+async function loadWritingCore() {
+  const packaged = process.env.IKMAL_DESKTOP_PACKAGED === '1' || app.isPackaged;
+  const corePath = packaged
+    ? path.join(process.resourcesPath, 'desktop-editor', 'writing-core.js')
+    : path.resolve(__dirname, '..', 'packages', 'writing-core', 'dist', 'index.js');
+  // How much to check and how to put the answer back together lives beside the
+  // IPC contract, so the browser extension and this app share one
+  // implementation of both.
+  const plannerPath = packaged
+    ? path.join(process.resourcesPath, 'dist', 'chunked_checks.js')
+    : path.resolve(__dirname, '..', 'packages', 'writing-adapters', 'dist', 'chunked_checks.js');
+  // Chunking is an optimisation, not a feature: a build without the compiled
+  // modules still checks whole documents rather than refusing to check at all.
+  if (!fs.existsSync(corePath) || !fs.existsSync(plannerPath)) {
+    console.warn(`Chunked checking is off: the compiled writing core is missing at ${corePath}.`);
+    return undefined;
+  }
+  writingCoreAPI = await import(pathToFileURL(corePath).href);
+  chunkedChecksAPI = await import(pathToFileURL(plannerPath).href);
+  return writingCoreAPI;
+}
+
+function desktopEditorPagePath() {
+  if (process.env.IKMAL_DESKTOP_REWRITE_SLICE !== '1') return path.join(__dirname, 'editor.html');
+  const base = process.env.IKMAL_DESKTOP_PACKAGED === '1' || app.isPackaged
+    ? path.join(process.resourcesPath, 'desktop-editor')
+    : path.resolve(__dirname, '..', 'apps', 'desktop-editor');
+  return path.join(base, 'index.html');
+}
+
+function desktopEditorPreloadPath() {
+  if (process.env.IKMAL_DESKTOP_REWRITE_SLICE !== '1') return path.join(__dirname, 'preload.cjs');
+  const base = process.env.IKMAL_DESKTOP_PACKAGED === '1' || app.isPackaged
+    ? path.join(process.resourcesPath, 'desktop-editor')
+    : path.resolve(__dirname, '..', 'apps', 'desktop-editor');
+  return path.join(base, 'preload.cjs');
+}
 
 function desktopPreferencesPath() {
   return path.join(app.getPath('userData'), 'desktop-preferences.json');
@@ -50,11 +115,12 @@ function readDesktopPreferences() {
       annotationStyle: ['line', 'dash'].includes(saved.annotationStyle) ? saved.annotationStyle : ANNOTATION_DEFAULTS.style,
       annotationPalette: ANNOTATION_PALETTES.has(saved.annotationPalette) ? saved.annotationPalette : ANNOTATION_DEFAULTS.palette,
       annotationIntensity: normalizeAnnotationIntensity(saved.annotationIntensity),
+      dictionary: Array.isArray(saved.dictionary) ? saved.dictionary.filter((word) => String(word).trim()) : [],
       focusMode: saved.focusMode,
       ...normalizeCheckingPreferences(saved),
     };
   } catch (_) {
-    return { menubarIcon: true, dockIcon: false, annotationStyle: ANNOTATION_DEFAULTS.style, annotationPalette: ANNOTATION_DEFAULTS.palette, annotationIntensity: ANNOTATION_DEFAULTS.intensity, ...normalizeCheckingPreferences() };
+    return { menubarIcon: true, dockIcon: false, annotationStyle: ANNOTATION_DEFAULTS.style, annotationPalette: ANNOTATION_DEFAULTS.palette, annotationIntensity: ANNOTATION_DEFAULTS.intensity, dictionary: [], ...normalizeCheckingPreferences() };
   }
 }
 
@@ -399,6 +465,9 @@ async function readServiceState() {
 }
 
 function send(channel, payload) {
+  if (desktopIPCAPI && !desktopIPCAPI.isDesktopEventChannel(channel)) {
+    throw new Error(`Refusing to send an unregistered desktop event channel: ${channel}`);
+  }
   [mainWindow, editorWindow].forEach((window) => {
     if (window && !window.isDestroyed()) window.webContents.send(channel, payload);
   });
@@ -509,7 +578,7 @@ function showWindow() {
   positionWindow();
   mainWindow.show();
   mainWindow.focus();
-  mainWindow.webContents.send('compact-invoked');
+  send('compact-invoked');
   publishServiceState();
 }
 
@@ -548,7 +617,7 @@ function setCompactHeight(height) {
 // while that event is being delivered — polling it drops the text entirely.
 function deliverEditorText() {
   if (!editorWindow || !editorReady || !editorPendingText) return;
-  editorWindow.webContents.send('editor-text', editorPendingText);
+  send('editor-text', editorPendingText);
   editorPendingText = '';
 }
 
@@ -574,10 +643,10 @@ function showEditorWindow(text = '') {
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false,
-        preload: path.join(__dirname, 'preload.cjs'),
+        preload: desktopEditorPreloadPath(),
       },
     });
-    editorWindow.loadFile(path.join(__dirname, 'editor.html'));
+    editorWindow.loadFile(desktopEditorPagePath());
     // on, not once: a reload re-runs the renderer and clears its listeners, so
     // readiness has to be re-established each time the page loads.
     editorWindow.webContents.on('did-finish-load', () => {
@@ -589,7 +658,8 @@ function showEditorWindow(text = '') {
       editorWindow.focus();
       deliverEditorText();
     });
-    editorWindow.on('closed', () => { editorWindow = undefined; editorReady = false; });
+    const editorContentsID = editorWindow.webContents.id;
+    editorWindow.on('closed', () => { checkStates.delete(editorContentsID); editorWindow = undefined; editorReady = false; });
     return;
   }
   editorWindow.show();
@@ -658,9 +728,13 @@ function applyDesktopPreferences() {
   if (desktopPreferences.menubarIcon) createTray();
 }
 
-async function checkText(text) {
+async function checkText(text, options = {}, stateKey = 0) {
+  // Without the compiled planner the whole document is checked, as before.
+  const plan = chunkedChecksAPI
+    ? chunkedChecksAPI.planChunkedCheck(writingCoreAPI, text, checkStates.get(stateKey), options)
+    : { text, sent: text, chunk: null, carried: null };
   const body = new URLSearchParams({
-    text,
+    text: plan.sent,
     language: 'en-US',
     enabledOnly: 'false',
   });
@@ -673,9 +747,46 @@ async function checkText(text) {
   if (!response.ok) {
     throw new Error(`Writing check failed with HTTP ${response.status}`);
   }
-  const result = await response.json();
-  recordRecentCheck(text, result);
-  return result;
+  const merged = chunkedChecksAPI
+    ? chunkedChecksAPI.mergeChunkedCheck(await response.json(), plan)
+    : await response.json();
+  // Both of these describe the document, not the slice that was sent: the
+  // dictionary filters against the text the offsets belong to, and a recent
+  // session is the draft, not one paragraph of it.
+  merged.matches = filterDictionaryMatches(merged.matches, text, desktopPreferences?.dictionary);
+  recordRecentCheck(text, merged);
+  if (chunkedChecksAPI) checkStates.set(stateKey, chunkedChecksAPI.chunkedCheckState(plan, merged));
+  return merged;
+}
+
+function filterDictionaryMatches(matches, text, dictionary) {
+  const words = new Set((Array.isArray(dictionary) ? dictionary : [])
+    .map((word) => String(word || '').trim().toLocaleLowerCase())
+    .filter(Boolean));
+  if (!words.size) return matches;
+  return (Array.isArray(matches) ? matches : []).filter((match) => {
+    const issueType = String(match?.rule?.issueType || '').toLowerCase();
+    const category = String(match?.rule?.category?.id || '').toLowerCase();
+    const rule = String(match?.rule?.id || '').toLowerCase();
+    const spelling = issueType.includes('misspell') || category.includes('spell')
+      || category.includes('typo') || rule.includes('morfologik');
+    if (!spelling) return true;
+    const word = String(text || '').slice(Number(match.offset), Number(match.offset) + Number(match.length))
+      .trim().toLocaleLowerCase();
+    return !words.has(word);
+  });
+}
+
+function openedAtLogin() {
+  try {
+    return launchedAtLogin({
+      loginItemSettings: process.platform === 'darwin' ? app.getLoginItemSettings() : undefined,
+    });
+  } catch {
+    // A platform that cannot report login-item state is treated as a normal
+    // launch; showing the popover is the recoverable side of that guess.
+    return false;
+  }
 }
 
 function createWindow() {
@@ -700,15 +811,26 @@ function createWindow() {
     },
   });
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
-  mainWindow.once('ready-to-show', () => showWindow());
+  // A launch the user asked for should land on the popover. A launch-at-login
+  // start should not: the window positions itself at the pointer and takes
+  // focus, so showing it would interrupt whatever the login session opens with.
+  mainWindow.once('ready-to-show', () => { if (!openedAtLogin()) showWindow(); });
   // The compact window hides on blur so it behaves like a menubar popover.
   // A native file panel steals focus, so auto-hide is suppressed while one is
   // open; otherwise the window disappears and takes its attached sheet along.
   mainWindow.on('blur', () => { if (!suppressAutoHide) mainWindow.hide(); });
-  mainWindow.on('closed', () => { mainWindow = undefined; });
+  const compactContentsID = mainWindow.webContents.id;
+  mainWindow.on('closed', () => { checkStates.delete(compactContentsID); mainWindow = undefined; });
 }
 
 function registerIPC() {
+	if (!desktopIPCAPI) throw new Error('The compiled desktop IPC contract is not loaded.');
+	const nativeIPCHandle = ipcMain.handle.bind(ipcMain);
+	ipcMain.handle = (channel, listener) => nativeIPCHandle(channel, async (event, ...args) => {
+	  const parsed = desktopIPCAPI.parseDesktopInvoke(channel, args);
+	  if (!parsed) throw new Error(`Rejected desktop IPC invocation: ${channel}`);
+	  return listener(event, ...parsed.args);
+	});
 	launchAtLogin = createLaunchAtLoginController({
 		platform: process.platform,
 		appDataPath: app.getPath('appData'),
@@ -779,7 +901,7 @@ function registerIPC() {
     await shell.openPath(notices);
     return true;
   });
-  ipcMain.handle('check-text', (_, text) => checkText(text));
+  ipcMain.handle('check-text', (event, text, options) => checkText(text, options || {}, event.sender.id));
   ipcMain.handle('recent-checks', () => readRecentChecks());
   ipcMain.handle('clear-recent-checks', () => clearRecentChecks());
   ipcMain.handle('style-guide-state', async () => {
@@ -847,6 +969,13 @@ function registerIPC() {
 	ipcMain.handle('get-launch-at-login', () => launchAtLogin.get());
   ipcMain.handle('desktop-presence-state', () => desktopPresenceState());
   ipcMain.handle('get-annotation-preferences', () => annotationPreferencesState());
+  ipcMain.handle('add-dictionary-word', (_, word) => {
+    const value = String(word || '').trim();
+    if (!value) throw new Error('There is no word to add.');
+    desktopPreferences.dictionary = [...new Set([...(desktopPreferences.dictionary || []), value])];
+    saveDesktopPreferences();
+    return { word: value };
+  });
   ipcMain.handle('set-annotation-preferences', (_, next) => {
     const requested = next && typeof next === 'object' ? next : {};
     desktopPreferences = {
@@ -938,13 +1067,23 @@ function registerIPC() {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   desktopPreferences = readDesktopPreferences();
+  await loadDesktopIPCContract();
+  await loadWritingCore();
   registerIPC();
   createWindow();
   applyDesktopPreferences();
   startManager();
   pollTimer = setInterval(publishServiceState, SERVICE_POLL_MS);
+}).catch((error) => {
+  // Startup runs entirely inside this promise: a rejection anywhere in it
+  // leaves the app with no IPC handlers, no window, and no tray, which looks
+  // exactly like an app that launched and then did nothing. Say what failed
+  // and exit rather than sitting there.
+  console.error('ikmal editor could not start:', error);
+  dialog.showErrorBox('ikmal editor could not start', error?.message || String(error));
+  app.exit(1);
 });
 
 app.on('activate', () => {

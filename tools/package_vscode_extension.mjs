@@ -20,8 +20,15 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const extension = path.join(root, 'vscode-extension');
+const writingCore = path.join(root, 'packages', 'writing-core');
+const writingCoreDist = path.join(writingCore, 'dist');
 const outputDir = path.join(root, 'bin', 'vscode-extension');
 const verify = path.join(root, 'tools', 'verify_vscode_extension.mjs');
+
+// Compile the portable core before staging the extension. The VSIX must never
+// depend on a developer checkout or Node's test-only TypeScript stripping.
+execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build', '--prefix', writingCore], { stdio: 'inherit' });
+if (!fs.existsSync(path.join(writingCoreDist, 'index.js'))) throw new Error('writing-core build did not emit dist/index.js.');
 
 // Verification first: a build that skipped the loopback-only check would be
 // exactly the build worth checking.
@@ -43,7 +50,7 @@ function collect(directory, prefix = '') {
   });
 }
 
-const files = collect(extension);
+const files = [...collect(extension), 'writing-core/index.js', 'writing-core/package.json'];
 if (!files.includes('package.json')) throw new Error('vscode-extension is missing package.json.');
 
 const escapeXML = (value) => String(value).replace(/[&<>"']/g, (character) => (
@@ -107,6 +114,18 @@ try {
     recursive: true,
     filter: (source) => !source.includes('node_modules') && !source.endsWith('.DS_Store'),
   });
+  fs.mkdirSync(path.join(staging, 'extension', 'writing-core'), { recursive: true });
+  fs.copyFileSync(path.join(writingCoreDist, 'index.js'), path.join(staging, 'extension', 'writing-core', 'index.js'));
+  // The compiled core is ESM, but the nearest package.json inside the VSIX is
+  // vscode-extension/package.json, which declares no "type" — so Node would
+  // load index.js as CommonJS and the adapter's import() would fail with a
+  // SyntaxError at activation. Nothing catches that: activate() awaits the
+  // core, and the repository fallback path does not exist in a package. This
+  // marker is what makes the file ESM wherever the VSIX is installed.
+  fs.writeFileSync(
+    path.join(staging, 'extension', 'writing-core', 'package.json'),
+    `${JSON.stringify({ name: 'ikmal-writing-core', type: 'module', main: 'index.js', private: true }, null, 2)}\n`,
+  );
   fs.writeFileSync(path.join(staging, 'extension.vsixmanifest'), vsixManifest);
   fs.writeFileSync(path.join(staging, '[Content_Types].xml'), contentTypes);
 

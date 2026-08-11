@@ -9,8 +9,14 @@ export const DEFAULT_SETTINGS = {
   // layers the local quality sidecar on top. Point this at a bare
   // LanguageTool server (port 8097) to skip the ikmal additions.
   endpoint: 'http://127.0.0.1:8096',
-  language: 'auto',
+  // English is the reliable default for short snippets. Automatic detection
+  // remains available, but LanguageTool can mistake a phrase for German or
+  // another language when there is too little context.
+  language: 'en-US',
   motherTongue: '',
+  // Words added from a spelling card. Kept locally and applied to the
+  // LanguageTool-compatible result before it reaches the page.
+  dictionary: [],
   enabled: true,
   checkDelayMs: 900,
   minLength: 12,

@@ -18,7 +18,7 @@
 
 * { box-sizing: border-box; }
 body {
-  width: 320px;
+  width: 360px;
   margin: 0;
   background: var(--bg-0);
   color: var(--fg-1);
@@ -36,6 +36,8 @@ h1, p { margin: 0; }
   padding: 13px 14px 11px;
   border-bottom: 1px solid var(--hair);
 }
+.brand { display: flex; align-items: center; gap: 9px; }
+.brand-icon { width: 24px; height: 24px; border-radius: 7px; box-shadow: 0 0 0 1px rgba(255, 255, 255, .08); }
 .eyebrow {
   margin-bottom: 2px;
   color: var(--fg-4);
@@ -101,6 +103,17 @@ h1, p { margin: 0; }
 .row strong { font-size: 12.5px; font-weight: 600; }
 .row small { color: var(--fg-4); font-size: 10.5px; line-height: 1.4; }
 .row input { flex: 0 0 auto; accent-color: var(--accent); }
+.row select {
+  min-width: 142px;
+  max-width: 168px;
+  padding: 6px 7px;
+  border: 1px solid var(--border-1);
+  border-radius: 6px;
+  color: var(--fg-2);
+  background: var(--bg-0);
+  font: 11px var(--sans);
+}
+.language-row { align-items: center; }
 
 .privacy {
   padding: 9px 11px;
@@ -166,7 +179,59 @@ h1, p { margin: 0; }
 .focus-row { display: grid; gap: 7px; padding: 10px 0; border-top: 1px solid var(--hair, rgba(255,255,255,.08)); }
 .focus-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .focus-heading small { color: var(--fg-3, #9a9aa2); font-size: 11px; }
-.focus-modes { display: flex; gap: 6px; }
+.focus-modes { position: relative; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; align-items: start; }
 .focus-mode-button { flex: 1 1 0; padding: 6px 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 7px; color: inherit; background: transparent; font: 600 11.5px inherit; cursor: pointer; }
 .focus-mode-button.is-active { border-color: transparent; color: #fff; background: #7b6cd9; }
-.focus-row select { width: 100%; }
+.focus-picker { position: relative; min-width: 0; }
+.focus-modes:has(.focus-picker[open]) > .focus-mode-button,
+.focus-modes:has(.focus-picker[open]) .focus-picker:not([open]) .focus-picker-summary { opacity: .45; }
+.focus-picker-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 30px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-1);
+  border-radius: 7px;
+  color: var(--fg-2);
+  background: var(--bg-0);
+  font: 600 11.5px/1 var(--sans);
+  cursor: pointer;
+  list-style: none;
+}
+.focus-picker-summary::-webkit-details-marker { display: none; }
+.focus-picker-summary::after { content: '⌄'; color: var(--fg-4); font-size: 12px; }
+.focus-picker[open] .focus-picker-summary,
+.focus-picker.is-active .focus-picker-summary { border-color: transparent; color: #fff; background: var(--accent); }
+.focus-picker-menu {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 0;
+  z-index: 10;
+  width: 230px;
+  gap: 5px;
+  margin-top: 0;
+  padding: 9px;
+  border: 1px solid var(--border-1);
+  border-radius: 8px;
+  background: var(--bg-0);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .24);
+}
+.focus-picker[open] .focus-picker-menu { display: grid; }
+.focus-picker[open] .focus-picker-summary { opacity: 1; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14); }
+.focus-picker[data-mode="zen"] .focus-picker-menu { right: 0; left: auto; }
+.focus-picker-menu strong { font-size: 12px; }
+.focus-picker-menu small { color: var(--fg-3); font-size: 10px; line-height: 1.35; }
+.focus-picker-options { display: grid; gap: 3px; margin-top: 2px; }
+.focus-picker-option {
+  padding: 6px 7px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--fg-2);
+  background: var(--bg-1);
+  font: 500 11px var(--sans);
+  text-align: left;
+  cursor: pointer;
+}
+.focus-picker-option:hover { border-color: var(--accent); color: #fff; background: rgba(123, 108, 217, .2); }

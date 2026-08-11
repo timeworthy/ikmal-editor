@@ -74,13 +74,27 @@
 .ikmal-indicator.is-visible { visibility: visible; opacity: .92; }
 .ikmal-indicator.is-visible:hover { opacity: 1; }
 
-.ikmal-indicator.is-checking { color: #76767f; }
+.ikmal-indicator.is-checking { position: relative; color: #76767f; animation: ikmal-indicator-breathe 1.2s ease-in-out infinite; }
+.ikmal-indicator.is-checking::before { position: absolute; inset: 4px; border: 2px solid rgba(255, 255, 255, .14); border-top-color: #a59ae8; border-radius: 50%; content: ""; animation: ikmal-indicator-spin .85s linear infinite; pointer-events: none; }
+.ikmal-indicator.is-checking::after { position: absolute; inset: -4px; border: 1px solid currentColor; border-radius: 50%; content: ""; opacity: 0; animation: ikmal-indicator-ring 1.2s ease-out infinite; pointer-events: none; }
 .ikmal-indicator.is-clean { color: #6fa37c; }
 .ikmal-indicator.is-flagged { color: #fff; background: #7b6cd9; border-color: transparent; }
 .ikmal-indicator.is-off { color: #76767f; }
+.ikmal-indicator.is-paused { color: #e0a458; }
+.ikmal-indicator.is-zen { color: #c5c5cb; background: #25252b; border-color: #3a3a42; }
 .ikmal-indicator.is-error { color: #d67560; }
 
-.ikmal-card {
+@keyframes ikmal-indicator-breathe { 50% { opacity: .5; transform: scale(.92); } }
+@keyframes ikmal-indicator-spin { to { transform: rotate(360deg); } }
+@keyframes ikmal-indicator-ring { 0% { opacity: .62; transform: scale(.7); } 100% { opacity: 0; transform: scale(1.35); } }
+@media (prefers-reduced-motion: reduce) {
+  .ikmal-indicator.is-checking,
+  .ikmal-indicator.is-checking::before,
+  .ikmal-indicator.is-checking::after { animation: none; }
+}
+
+.ikmal-card,
+.ikmal-focus-menu {
   position: absolute;
   z-index: 2147483647;
   display: none;
@@ -91,26 +105,60 @@
   border-radius: 8px;
   background: #15141a;
   box-shadow: 0 10px 28px rgba(0, 0, 0, .38);
-  color: #e8e8ec;
-  font: 400 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #f0eff4;
+  font: 450 13.5px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   text-align: left;
 }
 
-.ikmal-card.is-open { display: block; }
+.ikmal-card.is-open,
+.ikmal-focus-menu.is-open { display: block; }
+
+.ikmal-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
 
 .ikmal-card-source {
   margin-bottom: 5px;
-  color: #76767f;
+  color: #a09eaa;
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: 9px;
-  letter-spacing: .14em;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
   text-transform: uppercase;
 }
 
+.ikmal-card-navigator {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #96959e;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.ikmal-card-nav {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 4px;
+  color: #c5c5cb;
+  background: #25252b;
+  font: 600 15px/14px inherit;
+  cursor: pointer;
+}
+
+.ikmal-card-nav:disabled { opacity: .35; cursor: default; }
+.ikmal-card-nav:not(:disabled):hover { border-color: #7b6cd9; color: #fff; }
+
 .ikmal-card-message {
   margin: 0 0 9px;
-  color: #c5c5cb;
-  font-size: 12.5px;
+  color: #f0eff4;
+  font-size: 13.5px;
+  font-weight: 550;
 }
 
 .ikmal-card-actions {
@@ -120,13 +168,248 @@
 }
 
 .ikmal-card-apply {
-  padding: 5px 10px;
+  padding: 6px 11px;
   border: 0;
   border-radius: 6px;
   background: #7b6cd9;
   color: #fff;
-  font: 600 12px/1 inherit;
+  font: 650 12.5px/1.1 inherit;
   cursor: pointer;
 }
 
 .ikmal-card-apply:hover { background: #8e80df; }
+
+.ikmal-card-secondary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 9px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+}
+
+.ikmal-card-secondary-button {
+  padding: 0;
+  border: 0;
+  color: #a59ae8;
+  background: transparent;
+  font: 600 10.5px/1.2 inherit;
+  cursor: pointer;
+}
+
+.ikmal-card-secondary-button:hover { color: #fff; }
+
+.ikmal-card-explanation {
+  display: none;
+  flex-basis: 100%;
+  color: #96959e;
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+
+.ikmal-card-explanation.is-open { display: block; }
+
+.ikmal-focus-label {
+  margin: -3px 0 2px;
+  color: #c5c5cb;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ikmal-focus-modes {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 5px;
+  align-items: start;
+}
+
+.ikmal-focus-button {
+  flex: 1 1 0;
+  padding: 6px 7px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 6px;
+  color: #c5c5cb;
+  background: transparent;
+  font: 650 12px/1.1 inherit;
+  cursor: pointer;
+}
+
+.ikmal-focus-button:hover,
+.ikmal-focus-button.is-active {
+  border-color: transparent;
+  color: #fff;
+  background: #7b6cd9;
+}
+
+.ikmal-focus-picker { min-width: 0; position: relative; }
+.ikmal-focus-modes:has(.ikmal-focus-picker.is-open) > .ikmal-focus-button,
+.ikmal-focus-modes:has(.ikmal-focus-picker.is-open) .ikmal-focus-picker:not(.is-open) .ikmal-focus-picker-trigger { opacity: .45; }
+
+.ikmal-focus-picker-trigger {
+  width: 100%;
+  min-height: 28px;
+  padding: 6px 7px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 6px;
+  color: #c5c5cb;
+  background: #201e27;
+  font: 650 12px/1.1 inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ikmal-focus-picker-trigger::after { content: '⌄'; float: right; color: #96959e; }
+.ikmal-focus-picker.is-open .ikmal-focus-picker-trigger,
+.ikmal-focus-picker.is-active .ikmal-focus-picker-trigger {
+  border-color: transparent;
+  color: #fff;
+  background: #7b6cd9;
+}
+.ikmal-focus-picker.is-open .ikmal-focus-picker-trigger { opacity: 1; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14); }
+
+.ikmal-focus-picker-panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  z-index: 3;
+  width: 210px;
+  gap: 5px;
+  margin-top: 0;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 7px;
+  background: #201e27;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .24);
+}
+
+.ikmal-focus-picker.is-open .ikmal-focus-picker-panel {
+  display: grid;
+}
+
+.ikmal-focus-picker[data-mode="zen"] .ikmal-focus-picker-panel {
+  right: 0;
+  left: auto;
+}
+
+.ikmal-focus-picker-panel strong { font-size: 12px; }
+.ikmal-focus-picker-panel small {
+  color: #96959e;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.ikmal-focus-picker-options {
+  display: grid;
+  gap: 3px;
+  margin-top: 2px;
+}
+
+.ikmal-focus-picker-option {
+  padding: 6px 7px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: #c5c5cb;
+  background: #292832;
+  font: 500 11px inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ikmal-focus-picker-option:hover {
+  border-color: #7b6cd9;
+  color: #fff;
+  background: rgba(123, 108, 217, .2);
+}
+
+.ikmal-focus-status {
+  min-height: 14px;
+  color: #d67560;
+  font-size: 10px;
+}
+
+.ikmal-focus-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 3px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+}
+
+.ikmal-focus-link {
+  padding: 0;
+  border: 0;
+  color: #a59ae8;
+  background: transparent;
+  font: 600 11px/1.2 inherit;
+  cursor: pointer;
+}
+
+.ikmal-focus-link:hover { color: #fff; }
+
+.ikmal-selection-popup {
+  position: absolute;
+  z-index: 2147483647;
+  display: none;
+  min-width: 184px;
+  box-sizing: border-box;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 8px;
+  background: #15141a;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .38);
+  color: #e8e8ec;
+  font: 400 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-align: left;
+}
+
+.ikmal-selection-popup.is-open { display: block; }
+
+.ikmal-selection-source {
+  margin-bottom: 7px;
+  color: #76767f;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.ikmal-selection-stats {
+  display: flex;
+  gap: 15px;
+}
+
+.ikmal-selection-stats span {
+  display: grid;
+  gap: 1px;
+}
+
+.ikmal-selection-stats strong {
+  color: #fff;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.ikmal-selection-stats small {
+  color: #96959e;
+  font-size: 10px;
+}
+
+.ikmal-selection-issues {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+  color: #96959e;
+  font-size: 10px;
+}
+
+.ikmal-selection-issues strong {
+  color: #e0a458;
+  font-size: 12px;
+}

@@ -8,8 +8,11 @@
 <body>
   <header class="header">
     <div class="brand">
-      <div class="eyebrow">WRITING QUALITY</div>
-      <h1>ikmal editor</h1>
+      <img src="icons/icon48.png" alt="" class="brand-icon">
+      <div>
+        <div class="eyebrow">WRITING QUALITY</div>
+        <h1>ikmal editor</h1>
+      </div>
     </div>
     <div class="status" id="status">
       <span class="status-dot"></span>
@@ -36,22 +39,51 @@
       <input type="checkbox" id="site-toggle">
     </label>
 
+    <label class="row language-row">
+      <span>
+        <strong>Language</strong>
+        <small id="language-note">English (US)</small>
+      </span>
+      <select id="language-select" aria-label="Checking language">
+        <option value="en-US">English (US)</option>
+        <option value="en-GB">English (UK)</option>
+        <option value="auto">Detect automatically</option>
+        <option value="de-DE">German</option>
+        <option value="fr">French</option>
+        <option value="es">Spanish</option>
+        <option value="pt-BR">Portuguese (Brazil)</option>
+        <option value="nl">Dutch</option>
+      </select>
+    </label>
+
     <div class="focus-row">
       <div class="focus-heading">
-        <strong>Focus</strong>
-        <small id="focus-label">Checking</small>
+        <strong>Modes</strong>
+        <small id="focus-label">Automatic</small>
       </div>
       <div class="focus-modes" role="group" aria-label="Focus mode">
-        <button class="focus-mode-button is-active" type="button" data-mode="active">Checking</button>
-        <button class="focus-mode-button" type="button" data-mode="paused">Pause</button>
-        <button class="focus-mode-button" type="button" data-mode="zen">Zen</button>
+        <button class="focus-mode-button is-active" type="button" data-mode="active">Automatic</button>
+        <details class="focus-picker" data-mode="paused">
+          <summary class="focus-picker-summary">Pause</summary>
+          <div class="focus-picker-menu">
+            <strong>Pause</strong>
+            <small>Stops checking until the timer ends or you switch back.</small>
+            <div class="focus-picker-options" data-options-for="paused"></div>
+          </div>
+        </details>
+        <details class="focus-picker" data-mode="zen">
+          <summary class="focus-picker-summary">Zen</summary>
+          <div class="focus-picker-menu">
+            <strong>Zen</strong>
+            <small>Keeps checking, but shows only the strongest issues.</small>
+            <div class="focus-picker-options" data-options-for="zen"></div>
+          </div>
+        </details>
       </div>
-      <select id="focus-duration" aria-label="How long"></select>
     </div>
 
     <div class="privacy">
-      Your text goes to <code id="endpoint-label">127.0.0.1</code> and nowhere else.
-      No account, no cloud, no telemetry.
+      Your text stays on your machine. There's no account, no cloud, no tracking.
     </div>
   </div>
 

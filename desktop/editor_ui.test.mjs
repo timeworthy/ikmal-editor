@@ -178,3 +178,49 @@ test('macOS shell has a native tray fallback and title-bar inset', () => {
   assert.match(preload, /platform: process\.platform/);
   assert.doesNotMatch(styles, /html\[data-platform="darwin"\] \.app-header/);
 });
+
+test('a login launch leaves the menubar popover closed', () => {
+  const main = read('main.cjs');
+  // The compact window positions itself at the pointer and takes focus, so
+  // showing it on an automatic start interrupts whatever the login session is
+  // opening with. The tray icon is still there when the user wants it.
+  assert.match(main, /ready-to-show', \(\) => \{ if \(!openedAtLogin\(\)\) showWindow\(\); \}/);
+  assert.match(main, /launchedAtLogin/);
+  assert.match(main, /function openedAtLogin/);
+});
+
+test('a check that lost one engine says so instead of reading as clean', () => {
+  const renderer = read('editor-renderer.js');
+  // The proxy names the missing engines, so the renderer reports them rather
+  // than deciding for itself which warning fields exist.
+  assert.match(renderer, /ikmalDegradedChecks/);
+  assert.match(renderer, /reportDegradedCheck\(rawResponse\)/);
+  assert.match(renderer, /Findings may be incomplete/);
+});
+
+test('the expanded editor checks around the caret and keeps the rest of the draft', () => {
+  const renderer = read('editor-renderer.js');
+  const preload = read('preload.cjs');
+  const main = read('main.cjs');
+
+  // The renderer says where the writing is happening; the main process decides
+  // how much to send, because that is where the compiled core is loadable.
+  assert.match(renderer, /checkText\(text, \{ caret: editorInput\.selectionStart, scope \}\)/);
+  assert.match(renderer, /scheduleFullCheck\(rawResponse\)/);
+  assert.match(renderer, /ikmalFullCheckPending/);
+  assert.match(renderer, /checkWriting\('document'\)/);
+  assert.match(preload, /checkText: \(text, options\)/);
+
+  // A chunked check must keep what it did not look at, and must still describe
+  // the document rather than the slice that was sent.
+  assert.match(main, /planChunkedCheck\(writingCoreAPI, text, checkStates\.get\(stateKey\), options\)/);
+  assert.match(main, /mergeChunkedCheck\(await response\.json\(\), plan\)/);
+  assert.match(main, /chunkedCheckState\(plan, merged\)/);
+  assert.match(main, /filterDictionaryMatches\(merged\.matches, text/);
+  assert.match(main, /recordRecentCheck\(text, merged\)/);
+  // Two windows hold two documents; one shared cache would cross them.
+  assert.match(main, /checkStates\.set\(stateKey/);
+  assert.match(main, /event\.sender\.id/);
+  // A build without the compiled core still checks whole documents.
+  assert.match(main, /Chunked checking is off/);
+});

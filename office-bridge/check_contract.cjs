@@ -11,12 +11,34 @@ function buildCheckBody({ text, language = 'auto', motherTongue = '' } = {}) {
   return body.toString();
 }
 
+// A check runs against more than one engine and the proxy answers with
+// whatever replied, so a result can be missing a whole class of findings. That
+// is not a shorter list, it is a different check: presenting it as complete
+// would tell a writer their grammar is fine when grammar was never examined.
+// Hosts name the engines that did not answer instead.
+const DEGRADED_CHECK_LABELS = { ikmalLanguageToolWarning: 'grammar', ikmalQualityWarning: 'quality' };
+
+function degradedCheckSources(payload) {
+  const response = payload && typeof payload === 'object' ? payload : {};
+  return Object.entries(DEGRADED_CHECK_LABELS)
+    .filter(([field]) => response[field])
+    .map(([, label]) => label);
+}
+
+function degradedCheckMessage(payload) {
+  const sources = degradedCheckSources(payload);
+  return sources.length ? `Some checks did not run: ${sources.join(' and ')}. Findings may be incomplete.` : '';
+}
+
 function normalizeCheckResponse(value) {
   const response = value && typeof value === 'object' ? value : {};
   return {
     ...response,
     matches: Array.isArray(response.matches) ? response.matches : [],
     ikmalAntecedents: Array.isArray(response.ikmalAntecedents) ? response.ikmalAntecedents : [],
+    // Derived once here so every consumer reads one field instead of knowing
+    // which engines exist and what each one calls its warning.
+    ...(degradedCheckSources(response).length ? { ikmalDegradedChecks: degradedCheckSources(response) } : {}),
   };
 }
 
@@ -29,4 +51,6 @@ module.exports = {
   buildCheckBody,
   normalizeCheckResponse,
   resultIsCurrent,
+  degradedCheckSources,
+  degradedCheckMessage,
 };

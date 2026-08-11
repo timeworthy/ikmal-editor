@@ -601,7 +601,11 @@ function renderFocusState(state) {
   }
   document.documentElement.dataset.focusMode = focusState.mode;
   // A mode change alters which findings pass the filter, so anything already
-  // on screen has to be redrawn against the new effective settings.
+  // on screen has to be redrawn against the new effective settings. Ignored
+  // suggestions are tracked by their position in the filtered list, so the
+  // redraw renumbers them: keeping the old indices would hide unrelated
+  // suggestions the user never dismissed.
+  ignoredMatches = new Set();
   renderResults(rawResponse, input.value);
   if (focusState.mode === 'paused') setWritingStatus('idle', focusState.label);
 }

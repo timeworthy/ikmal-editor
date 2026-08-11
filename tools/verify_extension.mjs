@@ -7,22 +7,55 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const extension = path.join(root, 'extension');
+
+// adapters/extension_messages.js is compiled output that only the packagers
+// stage, so a fresh clone fails the required-file check below with nothing
+// actually missing from the source tree. Build it here instead, which also
+// means verification reads the contract this checkout would ship rather than
+// whatever an earlier package run happened to leave behind.
+const writingAdapters = path.join(root, 'packages', 'writing-adapters');
+const writingCore = path.join(root, 'packages', 'writing-core');
+for (const packagePath of [writingCore, writingAdapters]) {
+  execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build', '--prefix', packagePath], { stdio: 'inherit' });
+}
+const stagedModules = [
+  [path.join(writingAdapters, 'dist', 'extension_messages.js'), path.join(extension, 'adapters', 'extension_messages.js')],
+  // The service worker chunks checks around the caret and carries findings
+  // across edits, using the same compiled modules the desktop app loads.
+  [path.join(writingAdapters, 'dist', 'raw_matches.js'), path.join(extension, 'adapters', 'raw_matches.js')],
+  [path.join(writingAdapters, 'dist', 'chunked_checks.js'), path.join(extension, 'adapters', 'chunked_checks.js')],
+  [path.join(root, 'packages', 'writing-core', 'dist', 'index.js'), path.join(extension, 'core', 'writing_core.js')],
+];
+for (const [source, target] of stagedModules) {
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.copyFileSync(source, target);
+}
 const manifest = JSON.parse(fs.readFileSync(path.join(extension, 'manifest.json'), 'utf8'));
 
 const requiredFiles = [
   'manifest.json',
   'background.js',
+  'adapters/extension_messages.js',
+  'adapters/raw_matches.js',
+  'adapters/chunked_checks.js',
+  'core/writing_core.js',
   'core/check_contract.js',
+  'core/text_stats.js',
+  'core/editable_replacement.js',
   'config.js',
   'content.js',
   'content.css',
   'popup.html',
   'popup.js',
   'popup.css',
+  'workspace.html',
+  'workspace.js',
+  'workspace.css',
   'options.html',
   'options.js',
   'options.css',
@@ -108,6 +141,38 @@ if (!/pointer-events:\s*none/.test(markBlock[0])) {
 const contentSource = stripComments(fs.readFileSync(path.join(extension, 'content.js'), 'utf8'));
 if (!/function markAt\s*\(/.test(contentSource)) {
   throw new Error('content.js must hit-test marks itself; .ikmal-mark takes no pointer events.');
+}
+if (!/function buildEditableTextMap\s*\(/.test(contentSource)
+  || !/function displaySource\s*\(/.test(contentSource)) {
+  throw new Error('content.js must map rich-text offsets from rendered text and keep card provenance inside ikmal.');
+}
+if (!/indicator\.addEventListener\(['"]click['"]/.test(contentSource)
+  || !/function openFocusMenu\s*\(/.test(contentSource)
+  || !/['"]paused['"].*['"]zen['"]/.test(contentSource)) {
+  throw new Error('content.js must expose Checking, Pause, and Zen from the clicked indicator.');
+}
+if (!/mouseup/.test(contentSource) || !/eventIsInsideActiveField/.test(contentSource)
+  || !/selection:\s*true/.test(contentSource) || !/function renderSelectionSummary\s*\(/.test(contentSource)) {
+  throw new Error('content.js must summarize and check arbitrary highlighted text.');
+}
+
+const backgroundSource = stripComments(fs.readFileSync(path.join(extension, 'background.js'), 'utf8'));
+if (!/selection\s*=\s*false/.test(backgroundSource) || !/!selection/.test(backgroundSource)) {
+  throw new Error('background.js must allow short selection checks while retaining the typing minimum.');
+}
+if (!/parseExtensionMessage/.test(backgroundSource) || !/adapters\/extension_messages\.js/.test(backgroundSource)) {
+  throw new Error('background.js must consume the compiled versioned extension message contract.');
+}
+
+const popupHTML = fs.readFileSync(path.join(extension, 'popup.html'), 'utf8');
+const popupSource = fs.readFileSync(path.join(extension, 'popup.js'), 'utf8');
+if (!/class="brand-icon"/.test(popupHTML) || !/id="language-select"/.test(popupHTML)
+  || !/languageSelect\.addEventListener/.test(popupSource)) {
+  throw new Error('popup must carry ikmal branding and an in-popup language selector.');
+}
+const configSource = fs.readFileSync(path.join(extension, 'config.js'), 'utf8');
+if (!/language:\s*'en-US'/.test(configSource)) {
+  throw new Error('extension default language must be explicit English (US).');
 }
 
 const referencedIcons = Object.values(manifest.icons || {});
