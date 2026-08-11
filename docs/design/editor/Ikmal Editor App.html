@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-dialect="shelf" data-palette="slate">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="design_doc_mode" content="canvas" />
+<title>ikmal editor — app UI</title>
+<link rel="stylesheet" href="../continental-ds/continental.css" />
+<link rel="stylesheet" href="desktop-styles.css" />
+<link rel="stylesheet" href="app-ext.css" />
+<link rel="stylesheet" href="continental-demo.css" />
+<style>
+body{margin:0;background:#161519}
+.frame{position:absolute}
+.flabel{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+.flabel b{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:500}
+.flabel span{font-size:12.5px;color:var(--fg-4)}
+.fbox{height:calc(100% - 34px)}
+.fbox .win,.fbox .demo{height:100%}
+.note{position:absolute;font-size:13px;line-height:1.6;color:var(--fg-4);max-width:300px;text-wrap:pretty}
+.note b{color:var(--fg-2);font-weight:600}
+.note code{font-family:var(--font-mono);font-size:12px;color:var(--violet-300)}
+.title{position:absolute;left:80px;top:56px;max-width:760px}
+.title h1{font-family:var(--font-serif);font-size:34px;font-weight:400;letter-spacing:-.02em;color:var(--fg-1);margin:0 0 10px}
+.title p{font-size:14px;color:var(--fg-4);line-height:1.65;margin:0 0 8px}
+.title code{font-family:var(--font-mono);font-size:12.5px;color:var(--violet-300)}
+.rowhead{position:absolute;font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg-4)}
+a{color:var(--violet-300)}a:hover{color:var(--violet-200)}
+</style>
+</head>
+<body>
+<div class="title">
+  <h1>ikmal editor — desktop shell</h1>
+  <p>Row one is the app as it exists today, restyled: same markup, same ids, same renderer.js — only <code>desktop/styles.css</code> is replaced, so nothing in the LanguageTool path changes.</p>
+  <p>Row two is where it should go: the same relief language as ikmal (Continental — <code>shelf</code> dialect, <code>slate</code> palette), and a scratch pad rather than a library. You write or paste here, get answers, copy the corrected text back to wherever you were writing. Nothing is filed, nothing is kept.</p>
+</div>
+
+<div class="rowhead" style="left:80px;top:248px">01 · drop-in restyle of today's app · 420 × 760</div>
+
+<div class="frame" style="left:80px;top:288px;width:420px;height:760px">
+  <div class="flabel"><b>Writing test</b><span>results returned</span></div>
+  <div class="fbox"><div class="win"><div class="win-bar"><i></i><i></i><i></i><span>Ikmal Editor</span></div><div id="s-writing"></div></div></div>
+</div>
+
+<div class="frame" style="left:540px;top:288px;width:420px;height:760px">
+  <div class="flabel"><b>Settings</b><span>service health · style guide</span></div>
+  <div class="fbox"><div class="win"><div class="win-bar"><i></i><i></i><i></i><span>Ikmal Editor</span></div><div id="s-settings"></div></div></div>
+</div>
+
+<div class="frame" style="left:1000px;top:288px;width:420px;height:760px">
+  <div class="flabel"><b>Recent</b><span>last few checks, local only</span></div>
+  <div class="fbox"><div class="win"><div class="win-bar"><i></i><i></i><i></i><span>Ikmal Editor</span></div><div id="s-history"></div></div></div>
+</div>
+
+<div class="frame" style="left:1460px;top:288px;width:420px;height:760px">
+  <div class="flabel"><b>First run</b><span>Java · model download</span></div>
+  <div class="fbox"><div class="win"><div class="win-bar"><i></i><i></i><i></i><span>Ikmal Editor</span></div><div id="s-firstrun"></div></div></div>
+</div>
+
+<p class="note" style="left:1920px;top:288px;width:300px">
+  <b>Why keep this shape.</b> Anyone already running LanguageTool keeps every port, flag, and endpoint they have. The restyle is a stylesheet swap with no markup or JS changes, so it cannot break an existing setup.<br/><br/>
+  <b>Recent</b> stays a short list of the last few checks, not a document store — it exists so you can re-run a check, and it clears with one button.
+</p>
+
+<div class="rowhead" style="left:80px;top:1120px">02 · Continental · menu bar + scratch pad</div>
+
+<div class="frame" style="left:80px;top:1160px;width:308px;height:auto">
+  <div class="flabel"><b>Menu bar</b><span>pull-down</span></div>
+  <div class="menubar terrain" data-dialect="shelf" data-palette="slate">
+    <div class="mb-head region"><span class="mk" id="mb-mark"></span>
+      <span><strong>ikmal editor</strong><small>READY · CHECKING LOCALLY</small></span>
+      <span class="cnt-tag is-success"><span class="dot"></span>Local</span>
+    </div>
+    <div class="scarp"></div>
+    <div class="mb-body">
+      <div class="mb-item terrace is-live"><span>Check what's on the clipboard</span><em>⌥⌘V</em></div>
+      <div class="mb-item terrace is-live"><span>Open scratch pad…</span><em>⌥⌘E</em></div>
+      <p class="mb-hint">Paste something in, read the suggestions, copy the corrected text back out.</p>
+      <div class="scarp"></div>
+      <div class="mb-services">
+        <div class="mb-svc"><i></i>LanguageTool<em>8097</em></div>
+        <div class="mb-svc"><i></i>Quality checks<em>8096</em></div>
+        <div class="mb-svc"><i></i>Style guide<em>House style</em></div>
+      </div>
+      <div class="scarp"></div>
+      <div class="mb-item is-live"><span>Pause checking</span></div>
+      <div class="mb-item is-live"><span>Settings…</span><em>⌘,</em></div>
+      <div class="mb-item is-live"><span>Quit ikmal editor</span><em>⌘Q</em></div>
+    </div>
+    <div class="scarp"></div>
+    <div class="mb-foot"><span>Nothing is stored</span><span>0.9 beta</span></div>
+  </div>
+</div>
+
+<div class="frame" style="left:460px;top:1160px;width:1180px;height:660px">
+  <div class="flabel"><b>Scratch pad</b><span>write or paste · check · copy back out</span></div>
+  <div class="fbox">
+    <div class="demo terrain has-nav" data-dialect="shelf" data-palette="slate">
+      <div class="demo-bar">
+        <span class="lights"><i></i><i></i><i></i></span>
+        <span class="t">ikmal <em>editor</em></span>
+        <span class="cnt-tag is-success"><span class="dot"></span>Local only</span>
+      </div>
+      <div class="demo-body">
+        <aside class="region demo-nav">
+          <div class="nb"><span class="mk" id="pad-mark" style="width:22px;height:22px"></span><span>ikmal <em>editor</em></span></div>
+          <div class="ni on terrace"><span>Scratch pad</span></div>
+          <div class="ni"><span>Recent checks</span><em>3</em></div>
+          <div class="nl">Rules</div>
+          <div class="ni"><span>Plain English</span><em>31</em></div>
+          <div class="ni"><span>Conciseness</span><em>18</em></div>
+          <div class="ni"><span>House style</span><em>48</em></div>
+          <div class="nl">Local services</div>
+          <div class="ni"><span>LanguageTool</span><em>8097</em></div>
+          <div class="ni"><span>Quality checks</span><em>8096</em></div>
+          <div class="nf"><i></i>All local · 0.9 beta</div>
+        </aside>
+        <div class="seam"></div>
+        <section class="region demo-in">
+          <div class="demo-scene"><b>Scratch pad</b><span>not saved anywhere</span></div>
+          <div class="terrace is-sunk demo-pad"><p><span class="flag concise hot">In order to</span> keep the deposit, please leave the flat as you found it. <span class="flag style">At this point in time</span>, the agent <span class="flag grammar">believe</span> a final inspection will take an hour.</p></div>
+          <div class="demo-foot">
+            <span class="demo-meta">3 suggestions · checked on this computer</span>
+            <div class="demo-btns">
+              <button class="cnt-btn">Clear</button>
+              <button class="cnt-btn">Copy corrected text</button>
+              <button class="cnt-btn is-primary">Check</button>
+            </div>
+          </div>
+        </section>
+        <div class="seam"></div>
+        <aside class="region demo-rail">
+          <div class="demo-rail-top"><span>Suggestions</span><em>3</em></div>
+          <div class="demo-list">
+            <div class="sug terrace in hot">
+              <div class="sug-top"><span class="sug-src">Conciseness</span><em>ikmal</em></div>
+              <p>Three words doing one word's work.</p>
+              <div class="swap"><del>In order to</del><span>→</span><ins>To</ins></div>
+              <div class="sug-act"><button class="cnt-btn is-primary">Apply</button><button class="cnt-btn is-ghost">Ignore</button></div>
+            </div>
+            <div class="sug terrace s in">
+              <div class="sug-top"><span class="sug-src">Plain English</span><em>ikmal</em></div>
+              <p>A padded way of saying “now”.</p>
+              <div class="swap"><del>At this point in time</del><span>→</span><ins>Right now</ins></div>
+              <div class="sug-act"><button class="cnt-btn is-primary">Apply</button><button class="cnt-btn is-ghost">Ignore</button></div>
+            </div>
+            <div class="sug terrace g in">
+              <div class="sug-top"><span class="sug-src">Grammar</span><em>engine</em></div>
+              <p>“The agent” takes a singular verb.</p>
+              <div class="swap"><del>believe</del><span>→</span><ins>believes</ins></div>
+              <div class="sug-act"><button class="cnt-btn is-primary">Apply</button><button class="cnt-btn is-ghost">Ignore</button></div>
+            </div>
+          </div>
+          <div class="mb-foot"><span>127.0.0.1 only</span><span>8096</span></div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="note" style="left:1680px;top:1200px">
+  <b>Not a library.</b> No file name, no save state, no document list. The pad is a place to check a passage and take it back — the writing lives in whatever app you were already using.<br/><br/>
+  <b>Continental.</b> Surfaces are regions parted by seams, cards are terraces, dividers are scarps — the same relief vocabulary as ikmal, at <code>shelf</code> / <code>slate</code>. Buttons, tags, and switches are <code>.cnt-*</code> straight from the design system, so all 96 skins still work.<br/><br/>
+  <b>Open question.</b> Whether the rule packs in the sidebar are toggles or just navigation to a read-only list.
+</p>
+
+<template id="__bundler_thumbnail">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1e1e22"/><rect x="22" y="26" width="56" height="48" rx="7" fill="#25252b" stroke="#3a3a42"/><rect x="30" y="38" width="30" height="4" rx="2" fill="#9c9ca4"/><rect x="30" y="48" width="22" height="4" rx="2" fill="#9c9ca4"/><path d="M30 60q3-3 6 0t6 0" stroke="#8e80df" stroke-width="2.4" fill="none"/></svg>
+</template>
+
+<script src="../logo/markgen.js"></script>
+<script src="../logo/edmark.js"></script>
+<script src="app-mock.js"></script>
+<script>
+const A = window.IkmalEditorApp, E = window.IkmalEditor, EP = E.loadMaster();
+document.getElementById("s-writing").outerHTML = A.shell("writing-panel", A.writingPanel());
+document.getElementById("s-settings").outerHTML = A.shell("settings-panel", A.settingsPanel());
+document.getElementById("s-history").outerHTML = A.shell("history-panel", A.historyPanel());
+document.getElementById("s-firstrun").outerHTML = A.firstRun();
+document.getElementById("mb-mark").innerHTML = E.appIconSVG(EP, { theme: E.THEME, field: "ink", size: 24, tier: "full" });
+document.getElementById("pad-mark").innerHTML = E.appIconSVG(EP, { theme: E.THEME, field: "ink", size: 22, tier: "full" });
+</script>
+</body>
+</html>

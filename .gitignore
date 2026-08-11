@@ -10,8 +10,33 @@ bin/
 # Electron development dependencies
 desktop/node_modules/
 
+# Workspace dependencies: the TypeScript compiler the packagers shell out to,
+# and the Playwright the browser harnesses import.
+node_modules/
+
 # Playwright MCP session artifacts (console logs, page dumps, downloaded .crx)
 .playwright-mcp/
 
 # Swift package build output (macOS spell server)
 macos-spellserver/.build/
+
+# Host-specific builds compile the portable writing core during packaging
+packages/writing-core/dist/
+packages/writing-adapters/dist/
+packages/writing-ui/dist/
+
+# Compiled modules staged into the fresh desktop rewrite renderer at package time
+apps/desktop-editor/writing-core.js
+apps/desktop-editor/browser_field.js
+apps/desktop-editor/browser_slice.js
+apps/desktop-editor/desktop_slice.js
+apps/desktop-editor/indicator.js
+apps/desktop-editor/issue_popover.js
+apps/desktop-editor/tokens.css
+apps/desktop-editor/primitives.css
+
+# Compiled package output staged into the extension at build time. Regenerated
+# by tools/verify_extension.mjs and tools/package_extension.mjs, so a checkout
+# builds them rather than carrying a copy that can go stale.
+extension/adapters/
+extension/core/writing_core.js

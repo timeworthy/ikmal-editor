@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ikmal editor — a real editor for your writing, entirely on your computer</title>
+<link rel="stylesheet" href="../styles/site.css" />
+<link rel="stylesheet" href="../continental-ds/continental.css" />
+<link rel="stylesheet" href="site-consumer.css" />
+<link rel="stylesheet" href="continental-demo.css" />
+</head>
+<body>
+
+<nav class="nav">
+  <a class="brand" href="#top"><span class="mark" id="nav-mark"></span><span>ikmal <em>editor</em></span></a>
+  <div class="navlinks">
+    <a href="#why">Why</a>
+    <a href="#what">What it does</a>
+    <a href="#inside">What's inside</a>
+    <a href="#privacy">Privacy</a>
+    <a href="#get">Get it</a>
+    <a href="#faq">FAQ</a>
+  </div>
+  <div class="nav-right">
+    <button class="iconbtn" id="theme-toggle" aria-label="Toggle theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
+    <a class="btn btn-primary" href="#get">Get ikmal editor</a>
+  </div>
+</nav>
+
+<header id="top">
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-inner">
+      <span class="pill"><span class="dot"></span>Free · open source · macOS, Windows, Linux</span>
+      <h1>A real editor built just for you.<br/><span class="accent"><span class="h1-flag" id="h1-word">Nothing</span> leaves your computer.</span></h1>
+      <div class="h1-pop" id="h1-pop" aria-hidden="true">
+        <div class="sug-top"><span class="sug-src">House style</span><em>your guide</em></div>
+        <p>Your guide asks for the absolute, not the moment.</p>
+        <div class="swap"><del>Nothing</del><span>→</span><ins>Nothing ever</ins></div>
+        <div class="sug-act"><button class="cnt-btn is-primary" id="h1-apply">Apply</button><button class="cnt-btn is-ghost">Ignore</button></div>
+      </div>
+      <p class="lead">Grammar, wordiness, repetition, and your own house style — checked as you write, in the apps you already use. No account, no subscription, and no copy of your draft sitting on someone else's server.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary btn-lg" href="#get">Download free</a>
+        <a class="btn btn-ghost btn-lg" href="#what">See what it catches</a>
+      </div>
+      <p class="hero-note">Works offline · your text never leaves 127.0.0.1</p>
+    </div>
+    <div class="hero-stage">
+      <div class="hero-glow"></div>
+      <div class="demo terrain" data-dialect="shelf" data-palette="slate" data-theme="dark">
+        <div class="demo-bar">
+          <span class="lights"><i></i><i></i><i></i></span>
+          <span class="t">ikmal <em>editor</em></span>
+          <span class="cnt-tag is-success"><span class="dot"></span>Local only</span>
+        </div>
+        <div class="demo-body">
+          <section class="region demo-in">
+            <div class="demo-scene"><b id="dw-title"></b><span id="dw-scene"></span></div>
+            <div class="terrace is-sunk demo-pad"><p id="dw-para"></p></div>
+            <div class="demo-foot">
+              <span class="demo-meta" id="dw-meta">Scratch pad · nothing is saved</span>
+              <div class="demo-btns">
+                <span class="demo-hint" id="dw-hint">Copied</span>
+                <button class="cnt-btn" id="dw-copy">Copy corrected text</button>
+                <button class="cnt-btn is-primary" id="dw-check">Check</button>
+              </div>
+            </div>
+          </section>
+          <div class="seam"></div>
+          <aside class="region demo-rail">
+            <div class="demo-rail-top"><span>Suggestions</span><em id="dw-count">0</em></div>
+            <div class="demo-list" id="dw-list"></div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</header>
+
+<main>
+
+<!-- why -->
+<section class="section-pad bg-deep-sec" id="why">
+  <div class="wrap">
+    <div class="sechead center reveal">
+      <span class="overline">Why bother</span>
+      <h2>Most writing tools read your writing.</h2>
+      <p>The polished ones want an account, a monthly fee, and a copy of every sentence you type — held on a server, under terms that change. ikmal editor takes the opposite deal.</p>
+    </div>
+    <div class="scatter reveal">
+      <span class="chip" style="left:2%;top:8%"><span class="x">✕</span>Create an account first</span>
+      <span class="chip" style="left:29%;top:0"><span class="x">✕</span>$12 / month, per person</span>
+      <span class="chip" style="right:3%;top:12%"><span class="x">✕</span>Your draft is uploaded to check it</span>
+      <span class="chip" style="left:12%;top:38%"><span class="x">✕</span>Only works in the browser</span>
+      <span class="chip" style="left:47%;top:34%"><span class="x">✕</span>Telemetry on by default</span>
+      <span class="chip" style="right:9%;top:47%"><span class="x">✕</span>“We may use your text to improve our models”</span>
+      <span class="chip" style="left:5%;top:70%"><span class="x">✕</span>Nothing works on a plane</span>
+      <span class="chip" style="left:38%;top:72%"><span class="x">✕</span>Your employer's NDA says no</span>
+      <span class="scatter-line">ikmal editor · none of the above</span>
+    </div>
+  </div>
+</section>
+
+<!-- what it does -->
+<section class="section-pad" id="what">
+  <div class="wrap">
+    <div class="sechead reveal">
+      <span class="overline">What it does</span>
+      <h2>It reads like an editor, not a spell checker.</h2>
+      <p>Typos are the easy part. ikmal editor goes after the padding, the hedging, and the repetition — the things that make writing tiring to read — and it flags them in place, with the fix already written.</p>
+    </div>
+
+    <div style="margin-top:64px">
+      <div class="frow reveal">
+        <div>
+          <span class="kicker">Sharper prose</span>
+          <h3>Every suggestion comes with the shorter version.</h3>
+          <p>More than thirty plain-English and conciseness rules, drawn from PlainLanguage.gov and Vale, run alongside the grammar engine. You see what to cut and what to put in its place — one click, and the sentence is fixed.</p>
+          <ul>
+            <li>Wordiness, hedging, and padded phrases</li>
+            <li>Repetition and word-family echo across a paragraph</li>
+            <li>Pronouns with no clear antecedent</li>
+            <li>Grammar, agreement, and spelling in 25+ languages</li>
+          </ul>
+        </div>
+        <div class="fvis">
+          <div class="ba terrace" id="ba" data-dialect="shelf" data-palette="slate">
+            <span class="ba-src"></span>
+            <p class="ba-before"></p>
+            <p class="ba-after"></p>
+            <div class="ba-dots"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="frow flip reveal">
+        <div>
+          <span class="kicker">Everywhere you write</span>
+          <h3>One install, and your apps get a proofreader.</h3>
+          <p>ikmal editor runs quietly in your menu bar or tray and answers requests from the tools you already write in. Set it up once and the same rules follow you from email to your notes app to a pull request.</p>
+          <p style="margin-top:16px;font-size:14.5px;color:var(--fg-4)">Install the add-on for your app, then let ikmal editor point it at your own machine.</p>
+        </div>
+        <div class="fvis">
+          <div class="apps">
+            <span class="app-chip"><i></i>Chrome</span>
+            <span class="app-chip"><i></i>Firefox</span>
+            <span class="app-chip"><i></i>Safari</span>
+            <span class="app-chip"><i></i>Edge</span>
+            <span class="app-chip"><i></i>Apple Mail</span>
+            <span class="app-chip"><i></i>Microsoft Word</span>
+            <span class="app-chip"><i></i>LibreOffice</span>
+            <span class="app-chip"><i></i>VS Code</span>
+            <span class="app-chip"><i></i>Obsidian</span>
+            <span class="app-chip"><i></i>Trilium Notes</span>
+            <span class="app-chip"><i></i>and anything else that speaks the same API</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="frow reveal">
+        <div>
+          <span class="kicker">Your rules</span>
+          <h3>Bring your own style guide.</h3>
+          <p>Drop in a PDF, a web page, a Markdown file, or a plain list of preferred terms. ikmal editor turns it into real rules and checks against them like any other — so “we say <em>customer</em>, never <em>user</em>” stops being a thing you have to remember.</p>
+          <ul>
+            <li>Import from PDF, HTML, Markdown, or text</li>
+            <li>Switch guides per project, or turn them off</li>
+            <li>Hand-write your own rules if you like</li>
+          </ul>
+        </div>
+        <div class="fvis">
+          <div class="sg region" data-dialect="shelf" data-palette="slate">
+            <div class="sg-head"><span>Style guides</span><em>3 imported</em></div>
+            <div class="sg-rows">
+              <div class="sg-row terrace"><span class="ext">PDF</span><span class="n">House style 2026</span><span class="c">48 entries</span><label class="cnt-switch"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></div>
+              <div class="sg-row terrace"><span class="ext">MD</span><span class="n">Product vocabulary</span><span class="c">21 entries</span><label class="cnt-switch"><input type="checkbox" checked><span class="track"><span class="thumb"></span></span></label></div>
+              <div class="sg-row terrace is-sunk"><span class="ext">TXT</span><span class="n">Legal — approved phrasing</span><span class="c">9 entries</span><label class="cnt-switch"><input type="checkbox"><span class="track"><span class="thumb"></span></span></label></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- what's inside -->
+<section class="section-pad bg-deep-sec" id="inside">
+  <div class="wrap">
+    <div class="sechead reveal">
+      <span class="overline">What's inside</span>
+      <h2>Standing on the shoulders of giants.</h2>
+      <p>No gimmicks and no black box. ikmal editor packages battle-tested open-source parts that already work — the engine, models, and rule formats people have relied on for years — wires them together, and takes care of the setup that normally turns running them yourself into a weekend project.</p>
+    </div>
+    <div class="stack">
+      <div class="layer"><span class="lnum">01 · Engine</span><div><h4>LanguageTool, running locally</h4><p>The open-source grammar and spelling engine behind a lot of the checkers you already know, in its official distribution, launched and supervised on your machine instead of in someone's cloud.</p></div><div class="tags"><span class="tag">25+ languages</span><span class="tag">official build</span></div></div>
+      <div class="layer"><span class="lnum">02 · Language ID</span><div><h4>FastText detects what you're writing in</h4><p>Meta's <span class="mono">lid.176.bin</span> model identifies the language of a passage before it is checked, so mixed-language documents get the right rules. Downloaded once, then it lives on your disk.</p></div><div class="tags"><span class="tag">176 languages</span><span class="tag">on device</span></div></div>
+      <div class="layer"><span class="lnum">03 · Rule packs</span><div><h4>Plain English and conciseness rules</h4><p>More than thirty rules of our own, adapted from PlainLanguage.gov and Vale, that flag padding and hedging. They arrive as ordinary suggestions, so every add-on shows them without knowing anything special.</p></div><div class="tags"><span class="tag">30+ rules</span><span class="tag">editable</span></div></div>
+      <div class="layer"><span class="lnum">04 · Style guides</span><div><h4>An importer that turns your guide into rules</h4><p>PDF, HTML, Markdown, or a text list becomes a native rule set you can switch on per project. Your vocabulary gets checked with the same machinery as grammar.</p></div><div class="tags"><span class="tag">PDF · HTML · MD</span></div></div>
+      <div class="layer"><span class="lnum">05 · Quality checks</span><div><h4>Repetition and antecedent analysis</h4><p>A local companion service looks across whole paragraphs for repetition, word-family echo, and pronouns with no clear referent — the sentence-level things a per-sentence checker cannot see.</p></div><div class="tags"><span class="tag">deterministic</span><span class="tag">local</span></div></div>
+      <div class="layer opt"><span class="lnum">06 · Optional</span><div><h4>A local transformer model, if you want one</h4><p>A quantized grammar-correction model can run on your machine for harder rewrites. It is opt-in, downloaded only when you ask for it, and it still never sends text anywhere. Skip it and everything else works.</p></div><div class="tags"><span class="tag">opt-in</span><span class="tag">~650 MB</span></div></div>
+    </div>
+    <p class="stack-note">All of it answers on one address on your own machine, which is what makes the add-ons work. If you want the ports, flags, and daemon details, they live in the <a href="https://github.com/timeworthymedia/ikmal-editor">README on GitHub</a>.</p>
+  </div>
+</section>
+
+<!-- privacy -->
+<section class="section-pad" id="privacy">
+  <div class="wrap">
+    <div class="sechead reveal">
+      <span class="overline">Privacy</span>
+      <h2>“Local-only” with the boring details attached.</h2>
+      <p>Your text is checked by a server running on your own computer, on the loopback address, and nothing leaves it. The one request the app makes on its own is a daily check for a new version — and here is exactly what that sends.</p>
+    </div>
+    <div class="pcards reveal">
+      <div class="pcard"><strong>No identifier</strong><p>No account, no UUID, no hostname, no username, no OS or hardware details. There is no request body and no query string.</p></div>
+      <div class="pcard"><strong>One timestamp</strong><p>A single timestamp is stored on your disk so the check runs at most once every 24 hours. That is the only state it keeps.</p></div>
+      <div class="pcard"><strong>Fails silently</strong><p>It times out after three seconds, runs after the app is already up, and never blocks anything. Download counts come from GitHub, not from the app.</p></div>
+    </div>
+    <div class="optout reveal">
+      <div class="cmd"><code><i>$</i>ikmal-editor -no-update-check</code><button class="copy" data-copy="ikmal-editor -no-update-check">Copy</button></div>
+      <div class="cmd"><code><i>$</i>export IKMAL_EDITOR_NO_UPDATE_CHECK=1</code><button class="copy" data-copy="export IKMAL_EDITOR_NO_UPDATE_CHECK=1">Copy</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- get it -->
+<section class="section-pad bg-deep-sec" id="get">
+  <div class="wrap">
+    <div class="sechead reveal">
+      <span class="overline">Get it</span>
+      <h2>Install once. It stays out of the way after that.</h2>
+      <p>First launch sets itself up: it finds the Java runtime or Docker you have, downloads the language model, installs a small background service, and points your add-ons at it. About 350 MB on disk, and then nothing to think about.</p>
+    </div>
+    <div class="plats reveal">
+      <div class="plat"><div class="plat-top"><h3>macOS</h3><em>Apple silicon · Intel</em></div><p>Menu-bar app with a background service that starts at login.</p><a class="btn btn-primary" href="https://github.com/timeworthymedia/ikmal-editor/releases">Download</a></div>
+      <div class="plat"><div class="plat-top"><h3>Windows</h3><em>10 · 11</em></div><p>Native 64-bit app. No WSL, no Docker Desktop, no firewall prompts.</p><a class="btn btn-primary" href="https://github.com/timeworthymedia/ikmal-editor/releases">Download</a></div>
+      <div class="plat"><div class="plat-top"><h3>Linux</h3><em>x86 · ARM · Pi</em></div><p>Single binary with a systemd unit. Raspberry Pi 3, 4, and 5 included.</p><a class="btn btn-primary" href="https://github.com/timeworthymedia/ikmal-editor/releases">Download</a></div>
+    </div>
+    <details class="adv">
+      <summary><span>Package managers, Docker, and self-hosting</span></summary>
+      <div class="advbody">
+        <div class="advcard"><h4>Homebrew</h4><pre><code><i>$ </i>brew tap timeworthymedia/tap
+<i>$ </i>brew install timeworthymedia/tap/ikmal-editor
+<i>$ </i>ikmal-editor -configure-apps</code></pre></div>
+        <div class="advcard"><h4>Scoop</h4><pre><code><i>$ </i>scoop install ikmal-editor</code></pre><p>Windows bucket in the repo.</p></div>
+        <div class="advcard"><h4>Docker</h4><pre><code><i>$ </i>docker pull ghcr.io/timeworthymedia/ikmal-editor</code></pre><p>Images update through normal pulls.</p></div>
+        <div class="advcard"><h4>Unraid</h4><pre><code><i>  </i>Community Applications →
+<i>  </i>Add template URL:
+<i>  </i><b>…/unraid/my-ikmal-editor.xml</b></code></pre></div>
+        <div class="advcard"><h4>From source</h4><pre><code><i>$ </i>go build -o ikmal-editor .
+<i>$ </i>./ikmal-editor --integrated</code></pre><p>Go 1.22+, standard library only.</p></div>
+        <div class="advcard"><h4>Optional quality model</h4><pre><code><i>$ </i>ikmal-editor <b>--quality-setup</b></code></pre><p>Adds the local transformer adapter. Never downloaded unless you run this.</p></div>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- faq -->
+<section class="section-pad" id="faq">
+  <div class="wrap">
+    <div class="sechead reveal"><span class="overline">FAQ</span><h2>Reasonable questions.</h2></div>
+    <div class="faq">
+      <details open><summary>Is my writing really never uploaded?</summary><div class="ans"><b>Really.</b> The checker is a server running on your own computer, bound to the loopback address <code>127.0.0.1</code>. Text goes from your app to that address and back. There is no cloud account and no upload path, so there is nothing to opt out of.</div></details>
+      <details><summary>Is it free?</summary><div class="ans">Yes — free and open source under the MIT license. No account, no tiers, no per-seat pricing. If it saves you a subscription, that is the point.</div></details>
+      <details><summary>Does it work offline?</summary><div class="ans">Yes, once it has finished setting itself up. The first launch downloads the engine and the language model; after that a plane, a train, or an air-gapped machine is fine.</div></details>
+      <details><summary>What do I need installed?</summary><div class="ans">Java 17 or newer, or Docker — the engine runs on the JVM. ikmal editor detects whichever you already have (Homebrew, system Java, or Docker) and will tell you if it finds neither. Roughly 350 MB of disk for the engine and language model.</div></details>
+      <details><summary>I already use LanguageTool. Will this break it?</summary><div class="ans">No. ikmal editor is a manager, not a fork: it runs the official LanguageTool distribution and answers on the standard API, so your existing extensions, plug-ins, and settings keep working exactly as they do now. The extra rule packs come through as ordinary suggestions, and you can switch them off.</div></details>
+      <details><summary>Which apps does it work with?</summary><div class="ans">Anything with a LanguageTool add-on: Chrome, Firefox, Safari, Edge, Apple Mail, Microsoft Word, LibreOffice, VS Code, Obsidian, Trilium Notes, and more. You install the add-on you want; ikmal editor then points it at your own machine with one command. It never downloads extensions for you.</div></details>
+      <details><summary>Is it affiliated with LanguageTool?</summary><div class="ans">No. It is an independent third-party tool that runs the open-source engine locally. LanguageTool is a registered trademark of LanguageTooler GmbH.</div></details>
+      <details><summary>How do I remove it?</summary><div class="ans">One command: <code>ikmal-editor -uninstall</code>. It stops the background service, removes the login item and any browser policy files it wrote, and deletes its folder. Nothing is left behind.</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- cta -->
+<section class="section-pad cta">
+  <div class="cta-glow"></div>
+  <div class="wrap">
+    <h2>Write like someone is editing.<br/>Without anyone reading.</h2>
+    <p>Free, open source, and running on your own machine in a few minutes.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary btn-lg" href="https://github.com/timeworthymedia/ikmal-editor/releases">Download for macOS</a>
+      <a class="btn btn-ghost btn-lg" href="#get">Windows &amp; Linux</a>
+    </div>
+    <p class="cta-sub">MIT licensed · no account · nothing leaves 127.0.0.1</p>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div>
+        <a class="brand" href="#top" style="margin-bottom:12px"><span class="mark" id="foot-mark"></span><span>ikmal <em>editor</em></span></a>
+        <p style="font-size:13.5px;color:var(--fg-4);max-width:34ch;line-height:1.6">Local-only writing help. Part of the ikmal family, alongside <a class="link" href="../index.html">ikmal tasks</a>.</p>
+      </div>
+      <div class="footer-links">
+        <div><b>Product</b><a href="#what">What it does</a><a href="#inside">What's inside</a><a href="#privacy">Privacy</a><a href="#get">Download</a></div>
+        <div><b>Project</b><a href="https://github.com/timeworthymedia/ikmal-editor">GitHub</a><a href="https://github.com/timeworthymedia/ikmal-editor/releases">Releases</a><a href="https://github.com/timeworthymedia/ikmal-editor/blob/main/FAQ.md">Developer FAQ</a><a href="https://dev.languagetool.org/">LanguageTool docs</a></div>
+        <div><b>License</b><a href="https://github.com/timeworthymedia/ikmal-editor/blob/main/LICENSE">MIT</a><a href="https://github.com/timeworthymedia/ikmal-editor/blob/main/CONTRIBUTING.md">Contributing</a></div>
+      </div>
+    </div>
+    <p class="disclaimer">Ikmal Editor is an independent third-party tool. It is not affiliated with, endorsed by, or sponsored by LanguageTooler GmbH. LanguageTool is a registered trademark of LanguageTooler GmbH. Language identification uses Meta's FastText <code class="mono">lid.176.bin</code> model. Plain-English rules adapted from PlainLanguage.gov and Vale.</p>
+  </div>
+</footer>
+
+<template id="__bundler_thumbnail">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1e1e22"/><circle cx="50" cy="50" r="27" stroke="#4f4f58" stroke-width="6" fill="none"/><rect x="38" y="40" width="24" height="4" rx="2" fill="#c5c5cb"/><rect x="38" y="49" width="17" height="4" rx="2" fill="#c5c5cb"/><path d="M38 60q3-3 6 0t6 0" stroke="#8e80df" stroke-width="2.4" fill="none"/></svg>
+</template>
+
+<script src="../logo/markgen.js"></script>
+<script src="../logo/edmark.js"></script>
+<script>
+const E = window.IkmalEditor, EP = E.loadMaster();
+function paintMarks() {
+  const light = document.documentElement.dataset.theme === "light";
+  const svg = E.markSVG(EP, { cw: light ? E.COLORWAYS.lightUI : E.COLORWAYS.darkUI, theme: E.THEME, tier: "full", size: 30 });
+  document.getElementById("nav-mark").innerHTML = svg;
+  document.getElementById("foot-mark").innerHTML = svg;
+}
+paintMarks();
+document.getElementById("theme-toggle").addEventListener("click", () => {
+  const root = document.documentElement;
+  root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+  paintMarks();
+});
+</script>
+<script src="site.js"></script>
+</body>
+</html>

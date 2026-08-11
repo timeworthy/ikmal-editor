@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ikmal editor — asset sheet</title>
+<link rel="stylesheet" href="../assets/colors_and_type.css" />
+<style>
+html,body{margin:0;background:#161519;color:var(--fg-1)}
+.page{max-width:1120px;margin:0 auto;padding:0 40px 140px}
+.hero{padding:84px 0 54px;border-bottom:1px solid var(--border-1)}
+.eyebrow{font-family:var(--font-serif);font-style:italic;font-size:15px;color:var(--sage-500);margin:0 0 16px}
+h1{font-family:var(--font-sans);font-weight:700;font-size:42px;letter-spacing:-.035em;margin:0 0 18px;color:#fff}
+.hero p{font-size:15.5px;line-height:1.65;color:var(--fg-3);max-width:660px;margin:0 0 10px;text-wrap:pretty}
+.hero code{font-family:var(--font-mono);font-size:13.5px;color:var(--sage-500)}
+section{padding:52px 0;border-bottom:1px solid var(--border-1)}
+section:last-of-type{border-bottom:none}
+.sh{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
+.sn{font-family:var(--font-mono);font-size:13px;color:var(--sage-500)}
+h2{font-family:var(--font-sans);font-weight:700;font-size:23px;letter-spacing:-.02em;margin:0}
+.sd{font-size:13.5px;line-height:1.6;color:var(--fg-4);max-width:660px;margin:8px 0 28px;text-wrap:pretty}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}.g5{grid-template-columns:repeat(5,1fr)}
+.cell{border:1px solid #2c2b32;border-radius:12px;background:#1e1e22;display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px 14px 14px;min-height:132px}
+.cell>.pv{height:112px;display:grid;place-items:center;flex:0 0 auto}
+.cell>.cap{margin-top:auto}
+.cell.lt{background:#f4f1e9;border-color:#ddd6c6}
+.cell.pale{background:#fff;border-color:#e4ded0}
+.cap{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-4);text-align:center;line-height:1.5}
+.cell.lt .cap,.cell.pale .cap{color:#8a8472}
+.dl{appearance:none;background:#232228;border:1px solid #3a3a42;color:var(--fg-2);border-radius:6px;padding:5px 11px;font-family:var(--font-sans);font-size:11px;font-weight:600;cursor:pointer}
+.dl:hover{background:var(--sage-500);border-color:var(--sage-500);color:#10140f}
+.ramp{display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap;justify-content:center}
+.ramp .u{display:flex;flex-direction:column;align-items:center;gap:8px}
+.t{font-family:var(--font-mono);font-size:9.5px;color:var(--fg-4)}
+.wide{border:1px solid #2c2b32;border-radius:12px;overflow:hidden}
+.wide svg{display:block;width:100%;height:auto}
+.bar{display:flex;align-items:center;gap:10px;background:#131217;border-radius:8px;padding:8px 13px;font-size:12.5px;color:#c5c5cb}
+.bar .mk{width:19px;height:19px;flex:0 0 auto}
+.bar.lt{background:#ece8df;color:#3a372f}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #2c2b32}
+th{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--fg-4);font-weight:500}
+td code{font-family:var(--font-mono);font-size:12px;color:var(--sage-500)}
+td span{color:var(--fg-4);font-size:12.5px}
+.bulk{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.bulk button{appearance:none;background:var(--sage-500);border:0;color:#10140f;border-radius:8px;padding:10px 16px;font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer}
+.bulk button.q{background:#232228;color:var(--fg-2);border:1px solid #3a3a42}
+.note{font-family:var(--font-mono);font-size:10.5px;color:var(--sage-500);min-height:15px;margin-top:12px}
+svg{display:block}
+.cell>.pv>svg,.cell>div>svg,.wide>svg{width:100%;height:100%}
+a{color:var(--sage-500)}a:hover{color:#8bbd97}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="hero">
+  <p class="eyebrow">ikmal editor · locked asset set</p>
+  <h1>Every asset, from two drawings.</h1>
+  <p>Generated live from <code>edmark.js</code> — the locked two-tier mark in sage. Nothing here is hand-drawn, so a change in the export studio flows through every asset on this page. The full tier ("ikmal" in the ring) is used at 48px and up; the minimum tier (one line of prose, squiggle broken at 64 / 78%) takes over below that.</p>
+  <p>Every tile has its own download. SVG is the source of truth; PNG buttons rasterize at the size named on the tile.</p>
+  <div class="bulk">
+    <button id="dl-favicons">Download favicon set</button>
+    <button id="dl-icns">Download macOS set</button>
+    <button id="dl-win">Download Windows set</button>
+    <button id="dl-linux">Download Linux hicolor set</button>
+    <button class="q" id="dl-all-svg">All SVG sources</button>
+  </div>
+  <p class="note" id="note"></p>
+</div>
+
+<section>
+  <div class="sh"><span class="sn">01</span><h2>The two tiers</h2></div>
+  <p class="sd">Both marks on dark and light. These are the only two drawings in the system.</p>
+  <div class="grid g4" id="tiers"></div>
+</section>
+
+<section>
+  <div class="sh"><span class="sn">02</span><h2>Size ramp</h2></div>
+  <p class="sd">Auto tier at every size — the switch happens at 48px.</p>
+  <div class="cell" style="min-height:0"><div class="ramp" id="ramp"></div></div>
+</section>
+
+<section>
+  <div class="sh"><span class="sn">03</span><h2>Favicons</h2></div>
+  <p class="sd">Every platform set below is driven by the one switch rule — minimum tier under 48px, full tier at 48 and up — so the same pixel size never gets two different marks. The <code>.ico</code> bundles 16 / 32 / 48.</p>
+  <div class="grid g5" id="favicons"></div>
+  <table style="margin-top:20px"><thead><tr><th>File</th><th>Size</th><th>Where it goes</th></tr></thead><tbody id="fav-table"></tbody></table>
+</section>
+
+<section>
+  <div class="sh"><span class="sn">04</span><h2>macOS</h2></div>
+  <p class="sd">Squircle app icon at every <code>.icns</code> slot, plus the menu-bar template. Template images must be solid black with transparency only — the system masks and tints them, so the sage never appears in the menu bar.</p>
+  <div class="grid g4" id="mac"></div>
+  <div class="grid g2" style="margin-top:14px" id="menubar"></div>
+</section>
+
+<section>
+  <div class="sh"><span class="sn">05</span><h2>Windows</h2></div>
+  <p class="sd">Multi-resolution <code>.ico</code> for the executable and the Scoop manifest icon. Everything under 48px uses the minimum tier.</p>
+  <div class="grid g5" id="win"></div>
+</section>
+
+<section>
+  <div class="sh"><span class="sn">06</span><h2>Linux hicolor</h2></div>
+  <p class="sd">The standard <code>hicolor</code> theme sizes, plus the scalable SVG that most modern desktops prefer. Same switch rule as every other platform.</p>
+  <div class="grid g5" id="linux"></div>
+  <table style="margin-top:20px"><thead><tr><th>Path</th><th>Size</th></tr></thead><tbody id="linux-table"></tbody></table>
+</section>
+
+<section>
+  <div class="sh"><span class="sn">07</span><h2>Wordmark lockups</h2></div>
+  <p class="sd">Horizontal and stacked, dark and light. "ikmal" bold, "editor" regular at the same size — one lockup, two weights, no second typeface. The mark uses the minimum tier here because the wordmark already carries the name.</p>
+  <div class="grid g2" id="locks"></div>
+</section>
+
+<section>
+  <div class="sh"><span class="sn">08</span><h2>Banners</h2></div>
+  <p class="sd">The README banner replaces the repo's current indigo placeholder. The OG image is what link previews render.</p>
+  <div class="grid" id="banners"></div>
+</section>
+
+<section>
+  <div class="sh"><span class="sn">09</span><h2>Repo drop-in</h2></div>
+  <p class="sd">Written to <code>editor/repo-assets/</code> with the repo's existing filenames, so they can be copied straight over <code>assets/</code>. The banner and OG images are SVG; run the PNG buttons above if the README needs a raster.</p>
+  <table><thead><tr><th>File</th><th>Replaces</th></tr></thead><tbody>
+    <tr><td><code>ikmal_languagetool_mark.svg</code></td><td><span>the indigo door placeholder</span></td></tr>
+    <tr><td><code>ikmal_languagetool_mark_light.svg</code></td><td><span>new — light-background variant</span></td></tr>
+    <tr><td><code>ikmal_languagetool_mark_small.svg</code></td><td><span>new — minimum tier, below 48px</span></td></tr>
+    <tr><td><code>ikmal_languagetool_mark_small_light.svg</code></td><td><span>new — minimum tier on light</span></td></tr>
+    <tr><td><code>ikmal_languagetool_menubar_template.svg</code></td><td><span>new — macOS tray, solid black</span></td></tr>
+    <tr><td><code>ikmal_languagetool_icon.svg</code></td><td><span>new — app icon, ink field</span></td></tr>
+    <tr><td><code>ikmal_languagetool_banner.svg</code></td><td><span><code>ikmal_languagetool_banner.png</code> / <code>.jpg</code></span></td></tr>
+    <tr><td><code>ikmal_languagetool_og.svg</code></td><td><span>new — social preview</span></td></tr>
+  </tbody></table>
+</section>
+</div>
+
+<template id="__bundler_thumbnail">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1e1e22"/><circle cx="50" cy="50" r="33" stroke="#4f4f58" stroke-width="7" fill="none"/><rect x="30" y="40" width="40" height="6" rx="3" fill="#c5c5cb"/><path d="M31 55q3-3 6 0t6 0" stroke="#6fa37c" stroke-width="3.4" fill="none"/><path d="M62 55q3-3 6 0" stroke="#6fa37c" stroke-width="3.4" fill="none"/></svg>
+</template>
+
+<script src="markgen.js"></script>
+<script src="edmark.js"></script>
+<script>
+const E = window.IkmalEditor, CW = E.COLORWAYS, TH = E.THEMES;
+const P = E.loadMaster(), theme = TH.sage;
+// <template> parsing, not <div>: table rows are dropped inside a div.
+const el = (h) => { const t = document.createElement("template"); t.innerHTML = h.trim(); return t.content.firstElementChild; };
+const box = (h, w) => `<div class="pv" style="width:${w}px;height:${w}px">${h}</div>`;
+const note = document.getElementById("note");
+const say = (m) => { note.textContent = m; };
+
+/* ---------- download plumbing ---------- */
+function saveBlob(blob, name) {
+  const u = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = u; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(u), 4000);
+}
+const saveSVG = (svg, name) => saveBlob(new Blob([svg], { type: "image/svg+xml" }), name);
+function rasterize(svg, px) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement("canvas"); c.width = px; c.height = px;
+      c.getContext("2d").drawImage(img, 0, 0, px, px);
+      c.toBlob((b) => res(b), "image/png");
+    };
+    img.onerror = rej;
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  });
+}
+async function savePNG(svg, px, name) { saveBlob(await rasterize(svg, px), name); }
+async function saveMany(items) {
+  say("Rendering " + items.length + " files…");
+  for (const [svg, px, name] of items) { await savePNG(svg, px, name); await new Promise((r) => setTimeout(r, 90)); }
+  say(items.length + " files downloaded.");
+}
+
+/* tile helper: preview + SVG/PNG buttons */
+function tile(svg, px, name, cap, cls, showW) {
+  const w = showW || Math.min(px, 104);
+  const c = el(`<div class="cell ${cls || ""}">${box(svg, w)}<span class="cap">${cap}</span><div style="display:flex;gap:6px"></div></div>`);
+  const acts = c.lastElementChild;
+  const bs = el(`<button class="dl">SVG</button>`); bs.onclick = () => saveSVG(svg, name + ".svg"); acts.appendChild(bs);
+  if (px) { const bp = el(`<button class="dl">PNG</button>`); bp.onclick = () => savePNG(svg, px, name + ".png"); acts.appendChild(bp); }
+  return c;
+}
+
+/* ---------- 01 tiers ---------- */
+const tiers = document.getElementById("tiers");
+[["full", CW.darkUI, "", "full-dark"], ["min", CW.darkUI, "", "min-dark"], ["full", CW.lightUI, "lt", "full-light"], ["min", CW.lightUI, "lt", "min-light"]]
+  .forEach(([tier, cw, cls, nm]) => {
+    tiers.appendChild(tile(E.markSVG(P, { theme, cw, tier, size: 512 }), 512, "ikmal-editor-mark-" + nm, tier + " tier · on " + cw.mode, cls, 104));
+  });
+
+/* ---------- 02 ramp ---------- */
+const ramp = document.getElementById("ramp");
+[96, 64, 48, 32, 24, 20, 16].forEach((px) => {
+  ramp.appendChild(el(`<div class="u">${box(E.markSVG(P, { theme, cw: CW.darkUI, size: px, s: px < 26 ? 1.2 : 1 }), px)}<span class="t">${px}</span></div>`));
+});
+
+/* ---------- 03 favicons ---------- */
+// One rule for every platform set — the same one the ramp uses.
+const tierAt = (px) => (px >= P.switchPx ? "full" : "min");
+const FAV = [
+  [16, "favicon-16x16", "browser tab"],
+  [32, "favicon-32x32", "bookmark bar, retina tab"],
+  [48, "favicon-48x48", ".ico slot"],
+  [180, "apple-touch-icon", "iOS home screen"],
+  [512, "icon-512", "PWA manifest, maskable"],
+];
+const favWrap = document.getElementById("favicons"), favTable = document.getElementById("fav-table");
+FAV.forEach(([px, name, where]) => {
+  const tier = tierAt(px);
+  const svg = E.appIconSVG(P, { theme, field: "ink", size: px, round: px >= 180 ? (px === 512 ? 0 : 22) : 4, tier });
+  favWrap.appendChild(tile(svg, px, name, px + "px · " + tier, "", Math.min(px, 96)));
+  favTable.appendChild(el(`<tr><td><code>${name}.png</code></td><td><span>${px}×${px}</span></td><td><span>${where}</span></td></tr>`));
+});
+favTable.appendChild(el(`<tr><td><code>favicon.ico</code></td><td><span>16 / 32 / 48</span></td><td><span>legacy fallback — bundle the three PNGs</span></td></tr>`));
+document.getElementById("dl-favicons").onclick = () => saveMany(FAV.map(([px, name]) =>
+  [E.appIconSVG(P, { theme, field: "ink", size: px, round: px >= 180 ? (px === 512 ? 0 : 22) : 4, tier: tierAt(px) }), px, name + ".png"]));
+
+/* ---------- 04 macOS ---------- */
+const MAC = [1024, 512, 256, 128, 64, 32, 16];
+const macWrap = document.getElementById("mac");
+[1024, 256, 64, 32].forEach((px) => {
+  macWrap.appendChild(tile(E.macIconSVG(P, { theme, field: "ink", size: px }), px, "icon_" + px + "x" + px, px + "px · dock", "", Math.min(px, 104)));
+});
+document.getElementById("dl-icns").onclick = () => saveMany(MAC.map((px) =>
+  [E.macIconSVG(P, { theme, field: "ink", size: px }), px, "icon_" + px + "x" + px + ".png"]));
+
+const mbWrap = document.getElementById("menubar");
+const tmplDark = E.templateIconSVG(P, { size: 44, color: "#000000" });
+mbWrap.appendChild(el(`<div class="cell"><div class="bar"><span class="mk">${E.templateIconSVG(P, { size: 19, color: "#D7D7DD" })}</span>ikmal editor</div><span class="cap">menu bar · dark system</span></div>`));
+const mbLight = el(`<div class="cell lt"><div class="bar lt"><span class="mk">${E.templateIconSVG(P, { size: 19, color: "#1C1B17" })}</span>ikmal editor</div><span class="cap">menu bar · light system</span><div style="display:flex;gap:6px"></div></div>`);
+const bt = el(`<button class="dl">Template SVG</button>`); bt.onclick = () => saveSVG(tmplDark, "menubar-template.svg");
+const bt2 = el(`<button class="dl">44px PNG</button>`); bt2.onclick = () => savePNG(tmplDark, 44, "menubar-template@2x.png");
+mbLight.lastElementChild.append(bt, bt2);
+mbWrap.appendChild(mbLight);
+
+/* ---------- 05 Windows ---------- */
+const WIN = [16, 20, 24, 32, 48, 64, 128, 256];
+const winWrap = document.getElementById("win");
+[16, 24, 32, 48, 256].forEach((px) => {
+  const tier = tierAt(px);
+  winWrap.appendChild(tile(E.appIconSVG(P, { theme, field: "ink", size: px, round: 0, tier }), px, "ikmal-editor-" + px, px + "px · " + tier, "", Math.min(px, 96)));
+});
+document.getElementById("dl-win").onclick = () => saveMany(WIN.map((px) =>
+  [E.appIconSVG(P, { theme, field: "ink", size: px, round: 0, tier: tierAt(px) }), px, "ikmal-editor-" + px + ".png"]));
+
+/* ---------- 06 Linux ---------- */
+const LINUX = [16, 22, 24, 32, 48, 64, 128, 256, 512];
+const lxWrap = document.getElementById("linux"), lxTable = document.getElementById("linux-table");
+[16, 24, 48, 128, 512].forEach((px) => {
+  const tier = tierAt(px);
+  lxWrap.appendChild(tile(E.appIconSVG(P, { theme, field: "ink", size: px, round: px >= 128 ? 22 : 4, tier }), px, "ikmal-editor-" + px, px + "px · " + tier, "", Math.min(px, 96)));
+});
+LINUX.forEach((px) => lxTable.appendChild(el(`<tr><td><code>share/icons/hicolor/${px}x${px}/apps/ikmal-editor.png</code></td><td><span>${px}×${px}</span></td></tr>`)));
+lxTable.appendChild(el(`<tr><td><code>share/icons/hicolor/scalable/apps/ikmal-editor.svg</code></td><td><span>scalable</span></td></tr>`));
+document.getElementById("dl-linux").onclick = () => saveMany(LINUX.map((px) =>
+  [E.appIconSVG(P, { theme, field: "ink", size: px, round: px >= 128 ? 22 : 4, tier: tierAt(px) }), px, "ikmal-editor-" + px + ".png"]));
+
+/* ---------- 07 lockups ---------- */
+const locks = document.getElementById("locks");
+[[CW.darkUI, ""], [CW.lightUI, "lt"]].forEach(([cw, cls]) => {
+  const svg = E.lockupSVG(P, { theme, cw });
+  const c = el(`<div class="cell ${cls}"><div style="width:100%;max-width:340px">${svg}</div><span class="cap">horizontal · ${cw.mode}</span><div style="display:flex;gap:6px"></div></div>`);
+  const b = el(`<button class="dl">SVG</button>`); b.onclick = () => saveSVG(svg, "ikmal-editor-lockup-" + cw.mode + ".svg");
+  c.lastElementChild.appendChild(b); locks.appendChild(c);
+});
+[[CW.darkUI, ""], [CW.lightUI, "lt"]].forEach(([cw, cls]) => {
+  const svg = E.stackSVG(P, { theme, cw });
+  const c = el(`<div class="cell ${cls}"><div style="width:190px">${svg}</div><span class="cap">stacked · ${cw.mode}</span><div style="display:flex;gap:6px"></div></div>`);
+  const b = el(`<button class="dl">SVG</button>`); b.onclick = () => saveSVG(svg, "ikmal-editor-stack-" + cw.mode + ".svg");
+  c.lastElementChild.appendChild(b); locks.appendChild(c);
+});
+
+/* ---------- 08 banners ---------- */
+const ban = document.getElementById("banners");
+[[E.readmeBannerSVG(P, { theme }), "readme-banner", 1280, 320], [E.ogBannerSVG(P, { theme }), "og-image", 1200, 630]].forEach(([svg, name, w, h]) => {
+  const wrap = el(`<div><div class="wide"${name === "og-image" ? ' style="max-width:620px"' : ""}>${svg}</div><div style="display:flex;gap:6px;align-items:center;margin-top:10px"><span class="cap">${name} · ${w}×${h}</span></div></div>`);
+  const acts = wrap.lastElementChild;
+  const bs = el(`<button class="dl">SVG</button>`); bs.onclick = () => saveSVG(svg, name + ".svg");
+  const bp = el(`<button class="dl">PNG</button>`);
+  bp.onclick = async () => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement("canvas"); c.width = w; c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      c.toBlob((b) => saveBlob(b, name + ".png"), "image/png");
+    };
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  };
+  acts.append(bs, bp); ban.appendChild(wrap);
+});
+
+/* ---------- all SVG ---------- */
+document.getElementById("dl-all-svg").onclick = async () => {
+  const all = [
+    [E.markSVG(P, { theme, cw: CW.darkUI, tier: "full", size: 512 }), "mark-full-dark"],
+    [E.markSVG(P, { theme, cw: CW.lightUI, tier: "full", size: 512 }), "mark-full-light"],
+    [E.markSVG(P, { theme, cw: CW.darkUI, tier: "min", size: 512 }), "mark-min-dark"],
+    [E.markSVG(P, { theme, cw: CW.lightUI, tier: "min", size: 512 }), "mark-min-light"],
+    [E.templateIconSVG(P, { size: 44 }), "menubar-template"],
+    [E.appIconSVG(P, { theme, field: "ink", size: 1024 }), "icon-ink"],
+    [E.appIconSVG(P, { theme, field: "gradient", size: 1024 }), "icon-gradient"],
+    [E.lockupSVG(P, { theme, cw: CW.darkUI }), "lockup-dark"],
+    [E.lockupSVG(P, { theme, cw: CW.lightUI }), "lockup-light"],
+    [E.stackSVG(P, { theme, cw: CW.darkUI }), "stack-dark"],
+    [E.stackSVG(P, { theme, cw: CW.lightUI }), "stack-light"],
+    [E.readmeBannerSVG(P, { theme }), "readme-banner"],
+    [E.ogBannerSVG(P, { theme }), "og-image"],
+  ];
+  say("Downloading " + all.length + " SVG files…");
+  for (const [svg, name] of all) { saveSVG(svg, "ikmal-editor-" + name + ".svg"); await new Promise((r) => setTimeout(r, 110)); }
+  say(all.length + " SVG files downloaded.");
+};
+</script>
+</body>
+</html>

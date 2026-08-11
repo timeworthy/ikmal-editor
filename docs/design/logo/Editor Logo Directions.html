@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ikmal editor — mark directions</title>
+<link rel="stylesheet" href="../assets/colors_and_type.css" />
+<style>
+html,body{margin:0;background:#161519;color:var(--fg-1)}
+.page{max-width:1120px;margin:0 auto;padding:0 40px 140px}
+.hero{padding:90px 0 60px;border-bottom:1px solid var(--border-1)}
+.eyebrow{font-family:var(--font-serif);font-style:italic;font-size:15px;color:var(--violet-300);margin:0 0 18px}
+h1{font-family:var(--font-sans);font-weight:700;font-size:44px;letter-spacing:-.035em;margin:0 0 20px;color:#fff}
+.hero p{font-size:16px;line-height:1.65;color:var(--fg-3);max-width:640px;margin:0;text-wrap:pretty}
+section{padding:60px 0;border-bottom:1px solid var(--border-1)}
+.sh{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
+.sn{font-family:var(--font-mono);font-size:13px;color:var(--violet-300)}
+h2{font-family:var(--font-sans);font-weight:700;font-size:24px;letter-spacing:-.02em;margin:0}
+.sd{font-size:14px;line-height:1.6;color:var(--fg-4);max-width:600px;margin:8px 0 34px;text-wrap:pretty}
+.label{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-4);margin:0}
+.dirs{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.tier{border:1px solid #2c2b32;border-radius:14px;overflow:hidden;background:#1e1e22;display:flex;flex-direction:column}
+.tier-big{display:flex;align-items:center;justify-content:center;height:190px;background:#232228}
+.tier-ramp{display:flex;align-items:flex-end;justify-content:center;gap:22px;padding:20px 0 18px}
+.tier-ramp .u{display:flex;flex-direction:column;align-items:center;gap:8px}
+.tier-body{padding:16px 18px 20px;border-top:1px solid #2c2b32;display:flex;flex-direction:column;gap:8px}
+.tier-body h3{font-size:16px;font-weight:600;margin:0;letter-spacing:-.015em}
+.tier-body .n{font-size:12.5px;line-height:1.55;color:var(--fg-4);margin:0;text-wrap:pretty}
+.tier-body .kx{font-family:var(--font-mono);font-size:9.5px;color:var(--violet-300);letter-spacing:.05em}
+.gaps{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.gap-u{border:1px solid #2c2b32;border-radius:12px;background:#1e1e22;padding:22px 0 14px;display:flex;flex-direction:column;align-items:center;gap:14px}
+.gap-row{display:flex;align-items:center;justify-content:center;gap:18px}
+.card{border:1px solid #2c2b32;border-radius:14px;overflow:hidden;background:#1e1e22;display:flex;flex-direction:column}
+.card .top{display:flex;align-items:center;justify-content:center;height:168px}
+.card .ramp{display:flex;align-items:flex-end;justify-content:center;gap:18px;padding:0 0 20px}
+.card .ramp .u{display:flex;flex-direction:column;align-items:center;gap:7px}
+.card .lt{display:flex;align-items:center;justify-content:center;height:96px;background:#f4f1e9}
+.card .body{padding:16px 18px 20px;border-top:1px solid #2c2b32;display:flex;flex-direction:column;gap:8px}
+.card h3{font-size:15px;font-weight:600;margin:0;letter-spacing:-.01em}
+.card .n{font-size:12.5px;line-height:1.55;color:var(--fg-4);margin:0;text-wrap:pretty}
+.card .kx{font-family:var(--font-mono);font-size:9.5px;color:var(--violet-300);letter-spacing:.05em}
+.matrix{display:grid;grid-template-columns:150px repeat(5,1fr);gap:10px;align-items:center}
+.matrix .head{font-family:var(--font-mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--fg-4);text-align:center}
+.matrix .rn{font-size:13.5px;font-weight:600;color:var(--fg-2)}
+.cell{height:84px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:#1e1e22;border:1px solid #2c2b32}
+.lockrow{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.lock{border:1px solid #2c2b32;border-radius:14px;overflow:hidden}
+.lock .st{display:flex;align-items:center;gap:20px;justify-content:center;height:140px}
+.lock .cap{padding:10px 15px;border-top:1px solid #2c2b32;display:flex;justify-content:space-between}
+.lock.dk{background:#1e1e22}.lock.dk .cap{background:#1a191e}
+.lock.lt{background:#f4f1e9}.lock.lt .cap{background:#ece8df;border-top-color:#ddd6c6}
+.w{font-family:"Inter";font-weight:700;letter-spacing:-.04em;line-height:1}
+.w em{font-style:normal;font-weight:400;color:var(--fg-3)}
+.family{display:flex;gap:0;border:1px solid #2c2b32;border-radius:14px;overflow:hidden}
+.family>div{flex:1;padding:34px 0 22px;display:flex;flex-direction:column;align-items:center;gap:16px;background:#1e1e22;border-right:1px solid #2c2b32}
+.family>div:last-child{border-right:none}
+.family .nm{font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-4)}
+.icons{display:flex;flex-wrap:wrap;gap:26px}
+.icons .u{display:flex;flex-direction:column;align-items:center;gap:10px}
+.ios{border-radius:22%;overflow:hidden;box-shadow:0 10px 24px -8px rgba(0,0,0,.6);width:92px;height:92px}
+.t{font-family:var(--font-mono);font-size:10px;color:var(--fg-4)}
+a{color:var(--violet-300)}a:hover{color:var(--violet-200)}
+</style>
+</head>
+<body>
+<div class="page" id="page"></div>
+<template id="__bundler_thumbnail">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1e1e22"/><circle cx="50" cy="50" r="27" stroke="#4f4f58" stroke-width="6" fill="none"/><rect x="36" y="40" width="28" height="4" rx="2" fill="#9c9ca4"/><rect x="36" y="49" width="20" height="4" rx="2" fill="#9c9ca4"/><path d="M36 60q3-3 6 0t6 0" stroke="#8e80df" stroke-width="2.4" fill="none"/></svg>
+</template>
+<script src="markgen.js"></script>
+<script src="editorgen.js"></script>
+<script>
+const E = window.IkmalEditorMark, M = window.IkmalMark;
+const TH = E.THEMES, CW = E.CW;
+const el = (h) => { const d = document.createElement("div"); d.innerHTML = h.trim(); return d.firstElementChild; };
+const svg = (h, w) => `<div style="width:${w}px;height:${w}px;flex:0 0 auto">${h}</div>`;
+const page = document.getElementById("page");
+
+page.appendChild(el(`<div class="hero">
+<p class="eyebrow">ikmal editor · mark exploration</p>
+<h1>Two marks, one system —<br/>and the directions behind them.</h1>
+<p>Every direction below reuses the tasks mark unchanged from the shoulders out: same ring radius, same stroke, same palette, same 100-unit grid. Only the interior changes — so the two apps read as one family at any size, and nothing about the shared geometry has to be re-decided later. Ordered roughly literal → quiet.</p>
+</div>`));
+
+// 00 responsive system
+page.appendChild(el(`<section><div class="sh"><span class="sn">00</span><h2>Two marks, one system</h2></div>
+<p class="sd">Two drawings, not ten. Above 48px the name itself sits in the ring with the squiggle under it. Below that the word would close up, so it drops to a single broken line of prose — same ring, same squiggle, same accent, just the amount of text changing. Each tier is shown large, then down to its smallest usable size.</p>
+<div class="tiers" id="tiers" style="grid-template-columns:repeat(2,1fr)"></div>
+<p class="sd" style="margin:34px 0 18px">The small tier has one real hazard: two solid horizontal features stacked inside a circle read as a face. Breaking the lower stroke fixes it — the squiggle becomes two flagged words rather than a mouth. <strong style="color:var(--fg-2);font-weight:600">Locked at 64 / 78%</strong>: the runs stay separate down to 16px, where a narrower gap fuses back into one stroke.</p>
+<div class="gaps" id="gaps"></div></section>`));
+const tiers = document.getElementById("tiers");
+[
+  { id: "wordRing", name: "Full", range: "48px and up", use: "Website header, README banner, app splash, About window, printed material.", sizes: [96, 64, 48] },
+  { id: "oneLineBreak", name: "Minimum", range: "below 48px", use: "Menu bar, dock, favicon, list rows, notification badge — anywhere the word would close up.", sizes: [32, 24, 16] },
+].forEach((t, i) => {
+  const ramp = t.sizes.map((px) =>
+    `<div class="u">${svg(E.markSVG(t.id, { cw: CW.darkUI, size: px, s: px < 26 ? 1.3 : px < 40 ? 1.12 : 1 }), px)}<span class="t">${px}</span></div>`).join("");
+  tiers.appendChild(el(`<div class="tier">
+    <div class="tier-big">${svg(E.markSVG(t.id, { cw: CW.darkUI }), 120)}</div>
+    <div class="tier-ramp">${ramp}</div>
+    <div class="tier-body"><span class="kx">tier 0${i + 1} · ${t.range}</span><h3>${t.name}</h3><p class="n">${t.use}</p></div>
+  </div>`));
+});
+
+// break study
+const gaps = document.getElementById("gaps");
+[["Locked · break at 64 / 78%", [0.64, 0.78]], ["Rejected · break at 78 / 84%", [0.78, 0.84]]].forEach(([nm, cut]) => {
+  const draw = (px, s) => {
+    const x = 30, w = 40, y = 55;
+    const sq = cut
+      ? E.squiggle(x + 0.4, x + w * cut[0], y, "#a89be8", 3.4 * s, 2.4, 9.2) +
+        E.squiggle(x + w * cut[1], x + w - 0.4, y, "#a89be8", 3.4 * s, 2.4, 9.2)
+      : E.squiggle(x + 0.4, x + w - 0.4, y, "#a89be8", 3.4 * s, 2.4, 9.2);
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${px}" height="${px}" fill="none">` +
+      `<circle cx="50" cy="50" r="${E.P.ringR}" stroke="#E8E8EC" stroke-width="${(E.P.ringW * s).toFixed(2)}" opacity="0.3" fill="none"/>` +
+      `<rect x="${x}" y="40" width="${w}" height="6" rx="3" fill="#E8E8EC" opacity="0.56"/>${sq}</svg>`;
+  };
+  gaps.appendChild(el(`<div class="gap-u"><div class="gap-row">${svg(draw(120, 1), 120)}${svg(draw(64, 1), 64)}${svg(draw(32, 1.12), 32)}${svg(draw(24, 1.2), 24)}${svg(draw(16, 1.3), 16)}</div><span class="label">${nm}</span></div>`));
+});
+
+// 01 directions
+const dirs = E.DIRECTIONS;
+page.appendChild(el(`<section><div class="sh"><span class="sn">01</span><h2>Directions</h2></div>
+<p class="sd">Each shown at 92px on slate, as a size ramp down to 16px, and on cream. The size ramp is the real test: a squiggle needs about 3 cycles to still read as a squiggle.</p>
+<div class="dirs" id="dirs"></div></section>`));
+const dg = document.getElementById("dirs");
+dirs.forEach((d, i) => {
+  const ramp = [48, 32, 24, 16].map((px) =>
+    `<div class="u">${svg(E.markSVG(d.id, { cw: CW.darkUI, size: px, s: px < 26 ? 1.25 : 1 }), px)}<span class="t">${px}</span></div>`).join("");
+  dg.appendChild(el(`<div class="card">
+    <div class="top">${svg(E.markSVG(d.id, { cw: CW.darkUI }), 92)}</div>
+    <div class="ramp">${ramp}</div>
+    <div class="lt">${svg(E.markSVG(d.id, { cw: CW.lightUI }), 60)}</div>
+    <div class="body"><span class="kx">0${i + 1} · ${d.id}</span><h3>${d.name}</h3><p class="n">${d.note}</p></div>
+  </div>`));
+});
+
+// 02 accent
+page.appendChild(el(`<section><div class="sh"><span class="sn">02</span><h2>Accent</h2></div>
+<p class="sd">Violet is the ikmal brand accent and keeps the two apps identical at a glance; a sibling hue makes the editor findable in a dock next to tasks. Steel and sage stay calm; amber leans toward “needs attention”, which is what a checker actually does.</p>
+<div class="matrix" id="mx"></div></section>`));
+const mx = document.getElementById("mx");
+const accents = ["violet", "steel", "sage", "amber", "terracotta"];
+mx.appendChild(el(`<div></div>`));
+accents.forEach((a) => mx.appendChild(el(`<div class="head">${TH[a].name}<br/><span style="color:#5a5962">${TH[a].dark}</span></div>`)));
+dirs.forEach((d) => {
+  mx.appendChild(el(`<div class="rn">${d.name}</div>`));
+  accents.forEach((a) => mx.appendChild(el(`<div class="cell">${svg(E.markSVG(d.id, { cw: CW.darkUI, theme: TH[a], size: 60 }), 60)}</div>`)));
+});
+
+// 03 family check
+page.appendChild(el(`<section><div class="sh"><span class="sn">03</span><h2>Family check</h2></div>
+<p class="sd">The tasks mark first, then each editor direction at the same size. Look for two things: the pair reads as siblings, and the two are still telling apart in a 20px dock or menu bar.</p>
+<div class="family" id="fam"></div>
+<div class="family" id="fam2" style="margin-top:14px"></div></section>`));
+const fam = document.getElementById("fam"), fam2 = document.getElementById("fam2");
+fam.appendChild(el(`<div style="background:#232228!important"><div>${svg(M.markSVG(M.DEFAULT, { cw: CW.darkUI }), 72)}</div><span class="nm">tasks</span></div>`));
+dirs.forEach((d) => fam.appendChild(el(`<div><div>${svg(E.markSVG(d.id, { cw: CW.darkUI }), 72)}</div><span class="nm">${d.name}</span></div>`)));
+fam2.appendChild(el(`<div style="background:#232228!important"><div>${svg(M.markSVG(M.DEFAULT, { cw: CW.darkUI, s: 1.25 }), 20)}</div><span class="nm">tasks · 20</span></div>`));
+dirs.forEach((d) => fam2.appendChild(el(`<div><div>${svg(E.markSVG(d.id, { cw: CW.darkUI, s: 1.25 }), 20)}</div><span class="nm">20px</span></div>`)));
+
+// 04 lockups on the two front-runners
+page.appendChild(el(`<section><div class="sh"><span class="sn">04</span><h2>Lockup</h2></div>
+<p class="sd">Wordmark stays lowercase Inter Bold as on tasks, with “editor” in regular weight at the same size — one lockup, two weights, no second typeface.</p>
+<div class="lockrow" id="lk"></div></section>`));
+const lk = document.getElementById("lk");
+[["squiggle", TH.violet], ["ringwave", TH.steel]].forEach(([id, th]) => {
+  [["dk", CW.darkUI, "#fff"], ["lt", CW.lightUI, "#1c1b17"]].forEach(([cls, cw, tc]) => {
+    lk.appendChild(el(`<div class="lock ${cls}">
+      <div class="st">${svg(E.markSVG(id, { cw, theme: th }), 64)}<span class="w" style="font-size:38px;color:${tc}">ikmal <em>editor</em></span></div>
+      <div class="cap"><span class="label">${E.byId(id).name} · ${th.name}</span><span class="label">${cls === "dk" ? "on dark" : "on light"}</span></div></div>`));
+  });
+});
+
+// 04b wordmark with squiggle
+page.appendChild(el(`<section><div class="sh"><span class="sn">04b</span><h2>Squiggle under the word</h2></div>
+<p class="sd">No ring at all: the squiggle sits under “editor” the way it sits under a flagged word in the app. Shown alone, then locked up with the two bare marks. This is the cheapest option to read at any size and the only one that works in a single line of text.</p>
+<div class="lockrow" id="wm"></div></section>`));
+const wm = document.getElementById("wm");
+[["dk", "#fff", "#a89be8", "on dark"], ["lt", "#1c1b17", "#6253c0", "on light"]].forEach(([cls, fg, ac, cap]) => {
+  wm.appendChild(el(`<div class="lock ${cls}"><div class="st">${E.wordmarkSVG({ fg, ac, size: 300 })}</div>
+    <div class="cap"><span class="label">wordmark only</span><span class="label">${cap}</span></div></div>`));
+});
+[["bare", "Just the squiggle"], ["bareWide", "Squiggle, edge to edge"]].forEach(([id, nm]) => {
+  wm.appendChild(el(`<div class="lock dk"><div class="st">${E.lockupSVG(id, { cw: CW.darkUI, fg: "#fff", ac: "#a89be8", size: 320 })}</div>
+    <div class="cap"><span class="label">${nm} + wordmark</span><span class="label">on dark</span></div></div>`));
+});
+
+// 05 app icons
+page.appendChild(el(`<section style="border-bottom:none"><div class="sh"><span class="sn">05</span><h2>App icon</h2></div>
+<p class="sd">Same icon engine as tasks: ink field for dock and menu bar, gradient for stores. Shown for the two front-runners so the dock pairing is checkable.</p>
+<div class="icons" id="ic"></div></section>`));
+const ic = document.getElementById("ic");
+[["squiggle", TH.violet, "Underline · violet"], ["bare", TH.violet, "Just the squiggle · violet"], ["ringwave", TH.steel, "Corrected ring · steel"], ["tighten", TH.sage, "Tightened · sage"]].forEach(([id, th, nm]) => {
+  ["ink", "gradient"].forEach((f) => {
+    ic.appendChild(el(`<div class="u"><div class="ios">${E.appIconSVG(id, { theme: th, field: f, size: 92, round: 0 })}</div><span class="t">${nm} · ${f}</span></div>`));
+  });
+});
+ic.appendChild(el(`<div class="u"><div class="ios">${M.appIconSVG(M.DEFAULT, { theme: TH.violet, field: "ink", size: 92 })}</div><span class="t">tasks · for comparison</span></div>`));
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "@ikmal/writing-adapters",
+  "private": true,
+  "type": "module",
+  "description": "Versioned, host-neutral message and IPC boundary contracts.",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --experimental-strip-types --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
