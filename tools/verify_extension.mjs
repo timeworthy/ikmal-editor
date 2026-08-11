@@ -69,6 +69,14 @@ const requiredFiles = [
 const missing = requiredFiles.filter((file) => !fs.existsSync(path.join(extension, file)));
 if (missing.length) throw new Error(`Missing extension files: ${missing.join(', ')}`);
 
+// The chunked-check harness is opt-in because Playwright is not a dependency
+// here, which is exactly why its absence would otherwise go unnoticed. Chunking
+// without retention silently empties a long draft of its findings, and this is
+// the only end-to-end proof in the browser that it does not.
+if (!fs.existsSync(path.join(root, 'tools', 'extension_chunked_check_smoke.mjs'))) {
+  throw new Error('Missing the chunked-check smoke harness: tools/extension_chunked_check_smoke.mjs');
+}
+
 if (manifest.manifest_version !== 3) {
   throw new Error(`Extension must be Manifest V3, found V${manifest.manifest_version}.`);
 }

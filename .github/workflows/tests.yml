@@ -1,0 +1,74 @@
+name: Tests
+
+# The repository had no test workflow: the other three run on a published
+# release and only build artifacts. Everything here already ran locally on one
+# machine, which is a poor place for the only copy of a result to live.
+#
+# What is deliberately not here: the Electron smoke, the Office bridge, and the
+# macOS spell server. Those need a real desktop session, real Office hosts, or
+# macOS itself, and a Linux runner pretending otherwise would report a pass
+# that means nothing. They stay local runs until there is a macOS job worth
+# paying for.
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    name: Go
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - run: go test ./...
+
+  node:
+    name: Node and verifiers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      # This is what supplies tsc. The verifiers and packagers shell out to it
+      # and a runner has no global one.
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm run verify
+
+  browser:
+    name: Browser extensions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      # The pinned browser, so a run here and a run on a laptop are the same
+      # browser rather than whatever each machine last updated to.
+      - name: Install the pinned Chromium
+        run: npx playwright install --with-deps chromium
+      # MV3 extensions load into a headed browser, which on a runner means a
+      # virtual display rather than no display.
+      - name: Install a virtual display
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+      - name: Browser extension smokes
+        run: xvfb-run -a npm run smoke:browser
