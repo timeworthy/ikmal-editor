@@ -1,0 +1,17 @@
+* { box-sizing: border-box; }
+body { background: var(--bg-0); color: var(--fg-1); font: 14px/1.5 var(--font-sans); margin: 0; min-width: 620px; }
+.desktop-slice { display: grid; gap: var(--space-5); margin: 0 auto; max-width: 980px; padding: var(--space-6); }
+.slice-header { align-items: end; display: flex; justify-content: space-between; gap: var(--space-4); }
+.slice-kicker { color: var(--accent); font: 600 11px/1 var(--font-mono); letter-spacing: .08em; margin: 0 0 var(--space-2); }
+h1 { font: 500 28px/1.1 var(--font-serif); margin: 0; }
+.slice-actions { align-items: center; display: flex; gap: var(--space-3); }
+.slice-service { color: var(--fg-3); font: 12px/1 var(--font-mono); }
+.slice-editor { display: grid; gap: var(--space-3); }
+.slice-editor label { color: var(--fg-2); font: 600 12px/1 var(--font-mono); }
+#editor-input { background: var(--bg-0); border: 1px solid var(--border-1); border-radius: var(--radius-2); color: var(--fg-1); font: 16px/1.65 var(--font-sans); min-height: 260px; padding: var(--space-4); resize: vertical; width: 100%; }
+#editor-input:focus { border-color: var(--accent); box-shadow: var(--shadow-focus); outline: none; }
+.slice-footer { color: var(--fg-3); display: flex; font: 12px/1 var(--font-mono); justify-content: space-between; }
+.slice-indicator { min-height: 32px; }
+.slice-popover { max-width: 380px; }
+.slice-popover[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }

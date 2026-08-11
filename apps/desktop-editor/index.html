@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-density="comfortable">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>ikmal editor — rewrite slice</title>
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="primitives.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="desktop-slice" aria-label="ikmal editor rewrite slice">
+    <header class="slice-header">
+      <div><p class="slice-kicker">IKMAL EDITOR</p><h1>Writing workspace</h1></div>
+      <div class="slice-actions"><span id="service-status" class="slice-service">Local checker</span><button id="check" class="cnt-btn" type="button">Check</button></div>
+    </header>
+    <section class="slice-editor cnt-card">
+      <label for="editor-input">Draft</label>
+      <textarea id="editor-input" spellcheck="true" placeholder="Write or paste a passage here."></textarea>
+      <div class="slice-footer"><span id="counts">0 words · 0 characters</span><span id="revision">Revision 0</span></div>
+    </section>
+    <div id="indicator-anchor" class="slice-indicator" aria-live="polite"></div>
+    <div id="issue-popover" class="slice-popover" hidden></div>
+  </main>
+  <script type="module" src="renderer.js"></script>
+</body>
+</html>
