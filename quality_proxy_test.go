@@ -442,3 +442,44 @@ func TestCheckHandlerReportsALostLanguageToolEngine(t *testing.T) {
 		t.Fatalf("the quality sidecar answered, so it must not be reported as failed: %v", payload)
 	}
 }
+
+// A LanguageTool plugin pointed at this proxy uses more of the API than
+// /v2/check. Answering the rest with a 404 of our own makes the proxy look like
+// a broken LanguageTool rather than a compatible one, so everything the proxy
+// has no opinion about reaches the upstream server.
+func TestProxyForwardsTheWholeLanguageToolSurfaceButKeepsCheck(t *testing.T) {
+	var upstreamPaths []string
+	backend := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		upstreamPaths = append(upstreamPaths, request.URL.Path)
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write([]byte(`{"forwarded":true}`))
+	}))
+	defer backend.Close()
+
+	proxy := qualityProxy{languageToolURL: backend.URL + "/v2/check", client: backend.Client()}
+	mux := proxy.routes()
+
+	// /v2/words is the personal dictionary; /v2/languages was already forwarded
+	// and must stay that way now that the subtree covers it.
+	for _, path := range []string{"/v2/languages", "/v2/words"} {
+		response := httptest.NewRecorder()
+		mux.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8096"+path, nil))
+		if response.Code != http.StatusOK || response.Body.String() != `{"forwarded":true}` {
+			t.Fatalf("%s: HTTP %d %s, want it forwarded upstream", path, response.Code, response.Body.String())
+		}
+	}
+	if len(upstreamPaths) != 2 || upstreamPaths[0] != "/v2/languages" || upstreamPaths[1] != "/v2/words" {
+		t.Fatalf("upstream saw %v", upstreamPaths)
+	}
+
+	// The subtree must not swallow the one path this proxy answers itself. The
+	// check handler rejects a GET; the forwarder would have passed it upstream.
+	response := httptest.NewRecorder()
+	mux.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8096/v2/check", nil))
+	if response.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("/v2/check should reach the check handler, got HTTP %d", response.Code)
+	}
+	if len(upstreamPaths) != 2 {
+		t.Fatalf("/v2/check was forwarded instead of handled: %v", upstreamPaths)
+	}
+}

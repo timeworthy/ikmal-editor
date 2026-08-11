@@ -64,14 +64,7 @@ func runQualityProxy() {
 		qualityURL:      qualityProxyQualityURL(),
 		client:          &http.Client{Timeout: 5 * time.Second},
 	}
-	mux := http.NewServeMux()
-	mux.HandleFunc("/health", proxy.healthHandler)
-	mux.HandleFunc("/v2", proxy.forwardHandler)
-	mux.HandleFunc("/v2/check", proxy.checkHandler)
-	mux.HandleFunc("/v2/languages", proxy.forwardHandler)
-	mux.HandleFunc("/v1/style-guides", styleGuideStateHandler)
-	mux.HandleFunc("/v1/style-guide/select", styleGuideSelectHandler)
-	mux.HandleFunc("/v1/style-guide/enabled", styleGuideEnabledHandler)
+	mux := proxy.routes()
 
 	port := os.Getenv("IKMAL_QUALITY_PROXY_PORT")
 	if port == "" {
@@ -355,6 +348,32 @@ var forwardedHeaders = []string{
 	"Accept",
 	"Accept-Language",
 	"Content-Type",
+}
+
+// routes maps the LanguageTool HTTP surface onto this proxy.
+//
+// The `/v2/` subtree is what makes this a drop-in rather than a lookalike. A
+// LanguageTool client reaches for more than `/check`: `/v2/words` carries the
+// personal dictionary, and a client that asks for an endpoint this proxy has no
+// opinion about should get the upstream server's answer, not a 404 invented
+// here. Only the paths this proxy genuinely answers are claimed; the rest are
+// forwarded.
+//
+// Deliberately absent: any Access-Control-Allow-Origin header. This service
+// listens on loopback and answers whatever asks, so advertising itself to the
+// browser as cross-origin readable would let any page the user visits check
+// their text against it — and read the reply. Extensions reach it through host
+// permissions, which is not subject to that.
+func (proxy qualityProxy) routes() *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", proxy.healthHandler)
+	mux.HandleFunc("/v2", proxy.forwardHandler)
+	mux.HandleFunc("/v2/", proxy.forwardHandler)
+	mux.HandleFunc("/v2/check", proxy.checkHandler)
+	mux.HandleFunc("/v1/style-guides", styleGuideStateHandler)
+	mux.HandleFunc("/v1/style-guide/select", styleGuideSelectHandler)
+	mux.HandleFunc("/v1/style-guide/enabled", styleGuideEnabledHandler)
+	return mux
 }
 
 func (proxy qualityProxy) forwardHandler(w http.ResponseWriter, r *http.Request) {

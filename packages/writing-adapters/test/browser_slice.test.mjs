@@ -198,3 +198,42 @@ test('a short document is still checked whole', async () => {
   assert.equal(requests[0].text, 'Write teh draft');
   assert.equal(controller.state().fullCheckPending, false);
 });
+
+// The two chunking implementations in this package disagree about the first
+// check of a long document: chunked_checks.ts sends it whole because there is
+// nothing to merge a slice into, and this one starts chunked by design (see
+// 'an oversized document starts out chunked'). What both must do, and what this
+// covers, is carry the findings a later chunk never looked at.
+test('a chunked recheck carries the findings it did not look at', async () => {
+  const filler = Array.from({ length: 60 }, (_, index) =>
+    `Middle paragraph ${index} carries enough words that a chunk window centred here cannot reach the ends of the draft.`);
+  const text = ['Opening paragraph where the results is wrong.', ...filler, 'Closing paragraph.'].join('\n\n');
+  const field = { tagName: 'TEXTAREA', value: text, selectionStart: text.length, selectionEnd: text.length, setSelectionRange() {} };
+  const sent = [];
+  const controller = createBrowserSliceController({
+    core,
+    field: createBrowserFieldCapability(field),
+    check: async (request) => {
+      sent.push(request.text);
+      const offset = request.text.indexOf('results is');
+      return { matches: offset < 0 ? [] : [{ offset, length: 10, message: 'A plural subject takes a plural verb.', replacements: [{ value: 'results are' }], rule: { id: 'PLURAL' }, ikmalSource: 'quality-sidecar' }] };
+    },
+  });
+
+  // A whole pass first, so there is something to carry.
+  const whole = await controller.check({ mode: 'active', until: null }, { scope: 'document' });
+  assert.equal(sent[0], text);
+  assert.equal(whole.result.matches.length, 1);
+
+  field.value = `${text} A closing sentence.`;
+  field.selectionStart = field.value.length;
+  field.selectionEnd = field.value.length;
+  const chunked = await controller.check();
+  assert.ok(sent[1].length < field.value.length, `expected a chunk, got ${sent[1].length} of ${field.value.length}`);
+  assert.ok(!sent[1].includes('results is'), 'the chunk should not have reached the opening paragraph');
+  assert.equal(chunked.fullCheckPending, true, 'a chunked check owes a whole pass');
+  assert.ok(
+    chunked.result.matches.some((issue) => issue.message.includes('plural subject')),
+    'the finding outside the rechecked chunk was dropped',
+  );
+});
