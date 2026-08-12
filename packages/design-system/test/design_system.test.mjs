@@ -39,6 +39,9 @@ test('the settings primitive set is present and uses Continental class names', (
     'cnt-switch', 'cnt-check', 'cnt-segmented', 'cnt-slider', 'cnt-panel',
     'cnt-tabs', 'cnt-tab', 'cnt-accordion', 'cnt-acc-head', 'cnt-acc-body',
     'cnt-alert', 'cnt-stat', 'cnt-empty',
+    'cnt-sheet', 'cnt-tag', 'cnt-chip', 'cnt-drawer', 'cnt-banner', 'cnt-toast',
+    'cnt-progress', 'cnt-steps', 'cnt-step-dot', 'cnt-btn-group', 'cnt-divider',
+    'cnt-tooltip', 'cnt-kbd', 'cnt-scrim',
   ]) {
     assert.match(primitives, new RegExp(`\\.${name}\\b`), `missing primitive: .${name}`);
   }
@@ -75,4 +78,13 @@ test('every token the primitives reference is defined by the contract', () => {
   const defined = new Set([...css.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
   const missing = [...used].filter((name) => !defined.has(name));
   assert.deepEqual(missing, [], `primitives reference undefined tokens: ${missing.join(', ')}`);
+});
+
+// A full-width control that overflows its container by its own padding is the
+// kind of defect every surface built on it would inherit. Scoped to the
+// primitives, because a package shipping a global reset changes layout in every
+// host that adopts it.
+test('primitives are border-box, without imposing a global reset', () => {
+  assert.match(primitives, /\[class\^="cnt-"\][^{]*\{[^}]*box-sizing:\s*border-box/);
+  assert.doesNotMatch(primitives, /^\s*\*\s*,?\s*\{[^}]*box-sizing/m);
 });

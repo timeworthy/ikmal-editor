@@ -25,7 +25,7 @@ it. Measured:
 | --- | --- | --- |
 | `packages/writing-core` | **~75 exports** | Documents, revisions, issue normalization and identity, ranges, overlap, relationships, focus modes, language resolution, statistics, dictionary, chunking, rewording, corrections and undo, indicator state |
 | `packages/writing-adapters` | **7 modules** | Browser field, browser slice, desktop slice, desktop IPC, extension messages, chunked checks, raw matches |
-| `packages/design-system` | **61 tokens, 36 classes** | `cnt-btn`, `cnt-card`, `cnt-field`, `cnt-menu`, `cnt-popover`, `cnt-badge`, `cnt-status-dot`, and variants |
+| `packages/design-system` | **63 tokens, 60 classes** | `cnt-btn`, `cnt-card`, `cnt-field`, `cnt-menu`, `cnt-popover`, `cnt-badge`, `cnt-status-dot`, and variants |
 | `packages/writing-ui` | **2 components** | `indicator`, `issue_popover` |
 | `apps/desktop-editor` | **3 host capabilities** | `checkText`, `addDictionaryWord`, `onEditorText` |
 | `apps/browser-extension` | **1 message type** | `check` |
@@ -144,7 +144,7 @@ undo notice.
 Dependency-ordered. Each phase consumes the previous; none defines a parallel
 version of something an earlier phase owns.
 
-### Phase A — Finish the primitive layer — **in progress**
+### Phase A — Finish the primitive layer — **complete**
 
 Done: the settings set — `label`, `help`, `input`, `select`, `textarea`,
 `switch`, `check`, `segmented`, `slider`, `panel`, `tabs`, `tab`, `accordion`,
@@ -158,8 +158,20 @@ that the Shadow DOM copy is both styled and unreachable from the page.
 `.cnt-field` was realigned to Continental's meaning (a layout wrapper, with
 `.cnt-input` as the control) while it still had no consumers.
 
-Remaining: `sheet`, `tag`, `drawer`, `banner`, `toast`, `progress`, `steps`, and
-the `btn-group`/`chip` family.
+Also done: `sheet`, `drawer`, `scrim`, `tag`, `chip`, `banner`, `toast`,
+`tooltip`, `kbd`, `progress`, `steps`, `btn-group`, `divider` — 60 classes over
+33 primitives, every one rendered in the gallery and asserted by the harness.
+
+Two local semantic pairs were added rather than repeated per component:
+`--surface-blur`/`--scrim` for Continental's translucent floating surfaces, and
+`--control-h` for control height.
+
+Looking at the rendered gallery caught a defect no test would have: `box-sizing`
+was never set, so every full-width control overflowed its container by its own
+padding and border. Every settings form built on those primitives would have
+inherited it. It is fixed, scoped to `[class^="cnt-"]` rather than as a global
+reset a host would not expect, and the harness now fails if a control overflows
+or the page scrolls sideways.
 
 
 
@@ -242,7 +254,7 @@ The old gates measured depth. This measures breadth, and both are required.
 | Extension message types | 1 / 15 | 15 / 15 |
 | Extension HTML surfaces | 0 / 3 | 3 / 3 |
 | Settings groups on shared components | 0 / 10 | 10 / 10 |
-| `design-system` primitives | 26 / ~30 | ~30 |
+| `design-system` primitives | **33 / ~30 — complete** | ~30 |
 | `writing-ui` composites | 2 / ~10 | ~10 |
 | Legacy files deleted | 0 | all |
 

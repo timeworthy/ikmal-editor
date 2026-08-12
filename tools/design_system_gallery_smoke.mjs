@@ -48,7 +48,9 @@ try {
   // Every primitive the settings work depends on must actually be on the page.
   const required = ['cnt-label', 'cnt-help', 'cnt-input', 'cnt-select', 'cnt-textarea', 'cnt-switch',
     'cnt-check', 'cnt-segmented', 'cnt-slider', 'cnt-panel', 'cnt-tabs', 'cnt-tab', 'cnt-accordion',
-    'cnt-acc-head', 'cnt-acc-body', 'cnt-alert', 'cnt-stat', 'cnt-empty', 'cnt-btn', 'cnt-card'];
+    'cnt-acc-head', 'cnt-acc-body', 'cnt-alert', 'cnt-stat', 'cnt-empty', 'cnt-btn', 'cnt-card',
+    'cnt-sheet', 'cnt-tag', 'cnt-chip', 'cnt-kbd', 'cnt-tooltip', 'cnt-banner', 'cnt-toast',
+    'cnt-progress', 'cnt-steps', 'cnt-step', 'cnt-step-dot', 'cnt-btn-group', 'cnt-divider'];
   const missing = await page.evaluate((names) => names.filter((n) => !document.querySelector(`.${n}`)), required);
   if (missing.length) throw new Error(`Gallery is missing primitives: ${missing.join(', ')}`);
 
@@ -100,6 +102,17 @@ try {
   ));
   if (new Set(Object.values(intents)).size !== Object.keys(intents).length) {
     throw new Error(`Intent surfaces are not distinct: ${JSON.stringify(intents)}`);
+  }
+
+  // A full-width control must not overflow its container. This is what caught
+  // the missing box-sizing: the gallery's textarea ran past its column, and
+  // every settings form built on the primitive would have inherited it.
+  const overflowing = await page.evaluate(() => [...document.querySelectorAll('.cnt-input,.cnt-select,.cnt-textarea')]
+    .filter((el) => el.getBoundingClientRect().right > el.parentElement.getBoundingClientRect().right + 0.5)
+    .map((el) => el.className));
+  if (overflowing.length) throw new Error(`Controls overflow their container: ${overflowing.join(', ')}`);
+  if (await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)) {
+    throw new Error('The gallery scrolls sideways, so something is wider than its container.');
   }
 
   // Keyboard focus must be visible on a control, not only on a button.

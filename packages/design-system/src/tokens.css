@@ -61,6 +61,11 @@
   /* Control height. A local semantic token, not a second scale: form controls
      must line up with each other and follow density like spacing does. */
   --control-h: 36px;
+  /* Continental renders floating surfaces with a translucent fill and a blur.
+     Carried as two local semantic tokens so a surface change is one edit
+     rather than one per component. */
+  --surface-blur: 14px;
+  --scrim: rgba(0, 0, 0, .55);
   --space-5: 24px;
   --space-6: 32px;
   --space-7: 48px;
