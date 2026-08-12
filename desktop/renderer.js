@@ -417,7 +417,23 @@ function renderQualityStatus(status) {
   if (status.ready) {
     qualityInstall.classList.add('is-hidden');
     qualityInstallStatus.textContent = '';
-    qualityComponentList.insertAdjacentHTML('beforeend', '<small class="is-ready-note">All components are installed. Start services with the transformer enabled to use them.</small>');
+    // Installed and running are different questions, and this panel used to
+    // answer only the first — then tell the user to "start services with the
+    // transformer enabled", which named no control because there is none: the
+    // desktop app always starts its services with the transformer requested.
+    // A reader could only conclude the feature was on, whether or not it was.
+    // The remedy depends on who started the services. When ikmal editor manages
+    // them, reopening it starts the model. When it is reusing services that were
+    // already running, reopening changes nothing — it will find and reuse the
+    // same ones again — so saying "restart the app" there would send the reader
+    // in a circle.
+    const remedy = serviceState.managerRunning
+      ? 'Quit and reopen ikmal editor to start it.'
+      : 'These services were started outside ikmal editor, so reopening the app will reuse them unchanged. Stop them and let ikmal editor start its own.';
+    const runningNote = status.transformerRunning
+      ? 'All components are installed, and the local model is running.'
+      : `All components are installed, but the local model is not running, so quality suggestions are coming from the deterministic checks only. ${remedy}`;
+    qualityComponentList.insertAdjacentHTML('beforeend', `<small class="is-ready-note">${escapeHTML(runningNote)}</small>`);
     return;
   }
 

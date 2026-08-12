@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,13 +31,19 @@ type qualityComponent struct {
 }
 
 type qualityStatusResponse struct {
-	Ready           bool               `json:"ready"`
-	NoticesAccepted bool               `json:"noticesAccepted"`
-	ModelID         string             `json:"modelId"`
-	ModelIsDefault  bool               `json:"modelIsDefault"`
-	ModelLicense    string             `json:"modelLicense"`
-	NoticesPath     string             `json:"noticesPath"`
-	Components      []qualityComponent `json:"components"`
+	Ready bool `json:"ready"`
+	// Whether the transformer is answering right now, which is a different
+	// question from whether its files are on disk. The settings panel used to
+	// report only the second and tell the user to "start services with the
+	// transformer enabled" — an instruction with no control behind it, for a
+	// thing the desktop app already does on its own.
+	TransformerRunning bool               `json:"transformerRunning"`
+	NoticesAccepted    bool               `json:"noticesAccepted"`
+	ModelID            string             `json:"modelId"`
+	ModelIsDefault     bool               `json:"modelIsDefault"`
+	ModelLicense       string             `json:"modelLicense"`
+	NoticesPath        string             `json:"noticesPath"`
+	Components         []qualityComponent `json:"components"`
 }
 
 type qualityConsentRecord struct {
@@ -155,13 +162,14 @@ func detectQualityStatus() qualityStatusResponse {
 	}
 
 	return qualityStatusResponse{
-		Ready:           ready,
-		NoticesAccepted: qualityNoticesAccepted(),
-		ModelID:         modelID,
-		ModelIsDefault:  isDefault,
-		ModelLicense:    modelLicense,
-		NoticesPath:     "THIRD-PARTY-NOTICES.md",
-		Components:      components,
+		Ready:              ready,
+		TransformerRunning: qualityTransformerAnswering(),
+		NoticesAccepted:    qualityNoticesAccepted(),
+		ModelID:            modelID,
+		ModelIsDefault:     isDefault,
+		ModelLicense:       modelLicense,
+		NoticesPath:        "THIRD-PARTY-NOTICES.md",
+		Components:         components,
 	}
 }
 
@@ -282,4 +290,17 @@ func stdinIsInteractive() bool {
 		return false
 	}
 	return info.Mode()&os.ModeCharDevice != 0
+}
+
+// qualityTransformerAnswering probes the local adapter. A short timeout keeps a
+// settings refresh responsive: the answer is only ever advisory, and "not
+// answering" is the honest reading of a probe that did not come back.
+func qualityTransformerAnswering() bool {
+	client := &http.Client{Timeout: 400 * time.Millisecond}
+	response, err := client.Get("http://127.0.0.1:" + qualityTransformerPort() + "/health")
+	if err != nil {
+		return false
+	}
+	defer response.Body.Close()
+	return response.StatusCode == http.StatusOK
 }

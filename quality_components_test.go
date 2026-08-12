@@ -2,8 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -147,5 +150,30 @@ func TestQualityStatusHonorsModelOverride(t *testing.T) {
 	}
 	if status.ModelLicense == "CC BY-NC-SA 4.0 (non-commercial)" {
 		t.Fatal("the non-commercial warning must not be applied to an overridden model")
+	}
+}
+
+// The settings panel reports whether the local model is running, not merely
+// whether its files are present. Those are different questions, and answering
+// only the second is what produced a panel telling users to "start services
+// with the transformer enabled" — an instruction with no control behind it.
+func TestQualityStatusReportsWhetherTheTransformerIsAnswering(t *testing.T) {
+	t.Setenv("IKMAL_TRANSFORMER_PORT", "59991")
+	if qualityTransformerAnswering() {
+		t.Error("nothing is listening on the probe port, so the transformer must read as not running")
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/health" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	port := server.URL[strings.LastIndex(server.URL, ":")+1:]
+	t.Setenv("IKMAL_TRANSFORMER_PORT", port)
+	if !qualityTransformerAnswering() {
+		t.Error("a healthy adapter on the configured port must read as running")
 	}
 }
