@@ -81,6 +81,11 @@ anything is published.
   being released, and `npm run verify` and `npm run package` both build the
   portable packages with `tsc`, which the root `package.json` supplies. A tag
   cut before the workspace existed cannot be built by this pipeline.
+- **Runner images expire.** `darwin/x64` is cross-packaged on `macos-14`
+  rather than built on `macos-13`, which GitHub retired: that job sat queued
+  with no runner while every other one finished, and during a real release it
+  would have done so for six hours before timing out. A matrix entry naming a
+  retired image fails by hanging, not by erroring.
 - **Signing is not set up.** Packaged macOS apps carry an ad-hoc signature with
   no team identifier; `codesign --verify --deep --strict` and `spctl --assess`
   both fail. Distribution to anyone who is not prepared to bypass Gatekeeper

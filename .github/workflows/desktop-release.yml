@@ -41,7 +41,13 @@ jobs:
           - runner: macos-14
             platform: darwin
             arch: arm64
-          - runner: macos-13
+          # Cross-packaged from Apple silicon. This was macos-13, which GitHub
+          # has retired: the job sat queued with no runner while every other
+          # one finished, and would have done that for six hours during a
+          # release. Nothing here needs x64 hardware — the Go build is
+          # CGO_ENABLED=0 with an explicit GOARCH, and Electron ships a
+          # prebuilt binary per architecture.
+          - runner: macos-14
             platform: darwin
             arch: x64
           - runner: ubuntu-22.04
