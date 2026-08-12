@@ -1,18 +1,18 @@
 class IkmalEditor < Formula
   desc "Standalone LanguageTool manager, background service supervisor, and app auto-configurator"
   homepage "https://github.com/timeworthy/ikmal-editor"
-  version "0.9.0-beta"
+  version "0.9.1-beta"
   license "MIT"
 
   if OS.mac? && Hardware::CPU.arm?
-    url "https://github.com/timeworthy/ikmal-editor/releases/download/v0.9.0-beta/ikmal-editor-v0.9.0-beta-darwin-arm64.tar.gz"
-    sha256 "0c0110eb3e250f6dc7ccff9c25a86a23810c7280f3beb301b4748de83a7907d0"
+    url "https://github.com/timeworthy/ikmal-editor/releases/download/v0.9.1-beta/ikmal-editor-v0.9.1-beta-darwin-arm64.tar.gz"
+    sha256 "380a892e1461e782831594f8332fff560f522511e1510faa4d79a20955cc1129"
   elsif OS.mac? && Hardware::CPU.intel?
-    url "https://github.com/timeworthy/ikmal-editor/releases/download/v0.9.0-beta/ikmal-editor-v0.9.0-beta-darwin-amd64.tar.gz"
-    sha256 "9dec56604a3a5780ddac4fd9bb5cc5d9bf38cef6e6f114fc68c1f5f33f35aa5c"
+    url "https://github.com/timeworthy/ikmal-editor/releases/download/v0.9.1-beta/ikmal-editor-v0.9.1-beta-darwin-amd64.tar.gz"
+    sha256 "6afeb6ca9d8f7de8fd6f2a0ef2e3232cb3d886873080ed0ab0624914a5a37c52"
   elsif OS.linux?
-    url "https://github.com/timeworthy/ikmal-editor/releases/download/v0.9.0-beta/ikmal-editor-v0.9.0-beta-linux-amd64.tar.gz"
-    sha256 "bb2eb5c968f6293e34b7c53112afb2248492c233d501d078ef22cc6dbfefa3e9"
+    url "https://github.com/timeworthy/ikmal-editor/releases/download/v0.9.1-beta/ikmal-editor-v0.9.1-beta-linux-amd64.tar.gz"
+    sha256 "99b4fccbad64b27791f5101ff2311577d9c791cd99aececb14a7d368e7a35940"
   end
 
   def install

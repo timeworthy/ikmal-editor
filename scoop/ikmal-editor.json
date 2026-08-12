@@ -1,12 +1,12 @@
 {
-  "version": "0.9.0-beta",
+  "version": "0.9.1-beta",
   "description": "Standalone LanguageTool manager, background service supervisor, and app auto-configurator",
   "homepage": "https://github.com/timeworthy/ikmal-editor",
   "license": "MIT",
   "architecture": {
     "64bit": {
-      "url": "https://github.com/timeworthy/ikmal-editor/releases/download/v0.9.0-beta/ikmal-editor-v0.9.0-beta-windows-amd64.zip",
-      "hash": "c216461dd3b13395e124338025a7e2c2e0e24105b57b4638e0d27d44833fe3de",
+      "url": "https://github.com/timeworthy/ikmal-editor/releases/download/v0.9.1-beta/ikmal-editor-v0.9.1-beta-windows-amd64.zip",
+      "hash": "ed45090380b17bc91202eca8d01c1b0760cf5bd5bb670a2a992b43825b7034a8",
       "bin": [
         [
           "ikmal-editor-windows-amd64.exe",

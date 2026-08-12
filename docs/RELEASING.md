@@ -109,6 +109,17 @@ the release of the same number. Name prereleases `-beta`; `-rc10` sorts below
 Marking a GitHub release as a prerelease is therefore what decides who is told
 about it. Get that checkbox wrong and the channel split does nothing.
 
+### Homebrew and Scoop follow the newest release, beta or not
+
+Those manifests are pinned by hand and currently point at `0.9.1-beta`, which
+is a prerelease. That is deliberate while every release is a prerelease — the
+alternative is freezing `brew install` on an ever older beta forever — but it
+does mean an installer user gets a beta the CLI's own update check would not
+have offered them.
+
+Once a release ships that is not marked as a prerelease, point these at it and
+keep them on stable from then on. Until then they track the newest beta.
+
 ## Things worth knowing before you rely on it
 
 - **Asset names do not collide.** The desktop bundles are
