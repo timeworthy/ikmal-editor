@@ -120,9 +120,21 @@ jobs:
         working-directory: desktop
         run: npm run verify
 
+      # Electron's platform binary is downloaded from GitHub's release CDN, and
+      # that download failed twice during a real release — once with a 503 and
+      # once with a bare fetch failure — while the other three platforms
+      # succeeded. A release should not turn on one unretried network call.
       - name: Build desktop bundle
         working-directory: desktop
-        run: npm run package
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if npm run package; then exit 0; fi
+            echo "::warning::packaging attempt ${attempt} failed; retrying" >&2
+            sleep $((attempt * 20))
+          done
+          echo "packaging failed after 3 attempts" >&2
+          exit 1
 
       - name: Archive Unix bundle
         if: runner.os != 'Windows'
