@@ -1153,3 +1153,72 @@ Unknowns / risks:
 Next action:
 - `.github/workflows/desktop-release.yml` is the last unexercised path; a
   `workflow_dispatch` run against an existing tag would settle it.
+
+### 2026-08-11 — Agent / CI workflow validation
+
+Gate: `3` / `4` / `7` / `8`
+Status: `complete`
+
+Evidence:
+- Dispatched the `Tests` workflow on `dev` at commit
+  `9aed6ed` as [run 31550010159](https://github.com/timeworthy/ikmal-editor/actions/runs/31550010159).
+- Go job passed.
+- Node and verifiers job passed after `npm ci`, build, unit tests, and all
+  verifiers.
+- Browser job passed with the pinned Playwright Chromium under Xvfb.
+- VS Code adapter job passed with the real extension smoke under Xvfb.
+
+Result:
+- The new CI workflow is green on Linux, including the previously unverified
+  pinned-browser and VS Code paths. No source correction was required.
+
+Remaining:
+- `desktop-release.yml` has not been dispatched. It would build the macOS,
+  Linux, and Windows bundles and upload or clobber assets on the existing
+  `v0.9.0-beta` GitHub release. That is the next step, but it is an external
+  release mutation rather than a local validation run.
+
+### 2026-08-11 — Agent / the release pipeline has never been able to run
+
+Gate: `7` packaging
+Status: `complete`
+
+Finding — the release automation is inert:
+- `main` has never contained a `.github/workflows/` directory. All four
+  workflows were added on `dev` (`b41a6a7` for the desktop one) and never
+  merged. GitHub registers `workflow_dispatch` and `release` triggers only from
+  the default branch, so `gh api .../workflows/desktop-release.yml/dispatches`
+  answers `404` and a published release today would run nothing: no desktop
+  bundles, no container image, no version sync. The v0.9.0-beta assets were
+  produced some other way.
+- This is why the workflow could not be exercised as intended. A dispatch
+  against `v0.9.0-beta` would also have proved nothing: the workflow checks out
+  the tag, and that tag predates the workspace root, so `npm ci` would fail on a
+  combination that will never occur.
+
+Finding — a real defect the dry run caught:
+- The archive step spelled the bundle name itself, as `Ikmal Editor-<platform>-
+  <arch>`. The packager produces `ikmal editor-<platform>-<arch>`, from
+  `name: 'ikmal editor'` in `desktop/package_desktop.mjs`. macOS and Windows are
+  case-insensitive and would never have noticed; the `ubuntu-22.04` matrix job
+  would have failed at `tar` on the first real release.
+- Both archive steps now discover the directory by its `-<platform>-<arch>`
+  suffix and fail loudly, listing `bin/desktop`, when nothing matches. The name
+  belongs to the packager; repeating it here was the bug.
+
+Evidence:
+- Clean room, `node_modules` removed: root `npm ci`, `desktop npm ci`,
+  `npm run verify` (62 pass), and `IKMAL_DESKTOP_PLATFORM=darwin
+  IKMAL_DESKTOP_ARCH=arm64 npm run package` — all pass, so the workspace install
+  step added earlier does hold on a fresh checkout.
+- The fixed archive step run verbatim: discovered `ikmal editor-darwin-arm64`,
+  produced a 128M tarball and its `.sha256`.
+- A case-sensitive lookup for the old hardcoded name finds nothing, which is
+  what a Linux runner would have done.
+- The throwaway tag and draft release created to attempt the dispatch were
+  deleted; `gh release list` shows only `v0.9.0-beta`.
+
+Next action:
+- Merging `dev` into `main` is what makes any of the release workflows exist.
+  Until then the desktop, container, and version-sync automation cannot fire,
+  and the fixes above are untested on a runner.

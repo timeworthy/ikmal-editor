@@ -84,7 +84,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bundle="Ikmal Editor-${IKMAL_DESKTOP_PLATFORM}-${IKMAL_DESKTOP_ARCH}"
+          # Discovered rather than spelled out. The packager names the bundle
+          # from desktop/package_desktop.mjs, and this step used to repeat that
+          # name in a different case: "Ikmal Editor-…" against the "ikmal
+          # editor-…" actually produced. macOS and Windows are case-insensitive
+          # and never noticed; Linux would have failed here at release time.
+          bundle=$(ls "bin/desktop" | grep -- "-${IKMAL_DESKTOP_PLATFORM}-${IKMAL_DESKTOP_ARCH}$" | head -1)
+          if [ -z "$bundle" ]; then
+            echo "No bundle for ${IKMAL_DESKTOP_PLATFORM}-${IKMAL_DESKTOP_ARCH}. bin/desktop holds:" >&2
+            ls "bin/desktop" >&2
+            exit 1
+          fi
           archive="ikmal-editor-${RELEASE_TAG}-desktop-${IKMAL_DESKTOP_PLATFORM}-${IKMAL_DESKTOP_ARCH}.tar.gz"
           tar -czf "$archive" -C "bin/desktop" "$bundle"
           shasum -a 256 "$archive" > "$archive.sha256"
@@ -94,7 +104,11 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $bundle = "Ikmal Editor-$env:IKMAL_DESKTOP_PLATFORM-$env:IKMAL_DESKTOP_ARCH"
+          # Discovered, for the same reason as the Unix step above.
+          $bundle = (Get-ChildItem "bin/desktop" -Directory |
+            Where-Object { $_.Name -like "*-$env:IKMAL_DESKTOP_PLATFORM-$env:IKMAL_DESKTOP_ARCH" } |
+            Select-Object -First 1).Name
+          if (-not $bundle) { throw "No bundle for $env:IKMAL_DESKTOP_PLATFORM-$env:IKMAL_DESKTOP_ARCH in bin/desktop" }
           $archive = "ikmal-editor-$env:RELEASE_TAG-desktop-$env:IKMAL_DESKTOP_PLATFORM-$env:IKMAL_DESKTOP_ARCH.zip"
           Compress-Archive -Path "bin/desktop/$bundle" -DestinationPath $archive -Force
           (Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() + "  $archive" | Set-Content "$archive.sha256"
