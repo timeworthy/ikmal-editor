@@ -30,7 +30,10 @@ and without touching `main`. Both paths build and archive exactly as a real
 release does, then keep the bundles as workflow artifacts for seven days
 instead of publishing them. Nothing public is created.
 
-**Iterating on the workflow itself** — push to `staging`:
+**Iterating on the workflow itself** — push to `staging`. The branch is not
+kept between rehearsals; the push creates it, and deleting it afterwards stops
+a stale ref sitting there triggering four-platform builds. The trigger stays in
+the workflow either way, so this works whenever you need it:
 
 ```bash
 git push origin dev:staging --force-with-lease
@@ -57,7 +60,14 @@ git push origin :refs/tags/v0.9.1-rc1 && git tag -d v0.9.1-rc1
 ```
 
 Download the bundles from the run's Artifacts section to check them before
-anything is published.
+anything is published, then delete the branch or tag you used:
+
+```bash
+git push origin --delete staging
+```
+
+An `-rc` tag is the better lock-in of the two. A branch moves; a tag names one
+frozen tree, which is what you want to rehearse and then publish.
 
 ## Cutting a real release
 
