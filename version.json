@@ -1,6 +1,6 @@
 {
   "version": "",
-  "prerelease": "0.9.0-beta",
+  "prerelease": "0.9.1-beta",
   "url": "https://github.com/timeworthy/ikmal-editor/releases/latest",
   "notes": "Read from the public GitHub repository by the binary's daily update check, and updated automatically by .github/workflows/release.yml on every published release. 'version' is the stable channel and is empty until a release is published that is not marked as a prerelease; the CLI treats an empty or unparseable value as nothing to offer. 'prerelease' is the newest prerelease and is only offered to users who opt in with IKMAL_EDITOR_CHANNEL=beta."
 }
