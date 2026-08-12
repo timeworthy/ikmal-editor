@@ -1276,3 +1276,46 @@ Unknowns / risks:
 Next action:
 - Merge `dev` into `main`, which is what registers all four workflows. Rehearse
   once more with a `v*-rc*` tag cut from `main` before publishing anything.
+
+### 2026-08-12 — Agent / main, and a rehearsed release
+
+Gate: `7` packaging / `8` final review
+Status: `complete`
+
+Changed:
+- `dev` fast-forwarded into `main`, 82 commits. Fast-forward rather than a merge
+  commit so the branches stay identical; the divergence this session opened with
+  was three commits on `main` that `dev` never had.
+- All four workflows are registered for the first time. `release` and
+  `workflow_dispatch` now exist as triggers, which they never have before.
+- The desktop pipeline refuses to build a tag that disagrees with the version.
+
+Finding:
+- The first rehearsal packaged `v0.9.1-rc1` and produced a binary reporting
+  `0.9.0-beta`. `appVersion` is a constant in `main.go`, `package_desktop.mjs`
+  checks it against `desktop/package.json`, and nothing checked either against
+  the tag — so a release cut without a bump would have shipped binaries naming
+  the previous version. The workflow now compares the tag, with any `-rc`
+  suffix stripped, against `appVersion`.
+
+Evidence:
+- `tests.yml` on `main` — success on all four jobs.
+- Run 31602572941, tag `v0.9.2-rc1`: **failure** at `Check the tag matches the
+  version being built`, as intended.
+- Run 31602650970, tag `v0.9.0-beta-rc1`: success on all four platforms.
+  The darwin/arm64 artifact was downloaded, its checksum verified, extracted to
+  736 entries, and the bundled Go server ran and reported `0.9.0-beta` — the
+  version the tag promised.
+- Every rehearsal tag has been deleted; `gh release list` shows only
+  `v0.9.0-beta` and no `rc` tags remain on the remote.
+
+Unknowns / risks:
+- The `release: published` path remains the one untested step. A rehearsal
+  covers everything except the upload, and the upload is what differs.
+- An earlier attempt at the mismatch proof passed spuriously: the tag had been
+  cut from a stale local `main` and so carried a workflow without the guard.
+  `docs/RELEASING.md` now says to fetch before tagging.
+
+Next action:
+- Publishing is a product decision — version, notes, and whether the rewrite
+  ships as 0.9.1 or 1.0 — and is left to the maintainer.

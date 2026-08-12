@@ -40,9 +40,14 @@ gh run watch "$(gh run list --workflow 'Build desktop release bundles' --limit 1
 **Rehearsing against a frozen tree** — push a release-candidate tag:
 
 ```bash
-git tag v0.9.1-rc1
+git fetch origin && git switch main && git merge --ff-only origin/main
+git tag v0.9.1-rc1 main
 git push origin v0.9.1-rc1
 ```
+
+Fetch first. A tag cut from a stale local `main` packages the tree that ref
+points at, not the one you just pushed — including an older copy of this
+workflow, so a guard you added moments earlier simply is not there.
 
 An `-rc` tag is the more faithful test: the workflow checks out the tag, so it
 packages exactly what that tag contains. Delete it when finished:
