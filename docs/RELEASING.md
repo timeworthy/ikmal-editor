@@ -56,11 +56,18 @@ anything is published.
 
 ## Cutting a real release
 
-1. Merge to `main`. Confirm `tests.yml` is green on the merge commit.
-2. Rehearse with a `v*-rc*` tag and inspect the artifacts.
-3. Publish the release. `desktop-release.yml`, `container-release.yml`, and
+1. Bump the version. `appVersion` in `main.go` and `version` in
+   `desktop/package.json` must match each other — `package_desktop.mjs` refuses
+   to build otherwise — and must match the tag you are about to cut.
+   `version.json` is synced automatically by `release.yml` on publish.
+2. Merge to `main`. Confirm `tests.yml` is green on the merge commit.
+3. Rehearse with a `v*-rc*` tag and inspect the artifacts. The workflow checks
+   that the tag, with `-rc*` stripped, matches `appVersion`, so a tag cut
+   without a bump fails here rather than shipping binaries that report the
+   previous version.
+4. Publish the release. `desktop-release.yml`, `container-release.yml`, and
    `release.yml` all fire on `release: published`.
-4. Update the install manifests. `Formula/ikmal-editor.rb` and
+5. Update the install manifests. `Formula/ikmal-editor.rb` and
    `scoop/ikmal-editor.json` carry `sha256` values for the **server/CLI**
    archives, not the desktop bundles, and those checksums must match the assets
    actually attached to the release. A rebuild that changes them without a
