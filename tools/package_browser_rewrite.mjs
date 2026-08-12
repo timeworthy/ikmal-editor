@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { runNpm } from './npm_command.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const app = path.join(root, 'apps', 'browser-extension');
@@ -10,7 +11,7 @@ const output = path.join(root, 'bin', 'browser-extension');
 execFileSync(process.execPath, [path.join(root, 'tools', 'verify_browser_rewrite.mjs')], { stdio: 'inherit' });
 const packages = ['writing-core', 'writing-adapters', 'writing-ui'];
 for (const packageName of packages) {
-  execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build', '--prefix', path.join(root, 'packages', packageName)], { stdio: 'inherit' });
+  runNpm(['run', 'build', '--prefix', path.join(root, 'packages', packageName)], { stdio: 'inherit' });
 }
 
 fs.rmSync(output, { recursive: true, force: true });

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { packager } from '@electron/packager';
+import { runNpm } from '../tools/npm_command.mjs';
 
 const desktopRoot = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(desktopRoot, '..');
@@ -33,7 +34,7 @@ const spellServerBundlePath = path.join(root, 'bin', 'macos', 'ikmal editor spel
 const writingAdapters = path.join(root, 'packages', 'writing-adapters');
 
 execFileSync(process.execPath, [path.join(root, 'tools', 'package_desktop_rewrite.mjs')], { stdio: 'inherit' });
-execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build', '--prefix', writingAdapters], { stdio: 'inherit' });
+runNpm(['run', 'build', '--prefix', writingAdapters], { stdio: 'inherit' });
 // The compiled contracts are ESM. Inside the bundle they land in
 // Contents/Resources/dist, where the nearest package.json is Electron's own
 // app manifest — which declares no "type", so the main process would load

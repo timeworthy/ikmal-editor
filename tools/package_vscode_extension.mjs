@@ -17,6 +17,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { runNpm } from './npm_command.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const extension = path.join(root, 'vscode-extension');
@@ -27,7 +28,7 @@ const verify = path.join(root, 'tools', 'verify_vscode_extension.mjs');
 
 // Compile the portable core before staging the extension. The VSIX must never
 // depend on a developer checkout or Node's test-only TypeScript stripping.
-execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build', '--prefix', writingCore], { stdio: 'inherit' });
+runNpm(['run', 'build', '--prefix', writingCore], { stdio: 'inherit' });
 if (!fs.existsSync(path.join(writingCoreDist, 'index.js'))) throw new Error('writing-core build did not emit dist/index.js.');
 
 // Verification first: a build that skipped the loopback-only check would be

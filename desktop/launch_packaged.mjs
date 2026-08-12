@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { runNpm } from '../tools/npm_command.mjs';
 
 const desktopRoot = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(desktopRoot, '..');
@@ -13,10 +14,9 @@ if (!['darwin', 'linux', 'win32'].includes(platform)) {
 
 const bundleName = `ikmal editor-${platform}-${arch}`;
 const bundleRoot = path.join(root, 'bin', 'desktop', bundleName);
-const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 console.log('Building the packaged desktop app before launch…');
-execFileSync(npmCommand, ['run', 'package'], {
+runNpm(['run', 'package'], {
   cwd: desktopRoot,
   stdio: 'inherit',
   env: { ...process.env, IKMAL_DESKTOP_PLATFORM: platform, IKMAL_DESKTOP_ARCH: arch },

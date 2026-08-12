@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { runNpm } from './npm_command.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const extension = path.join(root, 'extension');
@@ -15,7 +16,7 @@ const outputDir = path.join(root, 'bin', 'extension');
 const writingAdapters = path.join(root, 'packages', 'writing-adapters');
 
 for (const packagePath of [path.join(root, 'packages', 'writing-core'), writingAdapters]) {
-  execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build', '--prefix', packagePath], { stdio: 'inherit' });
+  runNpm(['run', 'build', '--prefix', packagePath], { stdio: 'inherit' });
 }
 const stagedModules = [
   [path.join(writingAdapters, 'dist', 'extension_messages.js'), path.join(extension, 'adapters', 'extension_messages.js')],

@@ -3,12 +3,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { runNpm } from './npm_command.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const app = path.join(root, 'apps', 'desktop-editor');
 const packages = ['writing-core', 'writing-adapters', 'writing-ui'];
 execFileSync(process.execPath, [path.join(root, 'tools', 'verify_desktop_rewrite.mjs')], { stdio: 'inherit' });
-for (const packageName of packages) execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build', '--prefix', path.join(root, 'packages', packageName)], { stdio: 'inherit' });
+for (const packageName of packages) runNpm(['run', 'build', '--prefix', path.join(root, 'packages', packageName)], { stdio: 'inherit' });
 
 const copies = [
   ['packages/writing-core/dist/index.js', 'writing-core.js'],

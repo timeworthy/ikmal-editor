@@ -22,6 +22,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { runTests } from '@vscode/test-electron';
+import { runNpm } from './npm_command.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const extensionDevelopmentPath = path.join(root, 'vscode-extension');
@@ -32,7 +33,7 @@ const extensionDevelopmentPath = path.join(root, 'vscode-extension');
 // same reason it does in the package: vscode-extension/package.json declares no
 // "type", so Node would load the compiled core as CommonJS and activation would
 // fail on an import() that nothing catches.
-execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build', '--prefix', path.join(root, 'packages', 'writing-core')], { stdio: 'inherit' });
+runNpm(['run', 'build', '--prefix', path.join(root, 'packages', 'writing-core')], { stdio: 'inherit' });
 const stagedCore = path.join(extensionDevelopmentPath, 'writing-core');
 fs.mkdirSync(stagedCore, { recursive: true });
 fs.copyFileSync(path.join(root, 'packages', 'writing-core', 'dist', 'index.js'), path.join(stagedCore, 'index.js'));
