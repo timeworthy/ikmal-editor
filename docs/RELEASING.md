@@ -147,7 +147,27 @@ keep them on stable from then on. Until then they track the newest beta.
   the bridge does not do. `tools/office_certificate.test.mjs` asserts the mode
   on POSIX only, and says why, so the gap is recorded rather than hidden behind
   a red test.
-- **Signing is not set up.** Packaged macOS apps carry an ad-hoc signature with
-  no team identifier; `codesign --verify --deep --strict` and `spctl --assess`
-  both fail. Distribution to anyone who is not prepared to bypass Gatekeeper
-  needs a certificate, entitlements, and notarization first.
+- **A rebuild of a tag builds the tag.** `workflow_dispatch` against a released
+  tag checks that tag out, so a fix committed after tagging cannot reach it. When
+  a published build is broken, the fix ships as a new version — v0.9.1-beta's
+  macOS bundles could not be repaired in place for exactly this reason.
+- **macOS bundles must be re-signed after packaging.** Electron's binary arrives
+  linker-signed and every packaging step changes the bundle it was signed for, so
+  the signature is left declaring resources that no longer match. macOS calls
+  that "damaged and can't be opened" — worse than unsigned, because an unsigned
+  app opens from the context menu and a broken one does not.
+  `package_desktop.mjs` re-signs ad-hoc and verifies; `verify_desktop.mjs`
+  requires that it does.
+- **Signing is not set up.** Bundles carry an ad-hoc signature: coherent, so the
+  app opens, but with no team identifier, so `spctl --assess` still rejects it
+  and users must allow it on first open. Real distribution needs a **Developer ID
+  Application** certificate (paid Apple Developer Program) and notarization. As
+  of this writing the machine has no valid signing identity — `security
+  find-identity -v -p codesigning` reports none, and the only personal
+  certificate is an *Apple Development* one, which is the wrong type for
+  distribution and expired in January 2026.
+
+  It does not need to be built locally. Export the certificate as a `.p12`, hold
+  it and its password as repository secrets, and have the macOS runner import it
+  into a temporary keychain, sign with `--options runtime --timestamp`, notarize
+  with `xcrun notarytool`, and staple with `xcrun stapler`.
