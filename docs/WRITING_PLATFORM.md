@@ -25,7 +25,7 @@ it. Measured:
 | --- | --- | --- |
 | `packages/writing-core` | **~75 exports** | Documents, revisions, issue normalization and identity, ranges, overlap, relationships, focus modes, language resolution, statistics, dictionary, chunking, rewording, corrections and undo, indicator state |
 | `packages/writing-adapters` | **7 modules** | Browser field, browser slice, desktop slice, desktop IPC, extension messages, chunked checks, raw matches |
-| `packages/design-system` | **60 tokens, 10 primitives** | `cnt-btn`, `cnt-card`, `cnt-field`, `cnt-menu`, `cnt-popover`, `cnt-badge`, `cnt-status-dot`, and variants |
+| `packages/design-system` | **61 tokens, 36 classes** | `cnt-btn`, `cnt-card`, `cnt-field`, `cnt-menu`, `cnt-popover`, `cnt-badge`, `cnt-status-dot`, and variants |
 | `packages/writing-ui` | **2 components** | `indicator`, `issue_popover` |
 | `apps/desktop-editor` | **3 host capabilities** | `checkText`, `addDictionaryWord`, `onEditorText` |
 | `apps/browser-extension` | **1 message type** | `check` |
@@ -144,7 +144,24 @@ undo notice.
 Dependency-ordered. Each phase consumes the previous; none defines a parallel
 version of something an earlier phase owns.
 
-### Phase A — Finish the primitive layer
+### Phase A — Finish the primitive layer — **in progress**
+
+Done: the settings set — `label`, `help`, `input`, `select`, `textarea`,
+`switch`, `check`, `segmented`, `slider`, `panel`, `tabs`, `tab`, `accordion`,
+`alert`, `stat`, `empty` — authored against the token contract with Continental's
+class names and DOM semantics, plus a `--control-h` token that follows density.
+`packages/design-system/gallery.html` renders every primitive and
+`npm run smoke:gallery` proves in a browser that theme, density, and palette
+reach computed values, that intents stay distinct, that focus is visible, and
+that the Shadow DOM copy is both styled and unreachable from the page.
+
+`.cnt-field` was realigned to Continental's meaning (a layout wrapper, with
+`.cnt-input` as the control) while it still had no consumers.
+
+Remaining: `sheet`, `tag`, `drawer`, `banner`, `toast`, `progress`, `steps`, and
+the `btn-group`/`chip` family.
+
+
 
 Extend `packages/design-system` to the Continental mapping, prioritising the
 settings set: `label`, `input`, `textarea`, `select`, `help`, `switch`, `check`,
@@ -225,7 +242,7 @@ The old gates measured depth. This measures breadth, and both are required.
 | Extension message types | 1 / 15 | 15 / 15 |
 | Extension HTML surfaces | 0 / 3 | 3 / 3 |
 | Settings groups on shared components | 0 / 10 | 10 / 10 |
-| `design-system` primitives | 10 / ~30 | ~30 |
+| `design-system` primitives | 26 / ~30 | ~30 |
 | `writing-ui` composites | 2 / ~10 | ~10 |
 | Legacy files deleted | 0 | all |
 

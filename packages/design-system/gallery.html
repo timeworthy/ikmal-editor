@@ -1,0 +1,121 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Continental primitives — ikmal writing platform</title>
+<!--
+  The component gallery the plan requires. Every primitive is rendered here so a
+  token change can be seen against dark and light, two palettes, and all three
+  densities before it reaches a product surface.
+
+  It also carries a Shadow DOM copy, because the browser extension renders these
+  inside one and page CSS must not be able to reach them.
+-->
+<link rel="stylesheet" href="./src/tokens.css">
+<link rel="stylesheet" href="./src/primitives.css">
+<style>
+  body { background: var(--bg-0); color: var(--fg-1); font: 400 14px/1.5 var(--font-sans); margin: 0; padding: var(--space-5); }
+  h2 { color: var(--fg-3); font: 500 11px/1 var(--font-mono); letter-spacing: .08em; margin: var(--space-6) 0 var(--space-3); text-transform: uppercase; }
+  .row { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-4); }
+  .grid { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+</style>
+
+<div class="row" id="axes">
+  <label class="cnt-field"><span class="cnt-label">theme</span>
+    <select class="cnt-select" data-axis="theme"><option>dark</option><option>light</option></select></label>
+  <label class="cnt-field"><span class="cnt-label">palette</span>
+    <select class="cnt-select" data-axis="palette"><option>slate</option><option>bathymetric</option><option>sediment</option></select></label>
+  <label class="cnt-field"><span class="cnt-label">density</span>
+    <select class="cnt-select" data-axis="density"><option>comfortable</option><option>compact</option><option>spacious</option></select></label>
+</div>
+
+<h2>Buttons</h2>
+<div class="row">
+  <button class="cnt-btn">Apply</button>
+  <button class="cnt-icon-btn" aria-label="Close">×</button>
+  <span class="cnt-badge">3 issues</span>
+  <span class="cnt-status-dot"></span>
+</div>
+
+<h2>Fields</h2>
+<div class="grid">
+  <label class="cnt-field"><span class="cnt-label">Endpoint</span>
+    <input class="cnt-input" value="http://127.0.0.1:8096"><span class="cnt-help">Loopback only.</span></label>
+  <label class="cnt-field"><span class="cnt-label">Language</span>
+    <select class="cnt-select"><option>Automatic</option><option>English (US)</option></select></label>
+  <label class="cnt-field"><span class="cnt-label">Notes</span>
+    <textarea class="cnt-textarea" rows="2">Passive voice was flagged.</textarea></label>
+</div>
+
+<h2>Toggles</h2>
+<div class="row">
+  <label class="cnt-switch"><input type="checkbox" checked><span class="cnt-switch-track"></span>Check as I type</label>
+  <label class="cnt-switch"><input type="checkbox"><span class="cnt-switch-track"></span>Launch at login</label>
+  <label class="cnt-check"><input type="checkbox" checked><span class="cnt-check-box"></span>Grammar</label>
+  <label class="cnt-check"><input type="checkbox"><span class="cnt-check-box"></span>Style</label>
+</div>
+
+<h2>Choice and range</h2>
+<div class="row">
+  <div class="cnt-segmented" role="tablist">
+    <button role="tab" aria-selected="true">Automatic</button>
+    <button role="tab" aria-selected="false">Pause</button>
+    <button role="tab" aria-selected="false">Zen</button>
+  </div>
+  <input class="cnt-slider" type="range" min="0" max="100" value="55">
+</div>
+
+<h2>Containers</h2>
+<div class="grid">
+  <div class="cnt-panel"><div class="cnt-stat"><span class="cnt-stat-label">Words</span><span class="cnt-stat-value">1,284</span><span class="cnt-stat-delta">3 issues</span></div></div>
+  <div class="cnt-card">A card holds a setting group.</div>
+  <div class="cnt-popover">A popover explains one issue.</div>
+</div>
+
+<h2>Tabs and accordion</h2>
+<div class="cnt-tabs" role="tablist">
+  <button class="cnt-tab" role="tab" aria-selected="true">Checking</button>
+  <button class="cnt-tab" role="tab" aria-selected="false">Appearance</button>
+  <button class="cnt-tab" role="tab" aria-selected="false">Services</button>
+</div>
+<div class="cnt-accordion">
+  <div class="cnt-acc-item"><button class="cnt-acc-head">Quality model<span>Optional</span></button><div class="cnt-acc-body">Installed, and the local model is running.</div></div>
+  <div class="cnt-acc-item"><button class="cnt-acc-head">Style guide<span>Optional</span></button><div class="cnt-acc-body">No guide imported.</div></div>
+</div>
+
+<h2>Intent</h2>
+<div class="grid">
+  <div class="cnt-alert" data-intent="info"><div><div class="cnt-alert-title">Local only</div><div class="cnt-alert-text">Text never leaves this machine.</div></div></div>
+  <div class="cnt-alert" data-intent="success"><div><div class="cnt-alert-title">Services ready</div><div class="cnt-alert-text">LanguageTool and quality checks are answering.</div></div></div>
+  <div class="cnt-alert" data-intent="warning"><div><div class="cnt-alert-title">Model not running</div><div class="cnt-alert-text">Deterministic checks only.</div></div></div>
+  <div class="cnt-alert" data-intent="danger"><div><div class="cnt-alert-title">Checker unreachable</div><div class="cnt-alert-text">Start the services to continue.</div></div></div>
+</div>
+
+<h2>Empty</h2>
+<div class="cnt-empty"><div class="cnt-empty-title">Nothing to review</div><div class="cnt-empty-text">Findings appear here as you write.</div></div>
+
+<h2>Inside a Shadow DOM</h2>
+<div id="shadow-host"></div>
+
+<script type="module">
+  for (const select of document.querySelectorAll('[data-axis]')) {
+    select.addEventListener('change', () => {
+      document.documentElement.dataset[select.dataset.axis] = select.value;
+    });
+  }
+  document.documentElement.dataset.theme = 'dark';
+  document.documentElement.dataset.palette = 'slate';
+  document.documentElement.dataset.density = 'comfortable';
+
+  // The extension renders primitives inside a Shadow DOM, so the gallery proves
+  // they survive there with their own copy of the stylesheets.
+  const [tokens, primitives] = await Promise.all([
+    fetch('./src/tokens.css').then((r) => r.text()),
+    fetch('./src/primitives.css').then((r) => r.text()),
+  ]);
+  const shadow = document.querySelector('#shadow-host').attachShadow({ mode: 'open' });
+  shadow.innerHTML = `<style>${tokens}${primitives}</style>
+    <div class="cnt-panel" style="display:grid;gap:12px">
+      <button class="cnt-btn" id="shadow-btn">Apply</button>
+      <label class="cnt-switch"><input type="checkbox" checked><span class="cnt-switch-track"></span>Isolated</label>
+      <div class="cnt-alert" data-intent="success"><div class="cnt-alert-text">Page CSS cannot reach this.</div></div>
+    </div>`;
+</script>

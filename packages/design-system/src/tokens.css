@@ -58,6 +58,9 @@
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
+  /* Control height. A local semantic token, not a second scale: form controls
+     must line up with each other and follow density like spacing does. */
+  --control-h: 36px;
   --space-5: 24px;
   --space-6: 32px;
   --space-7: 48px;
@@ -80,6 +83,6 @@
 [data-palette="aurora"], :host([data-palette="aurora"]) { --accent: #4fe0a0; --accent-hover: #75e9b6; --accent-press: #27b979; --accent-soft: rgba(79,224,160,0.16); }
 [data-palette="parchment"], :host([data-palette="parchment"]) { --accent: #c98a3c; --accent-hover: #dda45d; --accent-press: #a86d25; --accent-soft: rgba(201,138,60,0.16); }
 
-[data-density="compact"], :host([data-density="compact"]) { --space-2: 6px; --space-3: 10px; --space-4: 12px; }
-[data-density="spacious"], :host([data-density="spacious"]) { --space-2: 10px; --space-3: 16px; --space-4: 20px; }
+[data-density="compact"], :host([data-density="compact"]) { --space-2: 6px; --space-3: 10px; --space-4: 12px; --control-h: 30px; }
+[data-density="spacious"], :host([data-density="spacious"]) { --space-2: 10px; --space-3: 16px; --space-4: 20px; --control-h: 42px; }
 [data-contrast="high"], :host([data-contrast="high"]) { --border-1: var(--border-2); --fg-3: var(--fg-2); --fg-4: var(--fg-3); }

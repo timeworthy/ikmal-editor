@@ -32,3 +32,9 @@ assert.doesNotMatch(`${html}\n${fs.readFileSync(path.join(app, 'README.md'), 'ut
 assert.doesNotMatch(`${html}\n${renderer}`, /\/Users\/iansherr\/Projects\/ikmal|https?:\/\/(?!127\.0\.0\.1|localhost)/);
 assert.doesNotMatch(renderer, /unsafe-eval|eval\s*\(/, 'fresh desktop renderer must not use dynamic code execution');
 console.log('Fresh desktop rewrite source verified: isolated renderer, preload-shaped checker, and compiled imports present.');
+
+// The primitive layer is the foundation every later phase builds on, and its
+// only real proof is a browser rendering it across the axes. An opt-in harness
+// is exactly the kind that disappears unnoticed.
+assert.ok(fs.existsSync(path.join(root, 'tools', 'design_system_gallery_smoke.mjs')), 'missing design-system gallery harness');
+assert.ok(fs.existsSync(path.join(root, 'packages', 'design-system', 'gallery.html')), 'missing design-system gallery');
