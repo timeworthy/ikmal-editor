@@ -29,7 +29,10 @@ permissions:
 
 concurrency:
   group: desktop-release-${{ github.event.release.tag_name || inputs.release_tag || github.ref_name }}
-  cancel-in-progress: false
+  # A superseded rehearsal is worth cancelling; a release in flight is not.
+  # Without this a staging run that hangs holds the group and every later push
+  # queues behind it.
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 jobs:
   package:
