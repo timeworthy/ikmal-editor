@@ -118,6 +118,25 @@ try {
       fs.rmSync(path.join(appBundle, 'Contents', 'Resources', 'electron.icns'), { force: true });
       const productIcon = path.join(appBundle, 'Contents', 'Resources', 'ikmal editor.icns');
       if (!fs.existsSync(productIcon)) throw new Error(`Packaged product icon is missing: ${productIcon}`);
+
+      // Electron's binary arrives linker-signed, and everything above modifies
+      // the bundle it was signed for: the injected extraResources, the replaced
+      // Info.plist, and the icon removed a moment ago. The signature is left
+      // declaring sealed resources that no longer match, and macOS reports that
+      // as "damaged and can't be opened" — which is worse than unsigned,
+      // because an unsigned app can still be opened from the context menu and a
+      // broken one cannot. v0.9.1-beta shipped in exactly that state.
+      //
+      // An ad-hoc signature is not Developer ID and does not satisfy Gatekeeper.
+      // What it does is make the bundle coherent, which is the difference
+      // between "unidentified developer" and "damaged".
+      if (process.platform === 'darwin') {
+        execFileSync('codesign', ['--force', '--deep', '--sign', '-', appBundle], { stdio: 'inherit' });
+        execFileSync('codesign', ['--verify', '--deep', '--strict', appBundle], { stdio: 'inherit' });
+        console.log('Ad-hoc signed. Not notarized: users still need to allow it on first open.');
+      } else {
+        console.warn(`WARNING: ${appBundle} was packaged on ${process.platform}, so it could not be signed. macOS will report it as damaged.`);
+      }
     }
     console.log(`Desktop bundle ready: ${bundle}`);
   }

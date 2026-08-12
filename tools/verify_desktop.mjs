@@ -62,6 +62,18 @@ for (const requiredText of ['run', 'package', 'ikmal editor.app', 'ikmal editor.
   if (!launcherSource.includes(requiredText)) throw new Error(`Packaged launcher is missing ${requiredText}.`);
 }
 const packageSource = fs.readFileSync(path.join(desktop, 'package_desktop.mjs'), 'utf8');
+
+// v0.9.1-beta shipped a macOS bundle whose Electron linker signature still
+// declared sealed resources that the packaging steps had since changed, and
+// macOS reports that as "damaged and can't be opened" rather than as unsigned —
+// a worse failure, because an unsigned app can still be opened from the context
+// menu. The ad-hoc re-sign is what makes the bundle coherent, so its absence is
+// a shipping defect rather than a missing nicety.
+for (const required of ["'codesign'", "'--force', '--deep', '--sign', '-'", "'--verify', '--deep', '--strict'"]) {
+  if (!packageSource.includes(required)) {
+    throw new Error(`Desktop packaging must ad-hoc sign and verify the macOS bundle; missing ${required}.`);
+  }
+}
 if (!packageSource.includes("'-buildvcs=false'") || !packageSource.includes("path.join(root, 'office-bridge')")
   || !packageSource.includes("const writingAdapters = path.join(root, 'packages', 'writing-adapters')")
   || !packageSource.includes("path.join(writingAdapters, 'dist')")
