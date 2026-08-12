@@ -1222,3 +1222,57 @@ Next action:
 - Merging `dev` into `main` is what makes any of the release workflows exist.
   Until then the desktop, container, and version-sync automation cannot fire,
   and the fixes above are untested on a runner.
+
+### 2026-08-12 — Agent / the desktop pipeline runs, and what it took
+
+Gate: `7` packaging
+Status: `complete`
+
+Changed:
+- `desktop-release.yml` gained push triggers: a `staging` branch for iterating
+  on the workflow and a `v*-rc*` tag for rehearsing against a frozen tree. Push
+  events resolve the workflow from the ref being pushed, so unlike `release` and
+  `workflow_dispatch` they work while these files live off the default branch —
+  which is the only reason the pipeline could be exercised at all.
+- A push run keeps its bundles as workflow artifacts and publishes nothing. The
+  upload-to-release step is gated to non-push events.
+- `docs/RELEASING.md` documents the process, the branch rule behind it, and each
+  trap below. Linked from `CONTRIBUTING.md`.
+
+Four defects, none of which any local run could have found:
+- `desktop npm run verify` failed on a clean runner: two tests read compiled
+  output that only the packagers stage. Root `npm test` already staged for this
+  reason; the desktop entry point, which is the one the release uses, did not.
+- `macos-13` is retired. That job sat queued with no runner while the other
+  three finished, and on a real release would have done so until the six-hour
+  timeout — a matrix naming a dead image fails by hanging, not by erroring.
+  `darwin/x64` is now cross-packaged on `macos-14`.
+- Every npm call in the repository was broken on Windows. npm there is
+  `npm.cmd`, and since the fix for CVE-2024-27980 Node refuses to execFile a
+  `.cmd` without a shell, failing with `spawnSync npm.cmd EINVAL`. Eight call
+  sites now share `tools/npm_command.mjs`, which quotes its arguments because a
+  shell would otherwise split the absolute `--prefix` paths on their spaces.
+- `tools/office_certificate.test.mjs` asserted a `0600` key mode on every
+  platform. Node's chmod on Windows toggles the read-only attribute and nothing
+  else, so the key reads back `0666`. The restriction `certificate.cjs` asks for
+  is genuinely not in force on Windows and would have to be an ACL the bridge
+  does not set; the assertion is now POSIX-only and the gap is written down
+  rather than hidden behind a red test.
+- A staging run that hangs used to hold the concurrency group and queue every
+  later push behind it. Push events now cancel in progress; releases never do.
+
+Evidence:
+- Run 31555811794 — success on all four: darwin/arm64, darwin/x64, linux/x64,
+  win32/x64. Artifacts: 122MB, 124MB, 126MB, 149MB.
+- Nothing was published: `gh release list` shows only `v0.9.0-beta`, and no `rc`
+  tags exist on the remote.
+
+Unknowns / risks:
+- The `release: published` path is still untested, because it cannot run until
+  these workflows reach `main`. What a rehearsal cannot cover is the upload
+  step, which is the only part that differs.
+- Windows Office private keys remain unrestricted; an ACL would be the fix.
+
+Next action:
+- Merge `dev` into `main`, which is what registers all four workflows. Rehearse
+  once more with a `v*-rc*` tag cut from `main` before publishing anything.
