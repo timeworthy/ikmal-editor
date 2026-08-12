@@ -4,7 +4,7 @@ import { execSync } from 'child_process';
 
 const rootDir = process.cwd();
 const debStructure = path.join(rootDir, 'dist', 'deb_structure');
-const version = '0.9.1-beta';
+const version = '0.9.2-beta';
 
 console.log('Building Debian .deb package for ikmal-editor...');
 

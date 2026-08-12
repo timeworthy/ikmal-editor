@@ -19,7 +19,7 @@ var embeddedRules embed.FS
 const (
 	defaultPort         = "8097"
 	languageToolVersion = "6.5"
-	appVersion          = "0.9.1-beta"
+	appVersion          = "0.9.2-beta"
 
 	// Update check endpoint. A plain static JSON file fetched over HTTPS at most
 	// once per day. The request sends no identifier, no query string, and no body:

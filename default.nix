@@ -2,7 +2,7 @@
 
 pkgs.buildGoModule {
   pname = "ikmal-editor";
-  version = "0.9.1-beta";
+  version = "0.9.2-beta";
 
   src = ./.;
 
