@@ -251,7 +251,11 @@ h1, h2, p { margin: 0; }
 .settings-group > summary::after { width: 7px; height: 7px; flex: 0 0 auto; border-right: 1px solid var(--fg-4); border-bottom: 1px solid var(--fg-4); content: ""; transform: rotate(45deg) translateY(-2px); transition: transform .16s var(--ease); }
 .settings-group[open] > summary { border-bottom: 1px solid var(--hair); background: rgba(255, 255, 255, .015); }
 .settings-group[open] > summary::after { transform: rotate(225deg) translate(-1px, -1px); }
-.settings-group > summary > span { display: grid; min-width: 0; gap: 3px; }
+/* flex-grow so the badge and chevron sit flush right. Without it the span
+   sized to its own text and space-between parked the badge wherever the
+   leftover room fell, which put it 31px from the edge on one row and 91px on
+   another. */
+.settings-group > summary > span { display: grid; flex: 1 1 auto; min-width: 0; gap: 3px; }
 .settings-group > summary strong { color: var(--fg-2); font-size: 12.5px; font-weight: 600; }
 .settings-group > summary small { overflow: hidden; color: var(--fg-4); font-size: 10.5px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
 .settings-group > summary em { flex: 0 0 auto; color: var(--fg-4); font: 9px var(--mono); letter-spacing: .04em; text-transform: uppercase; }
