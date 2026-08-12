@@ -56,7 +56,14 @@
   padding: var(--space-3);
 }
 
-.cnt-status-dot { background: var(--accent); border-radius: 50%; display: inline-block; height: 8px; width: 8px; }
+.cnt-status-dot { background: var(--accent); border-radius: 50%; display: inline-block; flex: 0 0 auto; height: 8px; width: 8px; }
+/* Status intents. A dot that stays accent-coloured whatever the state is
+   decoration, not status — the composites emit data-state and this is what
+   makes it mean something. */
+.cnt-status-dot[data-state="ready"] { background: var(--success); }
+.cnt-status-dot[data-state="starting"] { background: var(--info); }
+.cnt-status-dot[data-state="stopped"] { background: var(--fg-4); }
+.cnt-status-dot[data-state="unavailable"] { background: var(--danger); }
 .cnt-badge { background: var(--accent-soft); border-radius: var(--radius-pill); color: var(--accent); font: 600 12px/1 var(--font-mono); padding: 5px 9px; }
 /* Continental's .cnt-field is a layout wrapper, not a control: the control is
    .cnt-input/.cnt-select/.cnt-textarea inside it. This package briefly had it

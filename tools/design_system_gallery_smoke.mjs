@@ -29,7 +29,12 @@ const server = http.createServer((request, response) => {
   // rather than as the missing file it actually is.
   let body;
   try { body = fs.readFileSync(file); } catch { response.writeHead(404); response.end(); return; }
-  const type = file.endsWith('.css') ? 'text/css' : file.endsWith('.html') ? 'text/html; charset=utf-8' : 'text/plain';
+  // A module served as text/plain is refused by the browser's strict MIME
+  // check, and the page then fails silently with nothing rendered.
+  const type = file.endsWith('.css') ? 'text/css'
+    : file.endsWith('.js') ? 'text/javascript'
+    : file.endsWith('.html') ? 'text/html; charset=utf-8'
+    : 'text/plain';
   response.writeHead(200, { 'content-type': type });
   response.end(body);
 });
@@ -114,6 +119,23 @@ try {
   if (await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)) {
     throw new Error('The gallery scrolls sideways, so something is wider than its container.');
   }
+
+  // Phase B composites must render from the compiled package and compose the
+  // primitives, not restyle them: a composite that brought its own card would
+  // be a second visual system inside the one this package exports.
+  const composites = await page.evaluate(() => {
+    const root = document.querySelector('#composites');
+    return {
+      rendered: root.children.length,
+      usesPrimitives: root.querySelectorAll('.cnt-stat, .cnt-tag, .cnt-acc-head, .cnt-status-dot, .cnt-btn').length,
+      strayClasses: [...root.querySelectorAll('*')]
+        .flatMap((el) => [...el.classList])
+        .filter((name) => !name.startsWith('cnt-') && !name.startsWith('writing-')),
+    };
+  });
+  if (!composites.rendered) throw new Error('No writing composites rendered.');
+  if (composites.usesPrimitives < 10) throw new Error(`Composites barely use primitives: ${composites.usesPrimitives} found.`);
+  if (composites.strayClasses.length) throw new Error(`Composites use classes outside the system: ${[...new Set(composites.strayClasses)].join(', ')}`);
 
   // Keyboard focus must be visible on a control, not only on a button.
   const focusRing = await page.evaluate(() => {

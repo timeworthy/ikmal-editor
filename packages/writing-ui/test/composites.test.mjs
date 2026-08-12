@@ -1,0 +1,100 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+// Imported from dist, the way writing-adapters tests its own modules: these
+// composites import each other, and a cross-module import resolves only once
+// compiled. It also means the test exercises the artifact hosts actually load.
+import { renderModePicker, normalizeModePickerState, FOCUS_DURATIONS } from '../dist/mode_picker.js';
+import { renderIndicatorPopover, normalizeIndicatorPopoverState, renderReviewRow } from '../dist/indicator_popover.js';
+import { renderSettingsGroups, renderServiceHealth, renderStyleGuideCard } from '../dist/settings.js';
+import { renderReviewWorkspace, renderUndoNotice } from '../dist/review.js';
+
+const src = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src');
+
+test('modes offer every duration, and Automatic has none to offer', () => {
+  assert.deepEqual(FOCUS_DURATIONS.map((d) => d.id), ['15m', '1h', '4h', 'until-off']);
+  const html = renderModePicker({ mode: 'paused', open: 'paused', until: 'until 14:20' });
+  for (const label of ['15 minutes', '1 hour', '4 hours', 'Until turned off']) assert.match(html, new RegExp(label));
+  assert.match(html, /data-mode="paused" aria-selected="true"|aria-selected="true" data-mode="paused"/);
+  assert.match(html, /until 14:20/);
+  // Automatic is the absence of a timed mode, so it opens no duration list.
+  assert.doesNotMatch(html, /data-mode="active"[^>]*aria-haspopup/);
+  assert.equal(normalizeModePickerState({ mode: 'nonsense' }).mode, 'active');
+});
+
+test('the indicator popover never shows a count it cannot know', () => {
+  const checking = renderIndicatorPopover({ status: 'checking', issueCount: 4, words: 10, characters: 50 });
+  assert.doesNotMatch(checking, /Issues<\/span>/);
+  const done = renderIndicatorPopover({ status: 'issues', issueCount: 4, words: 10, characters: 50 });
+  assert.match(done, /Issues<\/span><span class="cnt-stat-value">4</);
+  // An empty review section is collapsed rather than rendered as a bare list.
+  assert.doesNotMatch(done, /writing-ip-review/);
+  const withIssues = renderIndicatorPopover({ status: 'issues', issues: [{ id: 'a', message: 'Use "the"', matchedText: 'teh', source: 'LanguageTool' }] });
+  assert.match(withIssues, /writing-ip-review/);
+  assert.equal(normalizeIndicatorPopoverState({ issueCount: -3 }).issueCount, 0);
+});
+
+test('service health reports what is running and who started it', () => {
+  const html = renderServiceHealth([
+    { name: 'LanguageTool', state: 'ready', endpoint: '127.0.0.1:8097', managed: true },
+    { name: 'Local model', state: 'stopped', managed: false },
+  ]);
+  assert.match(html, /data-intent="success">Ready/);
+  assert.match(html, /data-intent="warning">Stopped/);
+  // Whether the app owns the service decides what a restart can do.
+  assert.match(html, /managed/);
+  assert.match(html, /existing/);
+  assert.match(renderServiceHealth([]), /No services reported/);
+});
+
+test('a style guide can be disabled without being deleted', () => {
+  const empty = renderStyleGuideCard({ guides: [] });
+  assert.match(empty, /No style guide imported/);
+  const chosen = renderStyleGuideCard({ guides: [{ id: 'ap', name: 'AP', ruleCount: 42 }], selectedId: 'ap', enabled: false });
+  assert.match(chosen, /value="ap" selected/);
+  assert.match(chosen, /data-action="enable-guide"(?![^>]*checked)/);
+  assert.match(chosen, /42 rules/);
+});
+
+test('the review workspace and the indicator popover share one issue row', () => {
+  const issue = { id: 'x1', message: 'Passive voice', matchedText: 'was reviewed', source: 'quality-sidecar', category: 'style' };
+  const row = renderReviewRow(issue);
+  assert.ok(renderReviewWorkspace({ issues: [issue] }).includes(row.replace('<li class="cnt-card writing-review-row"', '<li class="cnt-card writing-review-row"')));
+  assert.match(renderIndicatorPopover({ status: 'issues', issues: [issue] }), /was reviewed/);
+  assert.match(renderReviewWorkspace({ issues: [] }), /Nothing to review/);
+});
+
+test('an applied correction is reversible, and says so when it is not', () => {
+  assert.match(renderUndoNotice({ from: 'teh', to: 'the' }), /data-action="undo"/);
+  assert.match(renderUndoNotice({ from: 'teh', to: 'the', expired: true }), /can no longer be undone/);
+});
+
+test('every composite escapes text it did not author', () => {
+  const nasty = '<img src=x onerror=alert(1)>';
+  const rendered = [
+    renderModePicker({ open: 'paused', durations: [{ id: nasty, label: nasty }] }),
+    renderIndicatorPopover({ status: 'issues', issues: [{ id: nasty, message: nasty, matchedText: nasty, source: nasty }] }),
+    renderSettingsGroups([{ id: 'g', title: nasty, description: nasty, badge: nasty }]),
+    renderServiceHealth([{ name: nasty, state: 'ready', endpoint: nasty }]),
+    renderStyleGuideCard({ guides: [{ id: nasty, name: nasty }] }),
+    renderReviewWorkspace({ label: nasty, issues: [{ id: 'a', message: nasty, matchedText: nasty, source: nasty }] }),
+    renderUndoNotice({ from: nasty, to: nasty }),
+  ].join('');
+  assert.doesNotMatch(rendered, /<img src=x/);
+  assert.match(rendered, /&lt;img/);
+});
+
+// Phase B's reason for existing: composites build on the primitive layer instead
+// of restyling it. A composite that declares its own colour has started a second
+// visual system inside the one this package exports.
+test('composites compose primitives and declare no colour of their own', async () => {
+  for (const file of ['mode_picker.ts', 'indicator_popover.ts', 'settings.ts', 'review.ts']) {
+    const source = await readFile(path.join(src, file), 'utf8');
+    const css = [...source.matchAll(/_CSS = `([\s\S]*?)`/g)].map((m) => m[1]).join('\n');
+    assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b/i, `${file} hard-codes a colour`);
+    assert.doesNotMatch(css, /\brgba?\(\s*\d/, `${file} hard-codes a colour`);
+    assert.match(source, /cnt-/, `${file} does not compose any primitive`);
+  }
+});

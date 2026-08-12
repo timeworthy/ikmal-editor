@@ -26,7 +26,7 @@ it. Measured:
 | `packages/writing-core` | **~75 exports** | Documents, revisions, issue normalization and identity, ranges, overlap, relationships, focus modes, language resolution, statistics, dictionary, chunking, rewording, corrections and undo, indicator state |
 | `packages/writing-adapters` | **7 modules** | Browser field, browser slice, desktop slice, desktop IPC, extension messages, chunked checks, raw matches |
 | `packages/design-system` | **63 tokens, 60 classes** | `cnt-btn`, `cnt-card`, `cnt-field`, `cnt-menu`, `cnt-popover`, `cnt-badge`, `cnt-status-dot`, and variants |
-| `packages/writing-ui` | **2 components** | `indicator`, `issue_popover` |
+| `packages/writing-ui` | **11 composites** | indicator, issue popover, selection summary, mode picker, indicator popover, review row, review workspace, undo notice, settings group, service health card, style-guide card |
 | `apps/desktop-editor` | **3 host capabilities** | `checkText`, `addDictionaryWord`, `onEditorText` |
 | `apps/browser-extension` | **1 message type** | `check` |
 | `apps/desktop-compact` | **does not exist** | |
@@ -187,13 +187,29 @@ documented local semantic alias.
 **Exit:** a settings form can be built entirely from `cnt-*` primitives with no
 new CSS beyond layout.
 
-### Phase B — Finish the writing composites
+### Phase B — Finish the writing composites — **built, not yet consumed**
 
-Extend `packages/writing-ui`: indicator popover, selection popover, mode picker,
-settings group, service health card, style-guide card, undo notice, review row.
+Done: mode picker (all four durations), indicator popover, review row, review
+workspace, undo notice, settings group, service health card, style-guide card.
+Eleven composites, every one composed from the primitives rather than restyling
+them — a test rejects a composite that declares its own colour, and the gallery
+harness fails if a composite uses a class outside `cnt-`/`writing-`.
 
-**Exit:** every surface named in the taxonomy has one implementation, consumed
-by at least two hosts.
+Rendering them caught a defect the tests could not: service status dots stayed
+accent-coloured whatever the state, so the dot was decoration rather than
+status. Status intents now live on `.cnt-status-dot`, which is where the plan's
+component mapping puts them.
+
+Deliberate behaviours worth keeping: the indicator popover shows no issue count
+while checking or unavailable, because a count is only meaningful once a result
+exists; the inline review collapses to nothing rather than rendering an empty
+list; the service card states whether the app manages a service or reused one
+already running, because that decides what a restart can do.
+
+**Exit, still open:** consumed by at least two hosts. Nothing renders these yet
+— that is Phase C and D. Until then they are verified but unproven in a product
+surface, which is exactly the state the vertical slice was left in, so it should
+not be left long.
 
 ### Phase C — `apps/desktop-compact`, as a launcher only
 
@@ -255,7 +271,7 @@ The old gates measured depth. This measures breadth, and both are required.
 | Extension HTML surfaces | 0 / 3 | 3 / 3 |
 | Settings groups on shared components | 0 / 10 | 10 / 10 |
 | `design-system` primitives | **33 / ~30 — complete** | ~30 |
-| `writing-ui` composites | 2 / ~10 | ~10 |
+| `writing-ui` composites | **11 / ~10 — complete** | ~10 |
 | Legacy files deleted | 0 | all |
 
 Update these numbers whenever a phase closes. A phase that moves no number has

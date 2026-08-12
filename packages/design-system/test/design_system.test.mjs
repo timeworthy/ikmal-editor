@@ -88,3 +88,11 @@ test('primitives are border-box, without imposing a global reset', () => {
   assert.match(primitives, /\[class\^="cnt-"\][^{]*\{[^}]*box-sizing:\s*border-box/);
   assert.doesNotMatch(primitives, /^\s*\*\s*,?\s*\{[^}]*box-sizing/m);
 });
+
+// A status dot that stays one colour whatever the state is decoration. The
+// composites emit data-state; this is what gives it meaning.
+test('status dots carry state intents', () => {
+  for (const state of ['ready', 'starting', 'stopped', 'unavailable']) {
+    assert.match(primitives, new RegExp(`\\.cnt-status-dot\\[data-state="${state}"\\]`), state);
+  }
+});
