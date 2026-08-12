@@ -8,6 +8,7 @@ something; one keeps version metadata in step.
 | `tests.yml` | push to `main`/`dev`, any pull request | nothing — the gate |
 | `desktop-release.yml` | a published release, a `staging` push, a `v*-rc*` tag | desktop bundles for macOS arm64/x64, Linux x64, Windows x64 |
 | `container-release.yml` | a published release | `ghcr.io/timeworthy/ikmal-editor` |
+| `cli-release.yml` | a published release, a `staging` push, a `v*-rc*` tag | server/CLI archives for six platforms, plus `SHA256SUMS` |
 | `release.yml` | a published release | syncs `version.json` |
 
 ## The rule that decides where workflows can run from
@@ -87,6 +88,26 @@ frozen tree, which is what you want to rehearse and then publish.
    archives, not the desktop bundles, and those checksums must match the assets
    actually attached to the release. A rebuild that changes them without a
    matching manifest update breaks `brew install`.
+
+## Beta and stable channels
+
+`version.json` carries two pointers, and the CLI reads both:
+
+- `version` is the **stable** channel. `release.yml` only ever writes a release
+  that is *not* marked as a prerelease into it, and refuses to publish a file
+  whose `version` looks like a prerelease at all. It is empty until a stable
+  release exists, which is honest: this project has published only prereleases
+  so far.
+- `prerelease` is the newest prerelease, and is offered only to users who opt in
+  with `IKMAL_EDITOR_CHANNEL=beta` or `-channel=beta`.
+
+The comparison is a real version comparison, not a string difference, so a user
+ahead of the file is never offered a downgrade and a prerelease never supersedes
+the release of the same number. Name prereleases `-beta`; `-rc10` sorts below
+`-rc9` under semver's rules for alphanumeric identifiers.
+
+Marking a GitHub release as a prerelease is therefore what decides who is told
+about it. Get that checkbox wrong and the channel split does nothing.
 
 ## Things worth knowing before you rely on it
 

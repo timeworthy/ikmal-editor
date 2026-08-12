@@ -19,7 +19,7 @@ var embeddedRules embed.FS
 const (
 	defaultPort         = "8097"
 	languageToolVersion = "6.5"
-	appVersion          = "0.9.0-beta"
+	appVersion          = "0.9.1-beta"
 
 	// Update check endpoint. A plain static JSON file fetched over HTTPS at most
 	// once per day. The request sends no identifier, no query string, and no body:
@@ -300,14 +300,27 @@ func checkForUpdate(appDir string) {
 		return
 	}
 
-	latest := extractJSONString(string(body), "version")
-	if latest == "" || latest == appVersion {
+	// The stable version and the newest prerelease are published separately, so
+	// a beta can exist without every user being told to install it. Comparing
+	// rather than testing for difference is what makes that hold: it also stops
+	// a rolled-back file offering an older release as an "update".
+	channel := updateChannel()
+	latest := offeredUpdate(
+		extractJSONString(string(body), "version"),
+		extractJSONString(string(body), "prerelease"),
+		appVersion,
+		channel,
+	)
+	if latest == "" {
 		return
 	}
 
 	fmt.Printf("\nUpdate available: %s (you have %s)\n", latest, appVersion)
 	if url := extractJSONString(string(body), "url"); url != "" {
 		fmt.Printf("   %s\n", url)
+	}
+	if channel == "stable" {
+		fmt.Println("   Prereleases are not offered here. Opt in with IKMAL_EDITOR_CHANNEL=beta")
 	}
 	fmt.Println("   Disable this check with -no-update-check or IKMAL_EDITOR_NO_UPDATE_CHECK=1")
 }

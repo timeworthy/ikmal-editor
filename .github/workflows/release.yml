@@ -32,46 +32,74 @@ jobs:
           # Ignore drafts and prereleases-superseded-by-newer by asking the API
           # for what it considers current, rather than trusting the trigger payload
           # (a re-published older release would otherwise roll the file backwards).
-          tag=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 20 \
-                 --json tagName,isDraft,createdAt \
-                 --jq 'map(select(.isDraft | not)) | sort_by(.createdAt) | last | .tagName')
+          releases=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 30 \
+                 --json tagName,isDraft,isPrerelease,createdAt)
+          # The stable pointer must never name a prerelease. This selected the
+          # newest non-draft release of any kind, so publishing a beta wrote it
+          # into version.json and every user on the daily check was told to
+          # install it — the opposite of what a prerelease means.
+          tag=$(printf '%s' "$releases" | jq -r 'map(select((.isDraft|not) and (.isPrerelease|not))) | sort_by(.createdAt) | last | .tagName // ""')
+          # The newest prerelease is published alongside it, so a tester who has
+          # opted in can be told, and nobody else is.
+          pre=$(printf '%s' "$releases" | jq -r 'map(select((.isDraft|not) and .isPrerelease)) | sort_by(.createdAt) | last | .tagName // ""')
           if [ -z "$tag" ] || [ "$tag" = "null" ]; then
-            echo "No published release found; nothing to do."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            exit 0
+            # A project with only prereleases has no stable version to advertise.
+            # Leaving the existing value alone is right: inventing one would tell
+            # stable users to install something that was never released to them.
+            echo "No published stable release; leaving the stable version untouched."
+            tag=""
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           # Strip the leading v so the file matches appVersion in main.go.
           echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${pre#v}" >> "$GITHUB_OUTPUT"
+          echo "Stable: ${tag:-none}   Prerelease: ${pre:-none}"
 
       - name: Write version.json
-        if: steps.rel.outputs.skip != 'true'
         env:
           VERSION: ${{ steps.rel.outputs.version }}
+          PRERELEASE: ${{ steps.rel.outputs.prerelease }}
         run: |
           set -euo pipefail
           tmp=$(mktemp)
-          jq --arg v "$VERSION" '.version = $v' version.json > "$tmp"
+          # An empty stable version leaves the existing one in place; a project
+          # with only prereleases has nothing to advertise on the stable channel
+          # and must not be given one.
+          jq --arg v "$VERSION" --arg p "$PRERELEASE" '
+            (if $v == "" then . else .version = $v end)
+            | if $p == "" then del(.prerelease) else .prerelease = $p end
+          ' version.json > "$tmp"
           mv "$tmp" version.json
           echo "--- version.json ---"
           cat version.json
 
       - name: Verify it still parses the way the CLI parses it
-        if: steps.rel.outputs.skip != 'true'
         env:
           VERSION: ${{ steps.rel.outputs.version }}
+          PRERELEASE: ${{ steps.rel.outputs.prerelease }}
         run: |
           set -euo pipefail
           # The CLI uses a hand-rolled string scan, not encoding/json, so assert
-          # both keys are extractable and that "url" is not shadowed by a URL
+          # the keys are extractable and that "url" is not shadowed by a URL
           # appearing earlier in the document.
           jq -e '.version and .url' version.json > /dev/null
-          got=$(jq -r '.version' version.json)
-          [ "$got" = "$VERSION" ] || { echo "version mismatch: $got != $VERSION"; exit 1; }
+          if [ -n "$VERSION" ]; then
+            got=$(jq -r '.version' version.json)
+            [ "$got" = "$VERSION" ] || { echo "version mismatch: $got != $VERSION"; exit 1; }
+          fi
+          if [ -n "$PRERELEASE" ]; then
+            got=$(jq -r '.prerelease' version.json)
+            [ "$got" = "$PRERELEASE" ] || { echo "prerelease mismatch: $got != $PRERELEASE"; exit 1; }
+          fi
+          # The stable pointer must never name a prerelease, whatever the inputs
+          # were. This is the assertion that protects users who did not opt in.
+          stable=$(jq -r '.version' version.json)
+          case "$stable" in
+            *-*) echo "version.json names a prerelease as stable: $stable"; exit 1 ;;
+          esac
           head -c 200 version.json | grep -q '"version"' || { echo '"version" not in first 200 bytes'; exit 1; }
 
       - name: Commit if changed
-        if: steps.rel.outputs.skip != 'true'
         run: |
           set -euo pipefail
           if git diff --quiet -- version.json; then

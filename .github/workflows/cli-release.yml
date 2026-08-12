@@ -1,0 +1,139 @@
+name: Build CLI release archives
+
+# The server/CLI archives are what `brew install` and `scoop install` download,
+# and until now nothing built them: the v0.9.0-beta assets were produced by
+# hand. A release that forgets them leaves Formula/ikmal-editor.rb and
+# scoop/ikmal-editor.json pointing at URLs that 404.
+#
+# One job rather than a matrix. The binary is CGO_ENABLED=0 pure Go, so every
+# target cross-compiles from the same runner, and building them together is what
+# lets SHA256SUMS cover the whole set — which it cannot do if each platform is
+# checksummed in a separate job.
+#
+# Triggers mirror desktop-release.yml: a push rehearses and keeps artifacts, a
+# published release uploads for real.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing GitHub release tag to receive the CLI archives
+        required: true
+        type: string
+  push:
+    branches: [staging]
+    tags: ['v*-rc*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cli-release-${{ github.event.release.tag_name || inputs.release_tag || github.ref_name }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
+
+jobs:
+  archives:
+    name: Cross-compile and package
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag || github.ref_name }}
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.release_tag || github.ref }}
+
+      # Same guard as the desktop pipeline: a tag that disagrees with
+      # appVersion would ship binaries reporting the previous version.
+      - name: Check the tag matches the version being built
+        if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/')
+        run: |
+          set -euo pipefail
+          expected="${RELEASE_TAG#v}"
+          expected="${expected%%-rc*}"
+          actual=$(sed -n 's/.*appVersion  *= *"\([^"]*\)".*/\1/p' main.go | head -1)
+          if [ "$expected" != "$actual" ]; then
+            echo "Tag ${RELEASE_TAG} would ship a binary reporting ${actual}." >&2
+            echo "Bump appVersion in main.go and version in desktop/package.json, or retag." >&2
+            exit 1
+          fi
+          echo "Tag ${RELEASE_TAG} matches appVersion ${actual}."
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.22'
+          cache: false
+
+      - name: Build every target
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          # label is what the archive and the binary inside it are named, and it
+          # is not always GOOS-GOARCH: armv7 is GOARCH=arm with GOARM=7. The
+          # Homebrew formula and the Scoop manifest install by these names, so
+          # they are a published contract, not an implementation detail.
+          build() {
+            goos="$1"; goarch="$2"; label="$3"; goarm="${4:-}"
+            binary="ikmal-editor-${label}"
+            [ "$goos" = "windows" ] && binary="${binary}.exe"
+            echo "building ${label}"
+            env CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" ${goarm:+GOARM="$goarm"} \
+              go build -trimpath -buildvcs=false -o "dist/${binary}" .
+            archive="ikmal-editor-${RELEASE_TAG}-${label}"
+            if [ "$goos" = "windows" ]; then
+              (cd dist && zip -q "${archive}.zip" "$binary")
+            else
+              (cd dist && tar -czf "${archive}.tar.gz" "$binary")
+            fi
+            rm "dist/${binary}"
+          }
+          build darwin  amd64 darwin-amd64
+          build darwin  arm64 darwin-arm64
+          build linux   amd64 linux-amd64
+          build linux   arm64 linux-arm64
+          build linux   arm   linux-armv7 7
+          build windows amd64 windows-amd64
+          cd dist && sha256sum ikmal-editor-* > SHA256SUMS
+          echo "--- SHA256SUMS ---"
+          cat SHA256SUMS
+
+      # Proof the archives contain what the install manifests expect, checked
+      # here rather than discovered by a user whose brew install unpacks nothing.
+      - name: Check the archives match what Homebrew and Scoop install
+        run: |
+          set -euo pipefail
+          cd dist
+          for label in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 linux-armv7; do
+            archive="ikmal-editor-${RELEASE_TAG}-${label}.tar.gz"
+            listed=$(tar -tzf "$archive")
+            [ "$listed" = "ikmal-editor-${label}" ] || {
+              echo "$archive contains '$listed', but the formula installs 'ikmal-editor-${label}'" >&2
+              exit 1
+            }
+          done
+          windows="ikmal-editor-${RELEASE_TAG}-windows-amd64.zip"
+          unzip -l "$windows" | grep -q "ikmal-editor-windows-amd64.exe" || {
+            echo "$windows does not contain ikmal-editor-windows-amd64.exe, which scoop installs" >&2
+            exit 1
+          }
+          sha256sum -c SHA256SUMS
+          echo "All archives match the published install contract."
+
+      - name: Keep the rehearsal archives as an artifact
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-archives
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload the archives to the release
+        if: github.event_name != 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd dist
+          gh release upload "$RELEASE_TAG" ikmal-editor-* SHA256SUMS --repo "$GITHUB_REPOSITORY" --clobber
