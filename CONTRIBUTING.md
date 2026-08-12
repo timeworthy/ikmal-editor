@@ -44,6 +44,14 @@ For the browser extension harnesses, add the pinned Chromium and run them with
 npx playwright install chromium
 ```
 
+## The writing platform rewrite
+
+[docs/WRITING_PLATFORM.md](docs/WRITING_PLATFORM.md) is the single source for
+the architecture, where the migration actually stands, and what order the
+remaining work goes in. Read it before adding a feature to `desktop/` or
+`extension/` — both are legacy surfaces being replaced, and new work landing
+there widens the gap.
+
 ## Releasing
 
 The release process, how to rehearse it without publishing anything, and the
