@@ -53,6 +53,10 @@ jobs:
           # Strip the leading v so the file matches appVersion in main.go.
           echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
           echo "prerelease=${pre#v}" >> "$GITHUB_OUTPUT"
+          # What to name in the commit message. With no stable release the tag
+          # is empty, which produced "publish version.json for " with nothing
+          # after it.
+          echo "label=${tag:-$pre}" >> "$GITHUB_OUTPUT"
           echo "Stable: ${tag:-none}   Prerelease: ${pre:-none}"
 
       - name: Write version.json
@@ -109,5 +113,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add version.json
-          git commit -m "chore: publish version.json for ${{ steps.rel.outputs.tag }}"
+          git commit -m "chore: publish version.json for ${{ steps.rel.outputs.label }}"
           git push origin HEAD:main
