@@ -86,6 +86,13 @@ anything is published.
   with no runner while every other one finished, and during a real release it
   would have done so for six hours before timing out. A matrix entry naming a
   retired image fails by hanging, not by erroring.
+- **The Office private key is not restricted on Windows.**
+  `office-bridge/certificate.cjs` chmods the generated key to `0600`, which
+  Node applies only on POSIX; on Windows it toggles the read-only attribute and
+  the key reads back as `0666`. Restricting it there means setting an ACL, which
+  the bridge does not do. `tools/office_certificate.test.mjs` asserts the mode
+  on POSIX only, and says why, so the gap is recorded rather than hidden behind
+  a red test.
 - **Signing is not set up.** Packaged macOS apps carry an ad-hoc signature with
   no team identifier; `codesign --verify --deep --strict` and `spctl --assess`
   both fail. Distribution to anyone who is not prepared to bypass Gatekeeper
