@@ -29,14 +29,14 @@ it. Measured:
 | `packages/writing-ui` | **12 composites** | indicator, issue popover, selection summary, mode picker, indicator popover, review row, review workspace, undo notice, settings group, service health card, style-guide card |
 | `apps/desktop-editor` | **3 host capabilities** | `checkText`, `addDictionaryWord`, `onEditorText` |
 | `apps/browser-extension` | **1 message type** | `check` |
-| `apps/desktop-compact` | **does not exist** | |
+| `apps/desktop-compact` | **launcher, 9 capabilities** | quick check, service health, focus modes, route into the editor — no settings |
 | `apps/office`, `apps/vscode` | **do not exist** | |
 
 Against the legacy surface still shipping:
 
 | Surface | Legacy | On the new architecture |
 | --- | --- | --- |
-| Desktop host capabilities | 55 | 3 |
+| Desktop host capabilities | 55 | 12 |
 | Extension message types | 15 | 1 |
 | Extension HTML surfaces | 3 (popup, options, workspace) | 0 |
 | Desktop settings groups | 10 | 0 |
@@ -227,7 +227,32 @@ Note the standing obligation this creates: `indicator.test.mjs` asserts that
 every rendered action is one a host implements, and that list now includes
 `previous`, `next`, and `close`. A host adopting these cards owes all three.
 
-### Phase C — `apps/desktop-compact`, as a launcher only
+### Phase C — `apps/desktop-compact`, as a launcher only — **built, behind the flag**
+
+Built and driven: quick check with the shared indicator and issue card, service
+health, focus modes, and the route into the editor. Nine capabilities, all
+already present in the shell — no new IPC was added for it.
+
+It is the first surface to consume the Phase B composites, which is what the
+phase was for. The issue card it renders is the shared one, so navigating
+between findings works here too.
+
+**The launcher stays a launcher by construction.** Its preload cannot reach a
+single settings capability, `verify_desktop_rewrite.mjs` fails if one appears,
+and `rewrite_smoke.mjs` fails if a settings group renders in it. Both were
+mutation-checked.
+
+Running it found three things no test would have: `default-src 'none'` breaks a
+`file://` page outright because `'self'` resolves to an opaque origin;
+`desktop_slice` imports two modules that had to be staged with it; and the slice
+controller takes the field element, not read/write callbacks — an API I guessed
+instead of reading.
+
+**Exit, still open:** the legacy compact renderer is still what loads by
+default. Deleting it needs Phase D, because the legacy compact carries the ten
+settings groups and they have nowhere else to go yet.
+
+### Phase C — original scope
 
 The compact window becomes a launcher: quick check, service status, focus modes,
 and a way into the editor. **It carries no settings.** Its gear opens the
@@ -282,7 +307,7 @@ The old gates measured depth. This measures breadth, and both are required.
 
 | Metric | Now | Target |
 | --- | --- | --- |
-| Desktop host capabilities on the new architecture | 3 / 55 | 55 / 55 |
+| Desktop host capabilities on the new architecture | 12 / 55 | 55 / 55 |
 | Extension message types | 1 / 15 | 15 / 15 |
 | Extension HTML surfaces | 0 / 3 | 3 / 3 |
 | Settings groups on shared components | 0 / 10 | 10 / 10 |

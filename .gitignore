@@ -35,6 +35,18 @@ apps/desktop-editor/issue_popover.js
 apps/desktop-editor/tokens.css
 apps/desktop-editor/primitives.css
 
+# Compiled modules staged into the launcher at package time
+apps/desktop-compact/writing-core.js
+apps/desktop-compact/desktop_slice.js
+apps/desktop-compact/browser_field.js
+apps/desktop-compact/browser_slice.js
+apps/desktop-compact/indicator.js
+apps/desktop-compact/issue_popover.js
+apps/desktop-compact/mode_picker.js
+apps/desktop-compact/settings.js
+apps/desktop-compact/tokens.css
+apps/desktop-compact/primitives.css
+
 # Compiled package output staged into the extension at build time. Regenerated
 # by tools/verify_extension.mjs and tools/package_extension.mjs, so a checkout
 # builds them rather than carrying a copy that can go stale.

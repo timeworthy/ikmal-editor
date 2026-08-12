@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-density="compact">
+<head>
+  <meta charset="utf-8">
+  <!-- Matches the editor slice. default-src 'none' looks stricter but breaks a
+       file:// page outright: 'self' resolves to an opaque origin and nothing
+       loads at all. connect-src 'none' is the guarantee that matters here —
+       this window talks to the shell through preload, never the network. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>ikmal editor</title>
+  <link rel="stylesheet" href="./tokens.css">
+  <link rel="stylesheet" href="./primitives.css">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <!--
+    The launcher. Quick check, service status, focus modes, and the way into the
+    editor — nothing else. Settings live in the editor, and the gear here opens
+    them there rather than growing a second copy.
+  -->
+  <header class="launcher-head">
+    <span class="launcher-kicker">WRITING QUALITY</span>
+    <div class="launcher-head-row">
+      <h1 class="launcher-title">ikmal editor</h1>
+      <span id="indicator-anchor"></span>
+    </div>
+  </header>
+
+  <main class="launcher-body">
+    <section aria-label="Quick check">
+      <textarea id="quick-input" class="cnt-textarea" rows="4" placeholder="Paste or type something to check…" aria-label="Text to check"></textarea>
+      <div class="launcher-stats" id="quick-stats"></div>
+    </section>
+
+    <section id="issue-popover" hidden aria-label="Writing issue"></section>
+
+    <section id="modes" aria-label="Checking mode"></section>
+
+    <section id="services" aria-label="Services"></section>
+  </main>
+
+  <footer class="launcher-foot">
+    <button class="cnt-btn" id="open-editor" type="button">Open editor</button>
+    <button class="cnt-btn" id="open-settings" type="button">Settings</button>
+  </footer>
+
+  <script type="module" src="./renderer.js"></script>
+</body>
+</html>

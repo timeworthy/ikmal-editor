@@ -38,3 +38,23 @@ console.log('Fresh desktop rewrite source verified: isolated renderer, preload-s
 // is exactly the kind that disappears unnoticed.
 assert.ok(fs.existsSync(path.join(root, 'tools', 'design_system_gallery_smoke.mjs')), 'missing design-system gallery harness');
 assert.ok(fs.existsSync(path.join(root, 'packages', 'design-system', 'gallery.html')), 'missing design-system gallery');
+
+// The launcher is a launcher. Its preload is the boundary that keeps it one:
+// a capability it cannot reach is a settings panel it cannot grow.
+const compact = path.join(root, 'apps', 'desktop-compact');
+for (const file of ['index.html', 'renderer.js', 'preload.cjs', 'styles.css']) {
+  assert.ok(fs.existsSync(path.join(compact, file)), `missing launcher file: ${file}`);
+}
+const compactPreload = fs.readFileSync(path.join(compact, 'preload.cjs'), 'utf8');
+for (const capability of ['checkText', 'getServiceState', 'getFocusMode', 'setFocusMode', 'openEditor']) {
+  assert.ok(compactPreload.includes(capability), `launcher preload is missing ${capability}`);
+}
+for (const forbidden of ['getQualityStatus', 'getStyleGuideState', 'getOfficeBridgeState', 'getSpellServerState', 'getIntegrationStatus', 'setAnnotationPreferences']) {
+  assert.ok(!compactPreload.includes(forbidden), `launcher preload exposes a settings capability: ${forbidden}`);
+}
+// Layout only: a colour here is a second visual system starting.
+const compactStyles = fs.readFileSync(path.join(compact, 'styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+assert.doesNotMatch(compactStyles, /#[0-9a-f]{3,8}\b/i, 'launcher styles hard-code a colour');
+assert.doesNotMatch(compactStyles, /\brgba?\(\s*\d/, 'launcher styles hard-code a colour');
+assert.ok(fs.readFileSync(path.join(root, 'desktop', 'main.cjs'), 'utf8').includes('desktopCompactPagePath'),
+  'the shell must be able to load the launcher slice');

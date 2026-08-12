@@ -86,6 +86,24 @@ async function loadWritingCore() {
   return writingCoreAPI;
 }
 
+// The launcher slice, behind the same flag as the editor slice. Off, the legacy
+// compact renderer loads exactly as before.
+function desktopCompactPagePath() {
+  if (process.env.IKMAL_DESKTOP_REWRITE_SLICE !== '1') return path.join(__dirname, 'index.html');
+  const base = process.env.IKMAL_DESKTOP_PACKAGED === '1' || app.isPackaged
+    ? path.join(process.resourcesPath, 'desktop-compact')
+    : path.resolve(__dirname, '..', 'apps', 'desktop-compact');
+  return path.join(base, 'index.html');
+}
+
+function desktopCompactPreloadPath() {
+  if (process.env.IKMAL_DESKTOP_REWRITE_SLICE !== '1') return path.join(__dirname, 'preload.cjs');
+  const base = process.env.IKMAL_DESKTOP_PACKAGED === '1' || app.isPackaged
+    ? path.join(process.resourcesPath, 'desktop-compact')
+    : path.resolve(__dirname, '..', 'apps', 'desktop-compact');
+  return path.join(base, 'preload.cjs');
+}
+
 function desktopEditorPagePath() {
   if (process.env.IKMAL_DESKTOP_REWRITE_SLICE !== '1') return path.join(__dirname, 'editor.html');
   const base = process.env.IKMAL_DESKTOP_PACKAGED === '1' || app.isPackaged
@@ -807,10 +825,10 @@ function createWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      preload: path.join(__dirname, 'preload.cjs'),
+      preload: desktopCompactPreloadPath(),
     },
   });
-  mainWindow.loadFile(path.join(__dirname, 'index.html'));
+  mainWindow.loadFile(desktopCompactPagePath());
   // A launch the user asked for should land on the popover. A launch-at-login
   // start should not: the window positions itself at the pointer and takes
   // focus, so showing it would interrupt whatever the login session opens with.

@@ -33,7 +33,7 @@ export const ISSUE_POPOVER_CSS = `
 .writing-issue-popover { color: var(--fg-1); display: grid; gap: var(--space-3); min-width: 280px; max-width: 360px; }
 .writing-issue-meta { align-items: center; color: var(--fg-3); display: flex; font: 600 11px/1 var(--font-mono); gap: var(--space-2); text-transform: uppercase; }
 .writing-issue-nav { align-items: center; display: flex; gap: var(--space-2); margin-inline-start: auto; }
-.writing-issue-position { color: var(--fg-4); font: 500 11px/1 var(--font-mono); }
+.writing-issue-position { color: var(--fg-4); font: 500 11px/1 var(--font-mono); white-space: nowrap; }
 .writing-issue-message { font: 500 14px/1.45 var(--font-sans); margin: 0; }
 .writing-issue-match { background: var(--accent-soft); border-radius: var(--radius-1); color: var(--fg-1); font: 13px/1.4 var(--font-mono); padding: var(--space-2) var(--space-3); }
 .writing-issue-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }

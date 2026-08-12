@@ -158,7 +158,36 @@ const electron = spawn(electronPath, launchArgs, {
 let compact;
 let editor;
 try {
-  compact = await connect(await waitForTarget((entry) => entry.url.endsWith('/desktop/index.html') || (packagedSmoke && entry.url.includes('/app.asar/index.html')), 'compact target'));
+  // With the rewrite slice on, the compact window is the launcher in
+  // apps/desktop-compact; with it off it is the legacy renderer. Both are
+  // accepted so this smoke describes whichever one is under test.
+  compact = await connect(await waitForTarget((entry) => entry.url.endsWith('/desktop/index.html')
+    || entry.url.includes('/desktop-compact/index.html')
+    || (packagedSmoke && entry.url.includes('/app.asar/index.html')), 'compact target'));
+
+  // The launcher is a launcher. It carries quick check, service status, focus
+  // modes and a route into the editor — and no settings, because settings live
+  // in the editor and a second copy here is the duplication being removed.
+  const launcher = await compact.evaluate(`(() => ({
+    surface: Object.keys(window.ikmal || {}).sort(),
+    settingsGroups: document.querySelectorAll('.cnt-acc-item, .settings-group').length,
+    hasQuickCheck: Boolean(document.querySelector('#quick-input')),
+    hasModes: Boolean(document.querySelector('#modes')),
+    hasServices: Boolean(document.querySelector('#services')),
+  }))()`);
+  if (launcher.hasQuickCheck) {
+    if (launcher.settingsGroups !== 0) {
+      throw new Error(`The launcher grew ${launcher.settingsGroups} settings groups; settings belong in the editor.`);
+    }
+    if (!launcher.hasModes || !launcher.hasServices) {
+      throw new Error(`Launcher is missing its own surfaces: ${JSON.stringify(launcher)}`);
+    }
+    // A launcher that could reach settings capabilities would invite the copy
+    // this phase exists to prevent, so the surface is asserted, not assumed.
+    const forbidden = launcher.surface.filter((name) => /Quality|StyleGuide|Office|SpellServer|Integration|Annotation/i.test(name));
+    if (forbidden.length) throw new Error(`Launcher preload exposes settings capabilities: ${forbidden.join(', ')}`);
+  }
+
   await compact.evaluate("window.ikmal.openEditor('The results is ready.')");
   editor = await connect(await waitForTarget((entry) => entry.url.includes('/apps/desktop-editor/index.html') || (packagedSmoke && entry.url.includes('/Resources/desktop-editor/index.html')), 'fresh editor target'));
   await waitForState(editor, "Boolean(document.querySelector('#editor-input') && document.querySelector('#indicator-anchor')?.shadowRoot)", Boolean, 'Fresh renderer did not mount');

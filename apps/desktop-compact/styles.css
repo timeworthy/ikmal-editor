@@ -1,0 +1,29 @@
+/* Layout only. Every colour, radius, spacing, and font comes from tokens.css,
+   and every control from primitives.css — this file positions them and nothing
+   more. A declaration here that names a colour is a second visual system
+   starting, which is the thing the rewrite exists to stop. */
+
+body {
+  background: var(--bg-0);
+  color: var(--fg-1);
+  display: grid;
+  font: 400 13px/1.5 var(--font-sans);
+  gap: var(--space-4);
+  grid-template-rows: auto 1fr auto;
+  margin: 0;
+  min-height: 100vh;
+  padding: var(--space-4);
+}
+
+.launcher-head { display: grid; gap: var(--space-1); -webkit-app-region: drag; }
+.launcher-head-row { align-items: center; display: flex; gap: var(--space-3); justify-content: space-between; }
+.launcher-kicker { color: var(--fg-4); font: 500 10px/1 var(--font-mono); letter-spacing: .08em; }
+.launcher-title { color: var(--fg-1); font: 600 15px/1.2 var(--font-sans); margin: 0; }
+#indicator-anchor { -webkit-app-region: no-drag; }
+
+.launcher-body { display: grid; gap: var(--space-4); align-content: start; }
+.launcher-stats { color: var(--fg-4); font: 400 11px/1 var(--font-mono); margin-top: var(--space-2); }
+.launcher-foot { display: flex; gap: var(--space-2); }
+.launcher-foot .cnt-btn { flex: 1; }
+
+#issue-popover[hidden] { display: none; }
