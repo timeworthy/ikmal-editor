@@ -60,9 +60,16 @@ function closePopover() {
   state.popover = null;
 }
 
-function openPopover() {
+function openPopover(index = state.issueIndex || 0) {
   const view = state.controller?.state();
-  const issue = view?.result?.matches?.[0];
+  const issues = view?.result?.matches || [];
+  // Clamped rather than wrapped: a recheck can shorten the list under a card
+  // that was already open, and wrapping would move the writer somewhere they
+  // did not ask to go.
+  const requested = Number.isFinite(index) ? index : (state.issueIndex || 0);
+  const position = Math.min(Math.max(0, requested), Math.max(0, issues.length - 1));
+  state.issueIndex = position;
+  const issue = issues[position];
   if (!issue) return closePopover();
   closePopover();
   const host = document.createElement('div');
@@ -71,7 +78,7 @@ function openPopover() {
   host.style.cssText = 'position:fixed;right:16px;bottom:56px;z-index:2147483647;';
   document.documentElement.append(host);
   const shadow = host.attachShadow({ mode: 'open' });
-  shadow.innerHTML = `<style>${state.tokenCSS}${state.primitiveCSS}${ISSUE_POPOVER_CSS}</style>${renderIssuePopover(issue)}`;
+  shadow.innerHTML = `<style>${state.tokenCSS}${state.primitiveCSS}${ISSUE_POPOVER_CSS}</style>${renderIssuePopover(issue, { index: position, total: issues.length })}`;
   shadow.addEventListener('click', (event) => {
     // The chooser renders one button per candidate, so the clicked control
     // carries the replacement rather than the popover assuming the first one.
@@ -92,6 +99,11 @@ function openPopover() {
       void runCheck();
     }
     if (action === 'ignore') closePopover();
+    if (action === 'close') closePopover();
+    // The card is reopened at the neighbouring finding rather than mutated in
+    // place, so its state cannot drift from the result it is describing.
+    if (action === 'previous') openPopover(position - 1);
+    if (action === 'next') openPopover(position + 1);
   });
   state.popover = host;
 }

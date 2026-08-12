@@ -98,7 +98,10 @@ test('a finding to review offers its candidates instead of an unhandled action',
   for (const html of [review, reword, renderIssuePopover(spellingIssue, { canAddToDictionary: true })]) {
     const actions = [...html.matchAll(/data-action="([^"]+)"/g)].map((match) => match[1]);
     assert.ok(actions.length > 0);
-    for (const action of actions) assert.ok(['apply', 'ignore', 'dictionary'].includes(action), `unhandled action: ${action}`);
+    // Adding an action here is a commitment: a host that renders this card must
+    // implement every one, or it ships a control that does nothing when clicked.
+    const implemented = ['apply', 'ignore', 'dictionary', 'previous', 'next', 'close'];
+    for (const action of actions) assert.ok(implemented.includes(action), `unhandled action: ${action}`);
     for (const button of html.match(/<button[^>]*data-action="apply"[^>]*>/g) || []) {
       assert.match(button, /data-value="[^"]+"/, 'an apply control must name the replacement it applies');
     }

@@ -33,10 +33,21 @@ function renderIndicatorView(view) {
   status.textContent = view.indicator.status === 'unavailable' ? 'Local checker unavailable' : 'Local checker';
 }
 
-function showIssue() {
-  const issue = controller?.state().result?.matches?.[0];
+let issueIndex = 0;
+
+function showIssue(index = issueIndex) {
+  const issues = controller?.state().result?.matches || [];
+  // Clamped rather than wrapped: a recheck can shorten the list under an open
+  // card, and wrapping would move the writer somewhere they did not ask to go.
+  const requested = Number.isFinite(index) ? index : issueIndex;
+  issueIndex = Math.min(Math.max(0, requested), Math.max(0, issues.length - 1));
+  const issue = issues[issueIndex];
   if (!issue) { issuePopover.hidden = true; issuePopover.innerHTML = ''; return; }
-  issuePopover.innerHTML = `<style>${ISSUE_POPOVER_CSS}</style>${renderIssuePopover(issue, { canAddToDictionary: Boolean(window.ikmal.addDictionaryWord) })}`;
+  issuePopover.innerHTML = `<style>${ISSUE_POPOVER_CSS}</style>${renderIssuePopover(issue, {
+    canAddToDictionary: Boolean(window.ikmal.addDictionaryWord),
+    index: issueIndex,
+    total: issues.length,
+  })}`;
   issuePopover.hidden = false;
 }
 
@@ -84,7 +95,9 @@ controller = createDesktopSliceController({
   service: { checkText: (text) => window.ikmal.checkText(text) },
 });
 renderIndicatorView(controller.state());
-indicatorShadow.addEventListener('click', showIssue);
+// Wrapped, not passed directly: showIssue takes an index now, and a listener
+// would hand it the click event as one.
+indicatorShadow.addEventListener('click', () => showIssue());
 checkButton.addEventListener('click', () => void checkDraft());
 window.ikmal.onEditorText?.((text) => {
   input.value = String(text || '');
@@ -100,7 +113,7 @@ issuePopover.addEventListener('click', (event) => {
   // carries the replacement rather than the popover assuming the first one.
   const control = event.target.closest?.('[data-action]');
   const action = control?.dataset.action;
-  const issue = controller.state().result?.matches?.[0];
+  const issue = controller.state().result?.matches?.[issueIndex];
   const value = control?.dataset.value || issue?.replacements?.[0]?.value || '';
   if (action === 'apply' && issue && value) {
     // Refusing a correction whose finding no longer describes the draft is
@@ -116,6 +129,11 @@ issuePopover.addEventListener('click', (event) => {
   }
   if (action === 'dictionary' && issue) void addToDictionary(String(issue.matchedText || '').trim());
   if (action === 'ignore') issuePopover.hidden = true;
+  if (action === 'close') issuePopover.hidden = true;
+  // Re-rendered at the neighbouring finding rather than mutated in place, so
+  // the card cannot drift from the result it describes.
+  if (action === 'previous') showIssue(issueIndex - 1);
+  if (action === 'next') showIssue(issueIndex + 1);
 });
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape' || issuePopover.hidden) return;

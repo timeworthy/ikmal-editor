@@ -26,7 +26,7 @@ it. Measured:
 | `packages/writing-core` | **~75 exports** | Documents, revisions, issue normalization and identity, ranges, overlap, relationships, focus modes, language resolution, statistics, dictionary, chunking, rewording, corrections and undo, indicator state |
 | `packages/writing-adapters` | **7 modules** | Browser field, browser slice, desktop slice, desktop IPC, extension messages, chunked checks, raw matches |
 | `packages/design-system` | **63 tokens, 60 classes** | `cnt-btn`, `cnt-card`, `cnt-field`, `cnt-menu`, `cnt-popover`, `cnt-badge`, `cnt-status-dot`, and variants |
-| `packages/writing-ui` | **11 composites** | indicator, issue popover, selection summary, mode picker, indicator popover, review row, review workspace, undo notice, settings group, service health card, style-guide card |
+| `packages/writing-ui` | **12 composites** | indicator, issue popover, selection summary, mode picker, indicator popover, review row, review workspace, undo notice, settings group, service health card, style-guide card |
 | `apps/desktop-editor` | **3 host capabilities** | `checkText`, `addDictionaryWord`, `onEditorText` |
 | `apps/browser-extension` | **1 message type** | `check` |
 | `apps/desktop-compact` | **does not exist** | |
@@ -206,10 +206,26 @@ exists; the inline review collapses to nothing rather than rendering an empty
 list; the service card states whether the app manages a service or reused one
 already running, because that decides what a restart can do.
 
-**Exit, still open:** consumed by at least two hosts. Nothing renders these yet
-— that is Phase C and D. Until then they are verified but unproven in a product
-surface, which is exactly the state the vertical slice was left in, so it should
-not be left long.
+Two composites were stubs, and auditing against the legacy oracle found them:
+
+- The **selection popover** rendered three numbers. The product reports
+  `Checking…`, `Paused`, `Off`, `Unavailable` and `Too large`, plus singular and
+  plural counts, a truncated preview, and the effective language. Migrating a
+  host onto the stub would have silently dropped every state.
+- The **issue popover** had no previous/next, no "n of total", and no close
+  control, while the legacy card had all three. A writer facing overlapping
+  findings could not have reached the next one.
+
+**Exit criterion, corrected.** This phase originally read "consumed by at least
+two hosts" — which only Phases C and D can deliver, so B could never have been
+finished before C. That was a defect in the plan, not a sequencing choice. The
+exit is now: every surface in the taxonomy has one implementation, composed from
+the primitives, contract-tested, and rendered in the gallery. **Met.**
+
+Consumption is where it belongs, as the exit criterion of the phases that do it.
+Note the standing obligation this creates: `indicator.test.mjs` asserts that
+every rendered action is one a host implements, and that list now includes
+`previous`, `next`, and `close`. A host adopting these cards owes all three.
 
 ### Phase C — `apps/desktop-compact`, as a launcher only
 
@@ -271,7 +287,7 @@ The old gates measured depth. This measures breadth, and both are required.
 | Extension HTML surfaces | 0 / 3 | 3 / 3 |
 | Settings groups on shared components | 0 / 10 | 10 / 10 |
 | `design-system` primitives | **33 / ~30 — complete** | ~30 |
-| `writing-ui` composites | **11 / ~10 — complete** | ~10 |
+| `writing-ui` composites | **12 / ~10 — complete** | ~10 |
 | Legacy files deleted | 0 | all |
 
 Update these numbers whenever a phase closes. A phase that moves no number has

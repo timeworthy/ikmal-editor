@@ -143,13 +143,16 @@
   const ui = await import('../writing-ui/dist/indicator_popover.js');
   const settings = await import('../writing-ui/dist/settings.js');
   const review = await import('../writing-ui/dist/review.js');
+  const selection = await import('../writing-ui/dist/selection_popover.js');
+  const issue = await import('../writing-ui/dist/issue_popover.js');
   const composites = document.querySelector('#composites');
   const issues = [
     { id: 'i1', message: 'A plural subject takes a plural verb.', matchedText: 'results is', source: 'LanguageTool', category: 'grammar' },
     { id: 'i2', message: 'This clause uses passive voice.', matchedText: 'was reviewed', source: 'quality-sidecar', category: 'style' },
   ];
   const style = document.createElement('style');
-  style.textContent = ui.INDICATOR_POPOVER_CSS + settings.SETTINGS_CSS + review.REVIEW_CSS;
+  style.textContent = ui.INDICATOR_POPOVER_CSS + settings.SETTINGS_CSS + review.REVIEW_CSS
+    + selection.SELECTION_POPOVER_CSS + issue.ISSUE_POPOVER_CSS;
   document.head.append(style);
   composites.innerHTML = [
     ui.renderIndicatorPopover({ status: 'issues', issueCount: 2, words: 1284, characters: 7310, issues, modes: { mode: 'active' } }),
@@ -166,6 +169,9 @@
     settings.renderStyleGuideCard({ guides: [{ id: 'ap', name: 'AP Stylebook', ruleCount: 42 }], selectedId: 'ap', enabled: true }),
     review.renderReviewWorkspace({ label: 'Draft.md', issues, words: 1284, characters: 7310, selectedId: 'i2' }),
     review.renderUndoNotice({ from: 'teh', to: 'the' }),
+    selection.renderSelectionPopover({ status: 'ready', words: 12, characters: 63, issues: 2, language: 'en-US', text: 'The results is wrong and the sentence was reviewed by the team before it shipped.' }),
+    selection.renderSelectionPopover({ status: 'too-large', words: 41200, characters: 236000 }),
+    issue.renderIssuePopover({ id: 'a', category: 'spelling', source: 'LanguageTool', severity: 'medium', message: 'Use the correct spelling.', matchedText: 'teh', actionability: 'safe-apply', replacements: [{ value: 'the' }] }, { index: 1, total: 3, canAddToDictionary: true }),
   ].join('');
 
   // The extension renders primitives inside a Shadow DOM, so the gallery proves

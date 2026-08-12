@@ -98,3 +98,56 @@ test('composites compose primitives and declare no colour of their own', async (
     assert.match(source, /cnt-/, `${file} does not compose any primitive`);
   }
 });
+
+// The selection popover was a three-number stub while the legacy extension —
+// the behavioural oracle — reported Checking…, Paused, Off, Unavailable and
+// Too large. Migrating on the stub would have dropped every one of them.
+test('the selection popover reports the states the product actually has', async () => {
+  const { renderSelectionPopover, normalizeSelectionState, previewText } = await import('../dist/selection_popover.js');
+  const states = { checking: 'Checking…', paused: 'Paused', off: 'Off', unavailable: 'Unavailable', 'too-large': 'Too large' };
+  for (const [status, label] of Object.entries(states)) {
+    const html = renderSelectionPopover({ status, words: 12, characters: 63 });
+    assert.match(html, new RegExp(label.replace('…', '…')), `${status} must say ${label}`);
+    // A count would be untrue in these states, so it is not shown.
+    assert.doesNotMatch(html, />\d+<\/strong> <small>issues?/);
+    // The counts themselves are always true and always shown.
+    assert.match(html, /<strong>12<\/strong> <small>words/);
+  }
+  const ready = renderSelectionPopover({ status: 'ready', words: 1, characters: 4, issues: 1, language: 'en-US' });
+  assert.match(ready, /<strong>1<\/strong> <small>issue<\/small>/);
+  assert.match(ready, /<strong>1<\/strong> <small>word<\/small>/, 'singular when there is one');
+  assert.match(ready, /data-action="review-selection"/);
+  assert.match(ready, /en-US/);
+  // Nothing to review means no action that leads nowhere.
+  assert.doesNotMatch(renderSelectionPopover({ status: 'ready', issues: 0 }), /review-selection/);
+  assert.equal(normalizeSelectionState({ status: 'nonsense' }).status, 'checking');
+});
+
+test('a selection preview is truncated without cutting a word or trusting input', async () => {
+  const { renderSelectionPopover, previewText, SELECTION_PREVIEW_LIMIT } = await import('../dist/selection_popover.js');
+  const long = 'The quick brown fox jumps over the lazy dog and keeps running well past any reasonable limit for a preview line';
+  const preview = previewText(long);
+  assert.ok(preview.length <= SELECTION_PREVIEW_LIMIT + 1, `preview too long: ${preview.length}`);
+  assert.match(preview, /…$/);
+  assert.doesNotMatch(preview, /\s…$/, 'trailing space before the ellipsis');
+  assert.equal(previewText('  spaced   out  '), 'spaced out');
+  assert.doesNotMatch(renderSelectionPopover({ text: '<img src=x onerror=alert(1)>', status: 'ready' }), /<img src=x/);
+});
+
+// Plan §6.3 requires previous/next with "n of total", and a close control. The
+// shared card had neither while the legacy extension did, so a host migrating
+// onto it would have lost the ability to reach an adjacent finding at all.
+test('the issue popover can navigate between findings and be closed', async () => {
+  const { renderIssuePopover } = await import('../dist/issue_popover.js');
+  const issue = { id: 'a', category: 'spelling', source: 'LanguageTool', severity: 'medium', message: 'Use "the"', matchedText: 'teh', actionability: 'safe-apply', replacements: [{ value: 'the' }] };
+  const middle = renderIssuePopover(issue, { index: 1, total: 3 });
+  assert.match(middle, /2 of 3/);
+  assert.match(middle, /data-action="previous"(?![^>]*disabled)/);
+  assert.match(middle, /data-action="next"(?![^>]*disabled)/);
+  // The ends must not offer a step that goes nowhere.
+  assert.match(renderIssuePopover(issue, { index: 0, total: 3 }), /data-action="previous"[^>]*disabled/);
+  assert.match(renderIssuePopover(issue, { index: 2, total: 3 }), /data-action="next"[^>]*disabled/);
+  // One finding needs no navigation, but always needs a way out.
+  assert.doesNotMatch(renderIssuePopover(issue, { total: 1 }), /data-action="next"/);
+  assert.match(renderIssuePopover(issue), /data-action="close"/);
+});
