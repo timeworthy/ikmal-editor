@@ -44,6 +44,12 @@ For the browser extension harnesses, add the pinned Chromium and run them with
 npx playwright install chromium
 ```
 
+## Releasing
+
+The release process, how to rehearse it without publishing anything, and the
+rule that decides which workflows can run from which branch are documented in
+[docs/RELEASING.md](docs/RELEASING.md).
+
 ## Building & Testing Cross-Platform Binaries
 
 ```bash

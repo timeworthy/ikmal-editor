@@ -1,5 +1,14 @@
 name: Build desktop release bundles
 
+# The push triggers are how this gets rehearsed. `release` and
+# `workflow_dispatch` are only registered from the default branch, so while
+# these workflows live on a feature branch neither can fire — which is how the
+# pipeline reached its first real use never having run once. A push event
+# resolves the workflow from the ref being pushed, so it works from anywhere.
+#
+# A staging run builds and archives exactly as a release does, then keeps the
+# bundles as workflow artifacts instead of publishing them. Nothing public is
+# created, so a rehearsal costs nothing but runner time.
 on:
   release:
     types: [published]
@@ -9,12 +18,17 @@ on:
         description: Existing GitHub release tag to receive the desktop bundles
         required: true
         type: string
+  push:
+    # A branch for iterating on the workflow itself, and a release-candidate tag
+    # for rehearsing against a frozen tree.
+    branches: [staging]
+    tags: ['v*-rc*']
 
 permissions:
   contents: write
 
 concurrency:
-  group: desktop-release-${{ github.event.release.tag_name || inputs.release_tag }}
+  group: desktop-release-${{ github.event.release.tag_name || inputs.release_tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -38,14 +52,16 @@ jobs:
             arch: x64
     runs-on: ${{ matrix.runner }}
     env:
-      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+      # A staging run has no release behind it, so the pushed ref names the
+      # archives: a tag gives v0.9.1-rc1, the branch gives staging.
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag || github.ref_name }}
       IKMAL_DESKTOP_PLATFORM: ${{ matrix.platform }}
       IKMAL_DESKTOP_ARCH: ${{ matrix.arch }}
     steps:
       - name: Check out release source
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.release.tag_name || inputs.release_tag }}
+          ref: ${{ github.event.release.tag_name || inputs.release_tag || github.ref }}
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -114,7 +130,21 @@ jobs:
           (Get-FileHash $archive -Algorithm SHA256).Hash.ToLower() + "  $archive" | Set-Content "$archive.sha256"
           "ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Append
 
+      # A rehearsal keeps its bundles here, where they can be downloaded and
+      # inspected, and publishes nothing.
+      - name: Keep the staging bundle as an artifact
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            ${{ env.ARCHIVE }}
+            ${{ env.ARCHIVE }}.sha256
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Upload desktop bundle to release
+        if: github.event_name != 'push'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
