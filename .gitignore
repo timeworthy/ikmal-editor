@@ -33,6 +33,10 @@ apps/desktop-editor/desktop_slice.js
 apps/desktop-editor/indicator.js
 apps/desktop-editor/issue_popover.js
 apps/desktop-editor/marks.js
+apps/desktop-editor/categories.js
+apps/desktop-editor/review.js
+apps/desktop-editor/indicator_popover.js
+apps/desktop-editor/mode_picker.js
 apps/desktop-editor/settings.js
 apps/desktop-editor/tokens.css
 apps/desktop-editor/primitives.css
@@ -44,6 +48,7 @@ apps/desktop-compact/browser_field.js
 apps/desktop-compact/browser_slice.js
 apps/desktop-compact/indicator.js
 apps/desktop-compact/issue_popover.js
+apps/desktop-compact/categories.js
 apps/desktop-compact/mode_picker.js
 apps/desktop-compact/settings.js
 apps/desktop-compact/tokens.css

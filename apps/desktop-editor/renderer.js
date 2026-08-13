@@ -3,6 +3,8 @@ import { createDesktopSliceController } from './desktop_slice.js';
 import { INDICATOR_CSS, mountIndicator, renderIndicator } from './indicator.js';
 import { ISSUE_POPOVER_CSS, renderIssuePopover } from './issue_popover.js';
 import { applyAnnotationPreferences, attachMarkSurface, MARKS_CSS, renderRelationshipCard } from './marks.js';
+import { isStyleGuideFinding } from './categories.js';
+import { normalizeReviewLayout, renderReviewSidebar, REVIEW_CSS } from './review.js';
 import { renderSettingsPage, SETTINGS_PAGE_CSS } from './settings_page.js';
 
 const input = document.querySelector('#editor-input');
@@ -14,9 +16,19 @@ const indicatorAnchor = document.querySelector('#indicator-anchor');
 const issuePopover = document.querySelector('#issue-popover');
 const surface = document.querySelector('#editor-surface');
 const marksLayer = document.querySelector('#editor-marks');
+const workspace = document.querySelector('#workspace');
+const reviewSidebar = document.querySelector('#review-sidebar');
 const marksStyle = document.createElement('style');
-marksStyle.textContent = MARKS_CSS;
+marksStyle.textContent = `${MARKS_CSS}${REVIEW_CSS}`;
 document.head.append(marksStyle);
+
+// Which shape the findings take. Held here as well as stored, because every
+// paint asks it whether to draw a list, a card, or both.
+let reviewLayout = 'sidebar';
+// The selected style guide's name, so a finding from it can say which document
+// it came from. Read once and refreshed when the selection changes; a finding
+// cannot name a guide the writer has since turned off.
+let styleGuideName = '';
 const DESIGN_ATTRIBUTES = ['theme', 'palette', 'density', 'contrast'];
 function syncDesignAttributes() {
   for (const attribute of DESIGN_ATTRIBUTES) {
@@ -92,6 +104,33 @@ function anchorCard(mark) {
   issuePopover.style.top = `${top}px`;
 }
 
+// The findings beside the draft. Only the selected row carries controls, and it
+// uses the same data-action names the card does, so both layouts land in one
+// handler rather than two that can disagree about what Apply means.
+function paintSidebar() {
+  if (reviewLayout !== 'sidebar') { reviewSidebar.innerHTML = ''; return; }
+  const issues = visibleIssues();
+  const state = controller?.state();
+  reviewSidebar.innerHTML = renderReviewSidebar({
+    issues: issues.map((issue) => ({
+      id: issue.id,
+      message: issue.message,
+      matchedText: issue.matchedText,
+      category: issue.category,
+      // The one provenance worth naming. The engine that noticed a finding is
+      // this product's plumbing; a style guide is a document the writer chose
+      // and can switch off, so it is named and the rest are not.
+      ...(styleGuideName && isStyleGuideFinding(issue.source) ? { guide: styleGuideName } : {}),
+      replacements: issue.replacements,
+      canAddToDictionary: Boolean(window.ikmal.addDictionaryWord),
+    })),
+    selectedId: issues[issueIndex]?.id,
+    ...(state?.indicator?.status === 'unavailable'
+      ? { unavailableReason: 'The local checker is not answering, so there is nothing to show yet.' }
+      : {}),
+  });
+}
+
 function showIssue(index = issueIndex) {
   const issues = visibleIssues();
   // Clamped rather than wrapped: a recheck can shorten the list under an open
@@ -99,6 +138,17 @@ function showIssue(index = issueIndex) {
   const requested = Number.isFinite(index) ? index : issueIndex;
   issueIndex = Math.min(Math.max(0, requested), Math.max(0, issues.length - 1));
   const issue = issues[issueIndex];
+  // In the sidebar the finding is already on screen with its controls, so a
+  // card over the draft would be the same thing twice — one of them covering
+  // the words it is about.
+  if (reviewLayout === 'sidebar') {
+    paintSidebar();
+    if (issue) {
+      highlightMark(issue.id);
+      reviewSidebar.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest' });
+    }
+    return;
+  }
   if (!issue) { hideCard(); return; }
   issuePopover.innerHTML = `<style>${ISSUE_POPOVER_CSS}</style>${renderIssuePopover(issue, {
     canAddToDictionary: Boolean(window.ikmal.addDictionaryWord),
@@ -107,6 +157,15 @@ function showIssue(index = issueIndex) {
   })}`;
   issuePopover.hidden = false;
   anchorCard(markFor(issue.id));
+}
+
+// Which mark the sidebar is pointing at. The list and the text are two views of
+// one set of findings, so selecting in either has to show in the other.
+function highlightMark(issueId) {
+  for (const mark of marksLayer.querySelectorAll('.writing-underline')) {
+    mark.classList.toggle('is-active', mark.dataset.issueId === issueId);
+  }
+  markFor(issueId)?.scrollIntoView({ block: 'nearest' });
 }
 
 // A pronoun link has nothing to apply or ignore, so it gets the card that
@@ -173,6 +232,7 @@ async function checkDraft(scope) {
     renderIndicatorView(view);
     scheduleFullCheck(view);
     paintMarks();
+    paintSidebar();
     // Refreshed if it is open, never opened. A check runs 350ms after every
     // keystroke, and the card is anchored over the draft now — so opening it
     // here would drop a panel on top of the sentence being written, several
@@ -199,15 +259,21 @@ const marks = attachMarkSurface({
   onActivate({ mark, issueId, relationshipId }) {
     if (issueId) {
       const index = visibleIssues().findIndex((issue) => issue.id === issueId);
+      // In sidebar mode this selects the row rather than opening a card, so
+      // pointing at a mark and clicking its entry in the list are the same act.
       if (index >= 0) showIssue(index);
       return;
     }
+    // A pronoun link has no row in the list — it is not a finding to act on —
+    // so it gets its card in either layout.
     if (relationshipId) showRelationship(relationshipId, mark);
   },
   // Only what the marks opened is taken away again. The writer may have opened
   // this card from the indicator and moved the pointer across the text on the
   // way to its buttons, and closing it under them would be its own bug.
-  onDismiss() { if (cardCameFromAMark()) hideCard(); },
+  // Nothing to dismiss in sidebar mode: the selection is the list's, and the
+  // pointer leaving the text does not deselect a row the writer is working on.
+  onDismiss() { if (reviewLayout !== 'sidebar' && cardCameFromAMark()) hideCard(); },
   onInvalidate() { hideCard(); },
 });
 
@@ -225,8 +291,31 @@ renderIndicatorView(controller.state());
 // palette and then corrected to the writer's, which reads as a flicker on
 // every launch.
 void window.ikmal.getAnnotationPreferences?.()
-  .then((preferences) => applyAnnotationPreferences(document.documentElement, preferences))
+  .then((preferences) => {
+    applyAnnotationPreferences(document.documentElement, preferences);
+    applyReviewLayout(preferences?.layout);
+  })
   .catch(() => {});
+
+// Read at boot rather than only when settings open, because the findings need
+// the guide's name before anyone has been to the settings page.
+function readStyleGuideName(state) {
+  const guides = state?.guides || [];
+  const selected = guides.find((guide) => guide.id === state?.selectedId) || guides[0];
+  styleGuideName = state?.enabled === false ? '' : String(selected?.name || '');
+}
+void window.ikmal.getStyleGuideState?.().then(readStyleGuideName).catch(() => {});
+
+// The layout is one attribute; the difference between the two is CSS. Switching
+// repaints both surfaces because each owns what the other must not draw — a
+// sidebar showing a finding and a card covering the same words would be the
+// same thing twice.
+function applyReviewLayout(value) {
+  reviewLayout = normalizeReviewLayout(value);
+  workspace.dataset.layout = reviewLayout;
+  if (reviewLayout === 'sidebar') hideCard();
+  paintSidebar();
+}
 // Wrapped, not passed directly: showIssue takes an index now, and a listener
 // would hand it the click event as one.
 indicatorShadow.addEventListener('click', () => showIssue());
@@ -240,7 +329,10 @@ input.addEventListener('input', () => {
   window.clearTimeout(timer);
   timer = window.setTimeout(() => void checkDraft(), 350);
 });
-issuePopover.addEventListener('click', (event) => {
+// One handler for both layouts. The sidebar's selected row and the floating
+// card render the same data-action names, so Apply means the same thing in each
+// and cannot come to mean two things.
+function handleIssueAction(event) {
   // The chooser renders one button per candidate, so the clicked control
   // carries the replacement rather than the popover assuming the first one.
   const control = event.target.closest?.('[data-action]');
@@ -263,17 +355,41 @@ issuePopover.addEventListener('click', (event) => {
   // Ignoring takes the mark away too. A finding the writer has dismissed that
   // goes on underlining its words has not been dismissed in any sense they
   // would recognise.
-  if (action === 'ignore' && issue) { ignored.add(issue.id); hideCard(); paintMarks(); }
+  if (action === 'ignore' && issue) { ignored.add(issue.id); hideCard(); paintMarks(); paintSidebar(); }
   if (action === 'close') hideCard();
   // Re-rendered at the neighbouring finding rather than mutated in place, so
   // the card cannot drift from the result it describes.
   if (action === 'previous') showIssue(issueIndex - 1);
   if (action === 'next') showIssue(issueIndex + 1);
+}
+
+issuePopover.addEventListener('click', handleIssueAction);
+
+// Selecting a row in the list is how the writer moves through findings in this
+// layout, so it also has to move the highlight in the text — the list and the
+// draft are two views of one set of findings.
+reviewSidebar.addEventListener('click', (event) => {
+  if (event.target.closest?.('[data-action]')) { handleIssueAction(event); return; }
+  const row = event.target.closest?.('.writing-review-row');
+  if (!row) return;
+  const index = visibleIssues().findIndex((issue) => issue.id === row.dataset.issueId);
+  if (index >= 0) showIssue(index);
 });
+
 document.addEventListener('keydown', (event) => {
-  if (event.key !== 'Escape' || issuePopover.hidden) return;
-  hideCard();
-  indicatorShadow.querySelector('.indicator')?.focus();
+  if (event.key !== 'Escape') return;
+  // The card first, then the mode. Escape means "back out of the innermost
+  // thing", and closing the whole settings page because a card happened to be
+  // open would take the reader further than they asked to go.
+  if (!issuePopover.hidden) {
+    hideCard();
+    indicatorShadow.querySelector('.indicator')?.focus();
+    return;
+  }
+  if (!settingsView.hidden) {
+    void showSettings(false);
+    document.querySelector('#open-settings').focus();
+  }
 }, true);
 
 // ---------------------------------------------------------------------------
@@ -333,16 +449,27 @@ function paintSettings() {
 // race it.
 function showSettings(show) {
   settingsView.hidden = !show;
-  document.querySelector('.slice-editor').hidden = show;
-  document.querySelector('#indicator-anchor').hidden = show;
+  // The whole workspace, not just the draft. Hiding only the draft card left
+  // the findings sidebar stacked above the settings page, which is both
+  // meaningless and a third column width on a page that already had two.
+  workspace.hidden = show;
+  // Settings is a mode, so the window says which one it is in and offers the
+  // way out. Check is hidden rather than disabled: there is nothing to check
+  // here, and a live control that does nothing is worse than an absent one.
+  document.body.dataset.view = show ? 'settings' : 'writing';
+  document.querySelector('#slice-title').textContent = show ? 'Settings' : 'Writing workspace';
+  document.querySelector('#check').hidden = show;
+  document.querySelector('#open-settings').hidden = show;
+  document.querySelector('#close-settings').hidden = !show;
+  if (!show) return Promise.resolve();
   // The issue card floats above the workspace, so it would otherwise sit on top
   // of the settings page it has nothing to do with.
-  if (!show) return Promise.resolve();
   hideCard();
   return loadSettings();
 }
 
-document.querySelector('#open-settings').addEventListener('click', () => void showSettings(settingsView.hidden));
+document.querySelector('#open-settings').addEventListener('click', () => void showSettings(true));
+document.querySelector('#close-settings').addEventListener('click', () => void showSettings(false));
 
 // One accordion open/close handler for the whole page: the group composite
 // renders a button per section and owns its own aria-expanded.
@@ -410,7 +537,7 @@ settingsView.addEventListener('change', async (event) => {
     if (name === 'mode') paintSettings();
     return;
   }
-  if (['annotationStyle', 'annotationPalette', 'annotationIntensity'].includes(name)) {
+  if (['annotationStyle', 'annotationPalette', 'annotationIntensity', 'annotationLayout'].includes(name)) {
     const key = name.replace('annotation', '').toLowerCase();
     settingsState.annotations = await window.ikmal.setAnnotationPreferences({ ...settingsState.annotations, [key]: value });
     // Applied from what the shell stored rather than from the control, so the
@@ -419,6 +546,7 @@ settingsView.addEventListener('change', async (event) => {
     // and Appearance offered style, palette and intensity for a feature the
     // window could not perform.
     applyAnnotationPreferences(document.documentElement, settingsState.annotations);
+    applyReviewLayout(settingsState.annotations?.layout);
     return;
   }
   if (['menubarIcon', 'dockIcon'].includes(name)) {
@@ -433,8 +561,10 @@ settingsView.addEventListener('change', async (event) => {
     paintSettings();
     return;
   }
-  if (control.dataset.action === 'select-guide') { await window.ikmal.selectStyleGuide(value); await loadSettings(); }
-  if (control.dataset.action === 'enable-guide') { await window.ikmal.setStyleGuideEnabled(value); await loadSettings(); }
+  // Selecting or disabling a guide changes what the findings may name, so the
+  // guide's name is re-read rather than left as whatever it was at boot.
+  if (control.dataset.action === 'select-guide') { await window.ikmal.selectStyleGuide(value); await loadSettings(); readStyleGuideName(settingsState.styleGuides); paintSidebar(); }
+  if (control.dataset.action === 'enable-guide') { await window.ikmal.setStyleGuideEnabled(value); await loadSettings(); readStyleGuideName(settingsState.styleGuides); paintSidebar(); }
 });
 
 // A slider's readout follows the handle while it is being dragged. `change`
@@ -483,9 +613,10 @@ window.ikmal.onCheckingPreferences?.((preferences) => {
 window.ikmal.onAnnotationPreferences?.((preferences) => {
   if (!preferences) return;
   settingsState.annotations = preferences;
-  // The marks are drawn from these, so this is the one preference event with
-  // an effect outside the settings page.
+  // The marks and the findings layout are drawn from these, so this is the one
+  // preference event with an effect outside the settings page.
   applyAnnotationPreferences(document.documentElement, preferences);
+  applyReviewLayout(preferences.layout);
   if (!settingsView.hidden) paintSettings();
 });
 

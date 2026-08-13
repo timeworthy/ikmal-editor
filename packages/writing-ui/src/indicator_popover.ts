@@ -8,6 +8,7 @@
 // Composed from primitives: `.cnt-popover`, `.cnt-stat`, `.cnt-btn`,
 // `.cnt-status-dot`, plus the mode picker.
 
+import { categoryLabel } from './categories.js';
 import { renderModePicker, MODE_PICKER_CSS, type ModePickerState } from './mode_picker.js';
 
 export type IndicatorStatus = 'checking' | 'clean' | 'issues' | 'paused' | 'zen' | 'unavailable';
@@ -16,8 +17,14 @@ export interface ReviewRow {
   id: string;
   message: string;
   matchedText: string;
-  source: string;
   category?: string;
+  /**
+   * Where the finding came from. Carried because hosts and diagnostics use it,
+   * and deliberately not rendered: see `categories.ts`.
+   */
+  source?: string;
+  /** The style guide's name, when the host knows the finding came from one. */
+  guide?: string;
 }
 
 export interface IndicatorPopoverState {
@@ -74,9 +81,9 @@ export function normalizeIndicatorPopoverState(value: Partial<IndicatorPopoverSt
 
 /** One compact issue row, shared with the full review workspace. */
 export function renderReviewRow(row: ReviewRow): string {
-  const category = row.category ? `<span class="cnt-tag">${escapeHTML(row.category)}</span>` : '';
+  const guide = row.guide ? `<span class="cnt-tag">${escapeHTML(row.guide)}</span>` : '';
   return `<li class="cnt-card writing-review-row" data-issue-id="${escapeHTML(row.id)}">`
-    + `<div class="writing-review-meta"><span class="cnt-tag">${escapeHTML(row.source)}</span>${category}</div>`
+    + `<div class="writing-review-meta"><span class="cnt-tag">${escapeHTML(categoryLabel(row.category))}</span>${guide}</div>`
     + `<p class="writing-review-message">${escapeHTML(row.message)}</p>`
     + `<code class="writing-review-match">${escapeHTML(row.matchedText)}</code>`
     + '</li>';

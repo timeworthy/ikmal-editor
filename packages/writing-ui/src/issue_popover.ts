@@ -1,9 +1,19 @@
+import { categoryLabel } from './categories.js';
+
 export type IssueActionability = 'safe-apply' | 'review-first' | 'explanation-only';
 
 export interface IssuePopoverIssue {
   id: string;
   category: string;
-  source: string;
+  /**
+   * Where the finding came from. Carried because hosts and diagnostics use it,
+   * and deliberately not rendered: "LanguageTool" and "quality-sidecar" name
+   * this product's plumbing rather than anything the writer chose. See
+   * `categories.ts`.
+   */
+  source?: string;
+  /** The style guide's name, when the host knows the finding came from one. */
+  guide?: string;
   severity: 'low' | 'medium' | 'high';
   message: string;
   matchedText: string;
@@ -111,7 +121,7 @@ export function renderIssuePopover(issue: IssuePopoverIssue, options: IssuePopov
       + `</span>`
     : '';
 
-  return `<section class="cnt-popover writing-issue-popover" role="dialog" aria-label="Writing issue" data-issue-id="${escapeHTML(issue.id)}"><div class="writing-issue-meta"><span>${escapeHTML(issue.source)}</span><span>${escapeHTML(issue.category)}</span><span>${escapeHTML(issue.severity)}</span><div class="writing-issue-controls">${navigation}<button class="cnt-icon-btn" type="button" data-action="close" aria-label="Close">×</button></div></div><p class="writing-issue-message">${escapeHTML(issue.message)}</p>${preview}<details><summary>Why?</summary><p>${escapeHTML(issue.message)}</p></details><div class="writing-issue-actions">${primaryButton}${dictionary}<button class="cnt-btn" type="button" data-action="ignore">Ignore</button></div></section>`;
+  return `<section class="cnt-popover writing-issue-popover" role="dialog" aria-label="Writing issue" data-issue-id="${escapeHTML(issue.id)}"><div class="writing-issue-meta"><span>${escapeHTML(categoryLabel(issue.category))}</span>${issue.guide ? `<span>${escapeHTML(issue.guide)}</span>` : ''}<span>${escapeHTML(issue.severity)}</span><div class="writing-issue-controls">${navigation}<button class="cnt-icon-btn" type="button" data-action="close" aria-label="Close">×</button></div></div><p class="writing-issue-message">${escapeHTML(issue.message)}</p>${preview}<details><summary>Why?</summary><p>${escapeHTML(issue.message)}</p></details><div class="writing-issue-actions">${primaryButton}${dictionary}<button class="cnt-btn" type="button" data-action="ignore">Ignore</button></div></section>`;
 }
 
 export function renderSelectionSummary(summary: Partial<SelectionSummary> = {}): string {

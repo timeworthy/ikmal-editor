@@ -12,8 +12,13 @@ const LANGUAGE_TOOL_URL = process.env.IKMAL_DESKTOP_LANGUAGETOOL_URL || 'http://
 const INTEGRATION_ENDPOINT = `${QUALITY_PROXY_URL}/v2`;
 const SERVICE_POLL_MS = 3000;
 const RECENT_CHECK_LIMIT = 10;
-const ANNOTATION_DEFAULTS = { style: 'squiggle', palette: 'balanced', intensity: 55 };
+const ANNOTATION_DEFAULTS = { style: 'squiggle', palette: 'balanced', intensity: 55, layout: 'sidebar' };
 const ANNOTATION_PALETTES = new Set(['balanced', 'warm', 'cool', 'contrast']);
+// How findings are presented: a list beside the draft, or a card opened from
+// the indicator. Both are real preferences rather than a fallback — a sidebar
+// is the better default for working through a document, and the panel is what
+// someone writing in a narrow window or wanting the text alone reaches for.
+const ANNOTATION_LAYOUTS = new Set(['sidebar', 'panel']);
 const CHECKING_DEFAULTS = {
   mode: 'automatic',
   delay: 700,
@@ -134,12 +139,13 @@ function readDesktopPreferences() {
       annotationStyle: ['line', 'dash'].includes(saved.annotationStyle) ? saved.annotationStyle : ANNOTATION_DEFAULTS.style,
       annotationPalette: ANNOTATION_PALETTES.has(saved.annotationPalette) ? saved.annotationPalette : ANNOTATION_DEFAULTS.palette,
       annotationIntensity: normalizeAnnotationIntensity(saved.annotationIntensity),
+      annotationLayout: ANNOTATION_LAYOUTS.has(saved.annotationLayout) ? saved.annotationLayout : ANNOTATION_DEFAULTS.layout,
       dictionary: Array.isArray(saved.dictionary) ? saved.dictionary.filter((word) => String(word).trim()) : [],
       focusMode: saved.focusMode,
       ...normalizeCheckingPreferences(saved),
     };
   } catch (_) {
-    return { menubarIcon: true, dockIcon: false, annotationStyle: ANNOTATION_DEFAULTS.style, annotationPalette: ANNOTATION_DEFAULTS.palette, annotationIntensity: ANNOTATION_DEFAULTS.intensity, dictionary: [], ...normalizeCheckingPreferences() };
+    return { menubarIcon: true, dockIcon: false, annotationStyle: ANNOTATION_DEFAULTS.style, annotationPalette: ANNOTATION_DEFAULTS.palette, annotationIntensity: ANNOTATION_DEFAULTS.intensity, annotationLayout: ANNOTATION_DEFAULTS.layout, dictionary: [], ...normalizeCheckingPreferences() };
   }
 }
 
@@ -221,6 +227,7 @@ function annotationPreferencesState() {
     style: desktopPreferences?.annotationStyle || ANNOTATION_DEFAULTS.style,
     palette: desktopPreferences?.annotationPalette || ANNOTATION_DEFAULTS.palette,
     intensity: desktopPreferences?.annotationIntensity ?? ANNOTATION_DEFAULTS.intensity,
+    layout: desktopPreferences?.annotationLayout || ANNOTATION_DEFAULTS.layout,
   };
 }
 
@@ -1038,6 +1045,7 @@ function registerIPC() {
       annotationStyle: ['line', 'dash'].includes(requested.style) ? requested.style : ANNOTATION_DEFAULTS.style,
       annotationPalette: ANNOTATION_PALETTES.has(requested.palette) ? requested.palette : ANNOTATION_DEFAULTS.palette,
       annotationIntensity: normalizeAnnotationIntensity(requested.intensity),
+      annotationLayout: ANNOTATION_LAYOUTS.has(requested.layout) ? requested.layout : ANNOTATION_DEFAULTS.layout,
     };
     saveDesktopPreferences();
     const preferences = annotationPreferencesState();

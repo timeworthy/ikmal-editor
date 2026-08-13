@@ -20,6 +20,12 @@ const copies = [
   ['packages/writing-ui/dist/indicator.js', 'indicator.js'],
   ['packages/writing-ui/dist/issue_popover.js', 'issue_popover.js'],
   ['packages/writing-ui/dist/marks.js', 'marks.js'],
+  ['packages/writing-ui/dist/categories.js', 'categories.js'],
+  ['packages/writing-ui/dist/review.js', 'review.js'],
+  // review imports renderReviewRow from the indicator popover; staging it alone
+  // leaves a module chain that breaks only at runtime.
+  ['packages/writing-ui/dist/indicator_popover.js', 'indicator_popover.js'],
+  ['packages/writing-ui/dist/mode_picker.js', 'mode_picker.js'],
   ['packages/writing-ui/dist/settings.js', 'settings.js'],
   ['packages/design-system/src/tokens.css', 'tokens.css'],
   ['packages/design-system/src/primitives.css', 'primitives.css'],
@@ -38,6 +44,7 @@ const compactCopies = [
   ['packages/writing-adapters/dist/browser_slice.js', 'browser_slice.js'],
   ['packages/writing-ui/dist/indicator.js', 'indicator.js'],
   ['packages/writing-ui/dist/issue_popover.js', 'issue_popover.js'],
+  ['packages/writing-ui/dist/categories.js', 'categories.js'],
   ['packages/writing-ui/dist/mode_picker.js', 'mode_picker.js'],
   ['packages/writing-ui/dist/settings.js', 'settings.js'],
   ['packages/design-system/src/tokens.css', 'tokens.css'],

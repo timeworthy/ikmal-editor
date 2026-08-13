@@ -307,26 +307,54 @@ try {
   })`, (state) => state.status === 'issues' && /\b1\b/.test(state.indicatorLabel || '') && state.marked === 'is' && !state.popover && state.revision === 'Revision 1', 'Fresh renderer check failed');
   if (flagged.text !== 'The results is ready.' || flagged.indicatorLabel !== '1 issue') throw new Error(`Fresh renderer accessibility state failed: ${JSON.stringify(flagged)}`);
 
-  // Pointing at a mark opens the card for that finding, anchored to it. This is
-  // the whole reason the mark layer exists, so it is asserted end to end rather
-  // than inferred from the marks being present.
-  const pointed = await editor.evaluate(`(() => {
-    const mark = document.querySelector('#editor-marks .writing-underline[data-issue-id]');
-    mark.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-    const card = document.querySelector('#issue-popover');
-    const cardRect = card.getBoundingClientRect();
-    const markRect = mark.getBoundingClientRect();
-    return JSON.stringify({
-      open: !card.hidden,
-      anchored: card.dataset.anchored,
-      describesTheMark: card.textContent.includes(mark.textContent),
-      coversItsOwnMark: !(cardRect.bottom <= markRect.top || cardRect.top >= markRect.bottom),
-    });
+  // Pointing at a mark surfaces the finding it belongs to — in whichever way
+  // the layout surfaces findings. Both are asserted, because both ship and the
+  // default changed once already: this checked only the card, from when the
+  // card was the only layout there was.
+  //
+  // In the sidebar the mark selects its row, and a card would be the same
+  // finding twice with one copy covering the words it describes. In the panel
+  // the card opens anchored to the mark.
+  const pointed = await editor.evaluate(`(async () => {
+    const { applyAnnotationPreferences } = await import('./marks.js');
+    const results = {};
+    for (const layout of ['sidebar', 'panel']) {
+      const stored = await window.ikmal.setAnnotationPreferences({ ...(await window.ikmal.getAnnotationPreferences()), layout });
+      applyAnnotationPreferences(document.documentElement, stored);
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      const mark = document.querySelector('#editor-marks .writing-underline[data-issue-id]');
+      mark.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      const card = document.querySelector('#issue-popover');
+      const cardRect = card.getBoundingClientRect();
+      const markRect = mark.getBoundingClientRect();
+      const row = document.querySelector('#review-sidebar .writing-review-row[aria-current="true"]');
+      results[layout] = {
+        storedLayout: stored.layout,
+        cardOpen: !card.hidden,
+        anchored: card.dataset.anchored || '',
+        describesTheMark: card.textContent.includes(mark.textContent),
+        coversItsOwnMark: !card.hidden && !(cardRect.bottom <= markRect.top || cardRect.top >= markRect.bottom),
+        rowSelected: Boolean(row),
+        rowDescribesTheMark: Boolean(row && row.textContent.includes(mark.textContent)),
+        markActive: mark.classList.contains('is-active'),
+      };
+    }
+    return JSON.stringify(results);
   })()`);
   const pointedState = JSON.parse(pointed);
-  if (!pointedState.open || pointedState.anchored !== 'mark' || !pointedState.describesTheMark || pointedState.coversItsOwnMark) {
-    throw new Error(`Pointing at a mark did not open the card it describes: ${pointed}`);
+  const side = pointedState.sidebar;
+  const panel = pointedState.panel;
+  if (side.storedLayout !== 'sidebar' || !side.rowSelected || !side.rowDescribesTheMark || !side.markActive || side.cardOpen) {
+    throw new Error(`Pointing at a mark did not select its row in the sidebar layout: ${JSON.stringify(side)}`);
   }
+  if (panel.storedLayout !== 'panel' || !panel.cardOpen || panel.anchored !== 'mark' || !panel.describesTheMark || panel.coversItsOwnMark) {
+    throw new Error(`Pointing at a mark did not open the card it describes in the panel layout: ${JSON.stringify(panel)}`);
+  }
+  // Back to the shipped default, so nothing later in this run sees the panel.
+  await editor.evaluate(`(async () => {
+    const { applyAnnotationPreferences } = await import('./marks.js');
+    applyAnnotationPreferences(document.documentElement, await window.ikmal.setAnnotationPreferences({ ...(await window.ikmal.getAnnotationPreferences()), layout: 'sidebar' }));
+  })()`);
 
   await editor.command('Accessibility.enable');
   const accessibilityTree = await editor.command('Accessibility.getFullAXTree');
@@ -335,12 +363,33 @@ try {
     name: node.name?.value || '',
   }));
   const hasAccessibleNode = (role, name) => accessibilityNodes.some((node) => node.role === role && node.name === name);
-  for (const [role, name] of [['textbox', 'Draft'], ['button', '1 issue'], ['dialog', 'Writing issue'], ['button', 'Apply'], ['button', 'Ignore']]) {
+  // A finding has to be announced in whichever layout is showing. This asserted
+  // the card's dialog, from when the card was the only layout there was; the
+  // default is the sidebar now, where the finding is a named, selectable option
+  // in a list. Both are checked below — the panel's dialog by switching to it —
+  // so neither layout can lose its accessible path silently.
+  for (const [role, name] of [['textbox', 'Draft'], ['button', '1 issue'], ['listbox', 'Findings'], ['button', 'Apply'], ['button', 'Ignore']]) {
     if (!hasAccessibleNode(role, name)) throw new Error(`Fresh renderer AX tree is missing ${role} ${JSON.stringify(name)}: ${JSON.stringify(accessibilityNodes)}`);
   }
 
+  // The panel layout's own accessible path, checked by switching to it rather
+  // than assumed from the sidebar's.
+  await editor.evaluate(`(async () => {
+    const { applyAnnotationPreferences } = await import('./marks.js');
+    applyAnnotationPreferences(document.documentElement, await window.ikmal.setAnnotationPreferences({ ...(await window.ikmal.getAnnotationPreferences()), layout: 'panel' }));
+    document.querySelector('#indicator-anchor').shadowRoot.querySelector('.indicator').click();
+  })()`);
+  const panelTree = await editor.command('Accessibility.getFullAXTree');
+  const panelNodes = panelTree.nodes.map((node) => ({ role: node.role?.value || '', name: node.name?.value || '' }));
+  if (!panelNodes.some((node) => node.role === 'dialog' && node.name === 'Writing issue')) {
+    throw new Error(`The panel layout exposes no "Writing issue" dialog: ${JSON.stringify(panelNodes.slice(0, 24))}`);
+  }
+
+  // Apply is wherever the layout puts it: the card in the panel, the selected
+  // row in the sidebar. Asserted through the action rather than the container,
+  // so the tab order is checked in whichever layout is showing.
   const focusState = await editor.evaluate(`(() => {
-    const apply = document.querySelector('#issue-popover [data-action=apply]');
+    const apply = document.querySelector('[data-action=apply]');
     apply.focus();
     return { focusedAction: document.activeElement?.dataset.action || '', indicatorLabel: document.querySelector('#indicator-anchor').shadowRoot.querySelector('.indicator').getAttribute('aria-label') };
   })()`);
@@ -348,7 +397,7 @@ try {
   const desktopTabOrder = [focusState.focusedAction];
   await editor.command('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9, nativeVirtualKeyCode: 9 });
   await editor.command('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9, nativeVirtualKeyCode: 9 });
-  desktopTabOrder.push(await editor.evaluate("document.querySelector('#issue-popover').querySelector('[data-action]:focus')?.dataset.action || ''"));
+  desktopTabOrder.push(await editor.evaluate("document.querySelector('[data-action]:focus')?.dataset.action || ''"));
   if (desktopTabOrder.join('|') !== 'apply|ignore') throw new Error(`Desktop popover Tab order failed: ${JSON.stringify(desktopTabOrder)}`);
 
   const screenshot = await editor.command('Page.captureScreenshot', { format: 'png' });
@@ -359,7 +408,7 @@ try {
   fs.writeFileSync(path.join(desktopRoot, '..', 'bin', 'desktop-rewrite-smoke-light.png'), Buffer.from(lightScreenshot.data, 'base64'));
   const lightButtonStyles = await editor.evaluate(`(() => {
     const button = document.querySelector('#check');
-    const action = document.querySelector('#issue-popover [data-action]');
+    const action = document.querySelector('[data-action]');
     const read = (element) => { const style = getComputedStyle(element); return { background: style.backgroundColor, color: style.color, colorScheme: style.colorScheme }; };
     return { check: read(button), action: read(action) };
   })()`);

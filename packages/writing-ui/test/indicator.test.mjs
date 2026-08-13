@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { renderIndicator, normalizeIndicatorSnapshot, INDICATOR_CSS, mountIndicator } from '../src/indicator.ts';
-import { renderIssuePopover, renderSelectionSummary } from '../src/issue_popover.ts';
+// From dist, like composites.test.mjs and for the same reason: these modules
+// import each other now, and a cross-module import resolves only once compiled.
+// Importing the sources worked only while issue_popover had no imports of its
+// own, which stopped being true the moment the category vocabulary moved into
+// a module they could share.
+import { renderIndicator, normalizeIndicatorSnapshot, INDICATOR_CSS, mountIndicator } from '../dist/indicator.js';
+import { renderIssuePopover, renderSelectionSummary } from '../dist/issue_popover.js';
 
 test('indicator rendering is accessible, bounded, and state-driven', () => {
   assert.deepEqual(normalizeIndicatorSnapshot({ status: 'issues', issueCount: 2, label: '2 issues' }), {

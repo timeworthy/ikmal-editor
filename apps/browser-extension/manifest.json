@@ -9,7 +9,7 @@
   "background": { "service_worker": "background.js", "type": "module" },
   "content_scripts": [{ "matches": ["<all_urls>"], "js": ["bootstrap.js"], "run_at": "document_idle", "all_frames": false }],
   "web_accessible_resources": [{
-    "resources": ["content_module.js", "writing-core.js", "browser_field.js", "browser_slice.js", "indicator.js", "issue_popover.js", "tokens.css", "primitives.css"],
+    "resources": ["content_module.js", "writing-core.js", "browser_field.js", "browser_slice.js", "indicator.js", "issue_popover.js", "categories.js", "tokens.css", "primitives.css"],
     "matches": ["<all_urls>"]
   }]
 }

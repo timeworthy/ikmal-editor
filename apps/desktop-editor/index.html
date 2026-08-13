@@ -12,9 +12,18 @@
 <body>
   <main class="desktop-slice" aria-label="ikmal editor rewrite slice">
     <header class="slice-header">
-      <div><p class="slice-kicker">IKMAL EDITOR</p><h1>Writing workspace</h1></div>
-      <div class="slice-actions"><span id="service-status" class="slice-service">Local checker</span><button id="check" class="cnt-btn" type="button">Check</button><button id="open-settings" class="cnt-btn" type="button">Settings</button></div>
+      <div><p class="slice-kicker">IKMAL EDITOR</p><h1 id="slice-title">Writing workspace</h1></div>
+      <!-- Settings is a mode, and a mode needs a way out that says so. It was
+           left by pressing the same button that opened it, which reads as a
+           toggle only to whoever wrote it. -->
+      <div class="slice-actions"><span id="service-status" class="slice-service">Local checker</span><button id="check" class="cnt-btn" type="button">Check</button><button id="open-settings" class="cnt-btn" type="button">Settings</button><button id="close-settings" class="cnt-btn" type="button" hidden>Done</button></div>
     </header>
+    <!-- Two ways to see findings, both real choices. The sidebar is the
+         default because working through a document is what this window is for;
+         the panel is for a narrow window, or for wanting the text by itself.
+         The layout is one attribute so the difference is CSS rather than two
+         renderers. -->
+    <div class="slice-workspace" id="workspace" data-layout="sidebar">
     <section class="slice-editor cnt-card">
       <label for="editor-input">Draft</label>
       <!-- The field and the mark overlay are one surface: the overlay is a
@@ -26,11 +35,17 @@
       <div class="writing-marks-surface" id="editor-surface">
         <textarea id="editor-input" class="writing-marks-input" spellcheck="true" placeholder="Write or paste a passage here."></textarea>
         <div class="writing-marks" id="editor-marks" aria-hidden="true"></div>
+        <!-- In the corner of the field it describes, which is where a writer
+             looks for it. It sat under the card as a loose pill, far enough
+             from the text to read as a caption for the page rather than a
+             status for the draft. -->
+        <div id="indicator-anchor" class="slice-indicator" aria-live="polite"></div>
         <div id="issue-popover" class="slice-popover" hidden></div>
       </div>
       <div class="slice-footer"><span id="counts">0 words · 0 characters</span><span id="revision">Revision 0</span></div>
     </section>
-    <div id="indicator-anchor" class="slice-indicator" aria-live="polite"></div>
+    <aside class="slice-review cnt-card" id="review-sidebar" aria-label="Findings"></aside>
+    </div>
     <!-- The product's only settings implementation. The launcher routes here
          rather than carrying a copy of it. -->
     <section id="settings-view" hidden aria-label="Settings"></section>

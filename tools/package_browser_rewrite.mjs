@@ -25,7 +25,10 @@ fs.copyFileSync(path.join(root, 'packages', 'writing-core', 'dist', 'index.js'),
 for (const file of ['browser_field.js', 'browser_slice.js']) {
   fs.copyFileSync(path.join(root, 'packages', 'writing-adapters', 'dist', file), path.join(output, file));
 }
-for (const file of ['indicator.js', 'issue_popover.js']) {
+// issue_popover imports the shared category vocabulary; staging it without
+// categories.js leaves a module chain that resolves only at runtime, where it
+// fails silently and the indicator simply never mounts.
+for (const file of ['indicator.js', 'issue_popover.js', 'categories.js']) {
   fs.copyFileSync(path.join(root, 'packages', 'writing-ui', 'dist', file), path.join(output, file));
 }
 fs.copyFileSync(path.join(root, 'packages', 'design-system', 'src', 'tokens.css'), path.join(output, 'tokens.css'));

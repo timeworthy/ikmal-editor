@@ -12,7 +12,10 @@ import { renderSettingsGroups, renderServiceHealth, renderStyleGuideCard, SETTIN
 // system starting inside the surface that exists to end them.
 
 export const SETTINGS_PAGE_CSS = `${SETTINGS_CSS}
-.settings-page { display: grid; gap: var(--space-5); max-width: 720px; }
+/* The measure is the page's, not this component's. Capping here at 720 while
+   the header ran to the slice's own 756 left the two with different right
+   edges — near enough to look like a mistake rather than a margin. */
+.settings-page { display: grid; gap: var(--space-5); }
 .settings-row { align-items: center; display: flex; gap: var(--space-4); justify-content: space-between; }
 .settings-stack { display: grid; gap: var(--space-3); }
 .settings-inline { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-4); }
@@ -153,13 +156,25 @@ function checkingBody(preferences = {}) {
     + checkbox('category:grammar', 'Grammar and agreement', categories.grammar !== false)
     + checkbox('category:repetition', 'Repeats and echoes', categories.repetition !== false)
     + checkbox('category:style', 'Style and guide rules', categories.style !== false)
-    + checkbox('category:languagetool', 'LanguageTool suggestions', categories.languagetool !== false)
+    // Named for what it turns off, not for which of our services produces it.
+    // The other three rows say "grammar", "repeats", "style"; this one said
+    // "LanguageTool", which asks the reader to know our architecture to guess
+    // what they would stop seeing. The engines are named where they are the
+    // subject — Services, Integrations — and nowhere else.
+    + checkbox('category:languagetool', 'Other suggestions', categories.languagetool !== false)
     + '</div></div>'
     + '</div>';
 }
 
 function appearanceBody(annotations = {}, presence = {}, launchAtLogin = false) {
   return '<div class="settings-form">'
+    // First, because it decides the shape of the window the other three are
+    // describing. Both are real choices: a list beside the draft is the better
+    // way to work through a document, and a card from the indicator is what
+    // someone in a narrow window, or wanting the text alone, reaches for.
+    + field('Findings', select('annotationLayout', annotations.layout || 'sidebar', [
+      ['sidebar', 'In a list beside the draft'], ['panel', 'In a card, when I ask for one'],
+    ]), 'Where findings appear while you write.')
     // Each control says what choosing it changes. A bare "Mark palette" leaves
     // the reader to open the menu to find out what a palette decides.
     + field('Mark style', select('annotationStyle', annotations.style || 'squiggle', [

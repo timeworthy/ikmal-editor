@@ -9,7 +9,7 @@ import {
   applyAnnotationPreferences,
   renderRelationshipCard,
   MARKS_CSS,
-} from '../src/marks.ts';
+} from '../dist/marks.js';
 
 const TEXT = 'The results is wrong and the team said they reviewed it.';
 

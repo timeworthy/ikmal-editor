@@ -8,6 +8,7 @@
 // The undo notice is what makes Apply reversible in the writer's eyes. Every
 // applied correction produces a record; this is how the record surfaces.
 
+import { categoryLabel } from './categories.js';
 import { renderReviewRow, type ReviewRow } from './indicator_popover.js';
 
 export interface ReviewWorkspaceState {
@@ -20,6 +21,34 @@ export interface ReviewWorkspaceState {
   filters: string[];
   filter?: string;
   selectedId?: string;
+}
+
+export type ReviewLayout = 'sidebar' | 'panel';
+
+export const REVIEW_LAYOUTS: readonly ReviewLayout[] = ['sidebar', 'panel'];
+
+/**
+ * Which shape the findings take. Two real choices rather than one with a
+ * fallback: a list beside the draft is the better way to work through a
+ * document, and a card opened from the indicator is what someone writing in a
+ * narrow window — or wanting the text by itself — reaches for.
+ */
+export function normalizeReviewLayout(value: unknown): ReviewLayout {
+  return REVIEW_LAYOUTS.includes(value as ReviewLayout) ? value as ReviewLayout : 'sidebar';
+}
+
+/** A row in the sidebar, with what the selected one needs to be acted on. */
+export interface ReviewSidebarIssue extends ReviewRow {
+  replacements?: Array<{ value: string }>;
+  /** Offered only where the host has somewhere to keep a personal dictionary. */
+  canAddToDictionary?: boolean;
+}
+
+export interface ReviewSidebarState {
+  issues: ReviewSidebarIssue[];
+  selectedId?: string;
+  /** Said plainly when the checker cannot be reached, rather than as "0 issues". */
+  unavailableReason?: string;
 }
 
 export interface UndoNoticeState {
@@ -41,6 +70,23 @@ export const REVIEW_CSS = `
 .writing-review-meta { display: flex; gap: var(--space-2); }
 .writing-review-message { color: var(--fg-1); font: 400 13px/1.45 var(--font-sans); margin: 0; }
 .writing-review-match { color: var(--fg-3); font: 400 12px/1.3 var(--font-mono); }
+/* The sidebar: findings beside the draft rather than a view that replaces it.
+   It scrolls on its own so a long list never grows the page the writing is on,
+   and it is the host's job to decide it has the width for one. */
+.writing-review-side { display: grid; gap: var(--space-3); grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
+.writing-review-side-head { align-items: baseline; color: var(--fg-3); display: flex; font: 600 11px/1 var(--font-mono); gap: var(--space-2); justify-content: space-between; text-transform: uppercase; }
+.writing-review-side-list { display: grid; gap: var(--space-2); list-style: none; margin: 0; min-height: 0; overflow-y: auto; padding: 0; scrollbar-gutter: stable; }
+/* Only the selected row carries controls. Every row showing Apply would be a
+   column of buttons inviting an edit nobody has looked at yet, and the point of
+   the list is to read the findings before acting on any of them. */
+.writing-review-side .writing-review-row { cursor: pointer; padding: var(--space-3); }
+.writing-review-side .writing-review-row[aria-current="true"] { border-color: var(--accent); box-shadow: var(--shadow-focus); }
+.writing-review-side .writing-review-row:focus-visible { border-color: var(--accent); box-shadow: var(--shadow-focus); outline: 2px solid transparent; }
+.writing-review-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1); }
+.writing-review-actions .cnt-btn { min-height: 30px; }
+.writing-review-change { align-items: center; color: var(--fg-2); display: flex; flex-wrap: wrap; font: 400 12px/1.4 var(--font-mono); gap: var(--space-2); }
+.writing-review-change ins { background: var(--accent-soft); border-radius: var(--radius-1); color: var(--fg-1); padding: 0 var(--space-1); text-decoration: none; }
+.writing-review-change del { color: var(--fg-4); }
 .writing-undo { align-items: center; display: flex; gap: var(--space-3); justify-content: space-between; }
 .writing-undo-change { color: var(--fg-2); font: 400 13px/1.3 var(--font-sans); }
 .writing-undo-change b { color: var(--fg-1); font-weight: 600; }
@@ -94,6 +140,71 @@ export function renderReviewWorkspace(state: Partial<ReviewWorkspaceState> = {})
     + `<div class="cnt-tabs" role="tablist" aria-label="Filter findings">${filters}</div>`
     + rows
     + '</section>';
+}
+
+/**
+ * Findings beside the draft, in document order.
+ *
+ * The selected row is the only one that carries controls, and it uses the same
+ * `data-action` names the issue card does — so a host wires Apply, Ignore and
+ * the dictionary once and both layouts reach the same code. Rendering a button
+ * per row instead would put a column of Apply beside text nobody has read yet.
+ */
+export function renderReviewSidebar(state: Partial<ReviewSidebarState> = {}): string {
+  const issues = Array.isArray(state.issues) ? state.issues.filter((issue) => issue && typeof issue.id === 'string') : [];
+  const selectedId = typeof state.selectedId === 'string' ? state.selectedId : '';
+
+  if (state.unavailableReason) {
+    return '<section class="writing-review-side" aria-label="Findings">'
+      + '<div class="writing-review-side-head"><span>Findings</span></div>'
+      + `<div class="cnt-empty"><div class="cnt-empty-title">Checker unavailable</div>`
+      + `<div class="cnt-empty-text">${escapeHTML(state.unavailableReason)}</div></div></section>`;
+  }
+
+  const rows = issues.map((issue) => {
+    const selected = issue.id === selectedId;
+    const replacement = issue.replacements?.[0]?.value || '';
+    // The change is spelled out before it is offered, because Apply edits the
+    // writer's own words and "Apply" alone does not say to what.
+    const change = selected && replacement
+      ? `<div class="writing-review-change"><del>${escapeHTML(issue.matchedText)}</del><span>&rarr;</span><ins>${escapeHTML(replacement)}</ins></div>`
+      : '';
+    const actions = selected
+      ? '<div class="writing-review-actions">'
+        + (replacement ? '<button class="cnt-btn" type="button" data-action="apply">Apply</button>' : '')
+        + (issue.canAddToDictionary ? '<button class="cnt-btn" type="button" data-action="dictionary">Add to dictionary</button>' : '')
+        + '<button class="cnt-btn" type="button" data-action="ignore">Ignore</button></div>'
+      : '';
+    // What kind of finding this is, not which of our services noticed it. The
+    // style guide is the exception: the writer chose that document and can turn
+    // it off, so it is named.
+    const guide = issue.guide ? `<span class="cnt-tag">${escapeHTML(issue.guide)}</span>` : '';
+    // The matched words, except where the change line is already showing them
+    // on its left-hand side. Both together printed the same text twice, one
+    // line apart, in the row the reader is being asked to act on.
+    const match = change ? '' : `<code class="writing-review-match">${escapeHTML(issue.matchedText)}</code>`;
+    // Focusable and named. The rows are the only way to reach a finding in this
+    // layout — there is no card to open — so a list of plain list items would
+    // have left keyboard and screen-reader users with no path to any of them.
+    // The accessible name leads with the category and the words, because that
+    // is what distinguishes one row from the next when they are read aloud.
+    const label = `${categoryLabel(issue.category)}: ${issue.matchedText}. ${issue.message}`;
+    return `<li class="cnt-card writing-review-row" data-issue-id="${escapeHTML(issue.id)}"`
+      + ` role="option" tabindex="0" aria-selected="${selected}" aria-label="${escapeHTML(label)}"`
+      + `${selected ? ' aria-current="true"' : ''}>`
+      + `<div class="writing-review-meta"><span class="cnt-tag">${escapeHTML(categoryLabel(issue.category))}</span>${guide}</div>`
+      + `<p class="writing-review-message">${escapeHTML(issue.message)}</p>`
+      + match + change + actions + '</li>';
+  }).join('');
+
+  const body = issues.length
+    ? `<ul class="writing-review-side-list" role="listbox" aria-label="Findings">${rows}</ul>`
+    : '<div class="cnt-empty"><div class="cnt-empty-title">Nothing to review</div>'
+      + '<div class="cnt-empty-text">Findings appear here as you write.</div></div>';
+
+  return '<section class="writing-review-side" aria-label="Findings">'
+    + `<div class="writing-review-side-head"><span>Findings</span>`
+    + `<span>${issues.length}</span></div>${body}</section>`;
 }
 
 /**

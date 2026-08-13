@@ -102,7 +102,14 @@ export const MARKS_CSS = `
 /* The field and the overlay are one surface. Every property that decides where
    a glyph lands is set on both in the same rule, because the moment they are
    set apart they drift, and a mark under the wrong word is worse than none. */
-.writing-marks-surface { position: relative; }
+/* A grid, so the field fills the surface exactly.
+   As a plain block the surface took whatever height its own container gave it —
+   a card stretched to match a taller sibling, say — while the field kept its
+   min-height, leaving the two different sizes. The overlay is inset to zero on
+   the surface, so it inherited the surface's height rather than the field's, and
+   was silently taller than the text it annotates: the scroll maxima disagreed,
+   and anything placed in the surface's bottom corner sat below the field's. */
+.writing-marks-surface { display: grid; position: relative; }
 .writing-marks-surface > .writing-marks,
 .writing-marks-surface > .writing-marks-input {
   border: 1px solid transparent;
@@ -147,8 +154,16 @@ export const MARKS_CSS = `
      rule with gaps in it reads as two marks. */
   text-decoration-skip-ink: none;
   text-decoration-style: wavy;
-  text-decoration-thickness: 1.5px;
-  transition: background-color var(--dur-fast) var(--ease-default), text-decoration-thickness var(--dur-fast) var(--ease-default);
+  /* Thickness sets the wavelength, not just the weight: Chromium derives the
+     wave's period from it. At 1.5px a two-letter word got one and a half fat
+     periods and read as a hook rather than a squiggle. At 1px the wave has
+     roughly twice the peaks at a smaller amplitude, which is what a mark under
+     "is" needs to still look like one. */
+  text-decoration-thickness: 1px;
+  /* Clear of the descenders. On the baseline a tighter wave reads as part of
+     the letterforms rather than as something under them. */
+  text-underline-offset: 2px;
+  transition: background-color var(--dur-fast) var(--ease-default);
 }
 .writing-underline[data-role="grammar"] { --mark-ink: var(--mark-grammar); }
 .writing-underline[data-role="style"] { --mark-ink: var(--mark-style); }
@@ -167,7 +182,10 @@ export const MARKS_CSS = `
 .writing-underline[data-relation="antecedent"] { text-decoration-style: dotted; }
 [data-annotation-style="line"] .writing-underline[data-relation="antecedent"] { text-decoration-style: solid; }
 [data-annotation-style="dash"] .writing-underline[data-relation="antecedent"] { text-decoration-style: dashed; }
-.writing-underline.is-linked { background: color-mix(in srgb, var(--mark-ink) calc(var(--mark-fill-alpha) * 100%), transparent); border-radius: var(--radius-1); text-decoration-thickness: 2px; }
+/* Tinted, and the thickness is left alone. Because thickness is what sets the
+   wavelength, raising it on hover re-shaped the wave under the pointer — which
+   reads as the mark glitching rather than responding. */
+.writing-underline.is-linked { background: color-mix(in srgb, var(--mark-ink) calc(var(--mark-fill-alpha) * 100%), transparent); border-radius: var(--radius-1); }
 /* A pronoun link is the one mark with nothing to act on, so it gets a card
    that explains rather than one that offers corrections. The issue card cannot
    stand in: every control it has would be inert here. */
@@ -176,7 +194,10 @@ export const MARKS_CSS = `
 .writing-relationship-meta .cnt-icon-btn { margin-inline-start: auto; }
 .writing-relationship-link { font: 500 14px/1.45 var(--font-sans); margin: 0; }
 .writing-relationship-note { color: var(--fg-3); font: 400 12px/1.4 var(--font-sans); margin: 0; }
-.writing-underline.is-active { box-shadow: 0 0 0 2px color-mix(in srgb, var(--mark-ink) calc(var(--mark-fill-alpha) * 200%), transparent); border-radius: var(--radius-1); }
+/* A stronger tint, not a ring. A box-shadow on an inline box draws a pill
+   around the word — an oval around "is" that reads as a rendering fault rather
+   than as the selection it is meant to be. */
+.writing-underline.is-active { background: color-mix(in srgb, var(--mark-ink) calc(var(--mark-fill-alpha) * 220%), transparent); border-radius: var(--radius-1); }
 .writing-underline:focus-visible { box-shadow: var(--shadow-focus); outline: 2px solid transparent; }
 @media (prefers-reduced-motion: reduce) { .writing-underline { transition: none; } }
 `;
