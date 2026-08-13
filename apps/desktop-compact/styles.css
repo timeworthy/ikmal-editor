@@ -58,3 +58,7 @@ body {
    package: a design system has no business imposing a global rule on its
    hosts. */
 [hidden] { display: none !important; }
+
+/* The quick-check field is four rows, not a page. The mark layer's own default
+   is a writing surface's height, which would be most of this window. */
+.writing-marks-surface { --mark-min-height: 92px; --mark-font: 13px/1.5 var(--font-sans); }

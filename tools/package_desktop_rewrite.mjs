@@ -45,6 +45,7 @@ const compactCopies = [
   ['packages/writing-ui/dist/indicator.js', 'indicator.js'],
   ['packages/writing-ui/dist/issue_popover.js', 'issue_popover.js'],
   ['packages/writing-ui/dist/categories.js', 'categories.js'],
+  ['packages/writing-ui/dist/marks.js', 'marks.js'],
   ['packages/writing-ui/dist/mode_picker.js', 'mode_picker.js'],
   ['packages/writing-ui/dist/settings.js', 'settings.js'],
   ['packages/design-system/src/tokens.css', 'tokens.css'],

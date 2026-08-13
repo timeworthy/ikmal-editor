@@ -198,6 +198,42 @@ try {
     const forbidden = launcher.surface.filter((name) => /Quality|StyleGuide|Office|SpellServer|Integration|Annotation/i.test(name));
     if (forbidden.length) throw new Error(`Launcher preload exposes settings capabilities: ${forbidden.join(', ')}`);
 
+    // The launcher underlines findings in its own field. The legacy compact
+    // window did, the rewrite did not, and it was the one gap E1 left open —
+    // this window has no room for a list beside the field, so the marks are the
+    // whole of its in-text feedback. Checked with the geometry, because an
+    // overlay that does not lay text out exactly like its field puts marks under
+    // the wrong words while still looking plausible.
+    const launcherMarks = await compact.evaluate(`(async () => {
+      const input = document.querySelector('#quick-input');
+      input.value = 'The results is wrong.';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      const layer = document.querySelector('#quick-marks');
+      const marks = [...layer.querySelectorAll('.writing-underline')];
+      const PROPS = ['fontFamily', 'fontSize', 'lineHeight', 'letterSpacing', 'paddingTop',
+        'paddingLeft', 'borderTopWidth', 'whiteSpace', 'overflowWrap', 'boxSizing'];
+      const a = getComputedStyle(input);
+      const b = getComputedStyle(layer);
+      return JSON.stringify({
+        marked: marks.map((mark) => mark.textContent),
+        differing: PROPS.filter((name) => a[name] !== b[name]),
+        heightGap: Math.abs(input.scrollHeight - layer.scrollHeight),
+        hidden: layer.getAttribute('aria-hidden'),
+        focusable: layer.innerHTML.includes('tabindex'),
+      });
+    })()`);
+    const marksState = JSON.parse(launcherMarks);
+    if (!marksState.marked.includes('is')) {
+      throw new Error(`The launcher did not mark its own findings: ${launcherMarks}`);
+    }
+    if (marksState.differing.length || marksState.heightGap > 0.5) {
+      throw new Error(`The launcher's mark overlay does not match its field: ${launcherMarks}`);
+    }
+    if (marksState.hidden !== 'true' || marksState.focusable) {
+      throw new Error(`The launcher's mark overlay is announced or focusable: ${launcherMarks}`);
+    }
+
     // The two ways out of this window must be on screen, whatever it is
     // showing. They were not: the body set a height and a padding without
     // border-box, so it stood 32px taller than the window in every state and
@@ -258,7 +294,7 @@ try {
     'getSpellServerState', 'installSpellServer', 'removeSpellServer',
     'getOfficeBridgeState', 'generateOfficeCertificate', 'removeOfficeCertificate',
     'startOfficeBridge', 'stopOfficeBridge', 'revealOfficeManifest',
-    'revealExtension',
+    'revealExtension', 'openCompact',
     'getAppVersion',
     // Listening to what the shell already broadcasts. Not new powers — every
     // channel was already in the contract and already being sent — this is the

@@ -37,7 +37,13 @@
     </div>
 
     <section aria-label="Quick check">
-      <textarea id="quick-input" class="cnt-textarea" rows="4" placeholder="Paste or type something to check…" aria-label="Text to check"></textarea>
+      <!-- The same mark layer the editor uses. The legacy compact window
+           underlined findings here and the rewrite did not, which was the one
+           gap E1 left open. -->
+      <div class="writing-marks-surface" id="quick-surface">
+        <textarea id="quick-input" class="cnt-textarea writing-marks-input" rows="4" placeholder="Paste or type something to check…" aria-label="Text to check"></textarea>
+        <div class="writing-marks" id="quick-marks" aria-hidden="true"></div>
+      </div>
       <div class="launcher-stats" id="quick-stats"></div>
     </section>
 

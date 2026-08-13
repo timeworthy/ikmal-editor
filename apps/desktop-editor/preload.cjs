@@ -27,6 +27,10 @@ contextBridge.exposeInMainWorld('ikmal', {
     return () => ipcRenderer.removeListener('editor-text', listener);
   },
 
+  // The way back. The launcher opens this window; without this the route ran
+  // one way only, and a window opened from a menubar popover had no route home.
+  openCompact: () => ipcRenderer.invoke('open-compact'),
+
   // A failure with nobody listening is a failure the user meets as the product
   // silently not working. Four sites send this, including a manager binary that
   // cannot be found.

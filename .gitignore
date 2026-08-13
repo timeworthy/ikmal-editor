@@ -49,6 +49,7 @@ apps/desktop-compact/browser_slice.js
 apps/desktop-compact/indicator.js
 apps/desktop-compact/issue_popover.js
 apps/desktop-compact/categories.js
+apps/desktop-compact/marks.js
 apps/desktop-compact/mode_picker.js
 apps/desktop-compact/settings.js
 apps/desktop-compact/tokens.css

@@ -3,6 +3,7 @@ import { createDesktopSliceController } from './desktop_slice.js';
 import { mountIndicator, renderIndicator, INDICATOR_CSS } from './indicator.js';
 import { renderIssuePopover, ISSUE_POPOVER_CSS } from './issue_popover.js';
 import { renderModePicker, MODE_PICKER_CSS } from './mode_picker.js';
+import { attachMarkSurface, MARKS_CSS } from './marks.js';
 import { renderServiceHealth, SETTINGS_CSS } from './settings.js';
 
 // The launcher renderer.
@@ -18,9 +19,10 @@ const indicatorAnchor = document.querySelector('#indicator-anchor');
 const issuePopover = document.querySelector('#issue-popover');
 const modes = document.querySelector('#modes');
 const services = document.querySelector('#services');
+const quickMarks = document.querySelector('#quick-marks');
 
 const indicatorShadow = mountIndicator(indicatorAnchor, { status: 'clean', label: 'No issues' });
-const composedCSS = `${MODE_PICKER_CSS}${SETTINGS_CSS}`;
+const composedCSS = `${MODE_PICKER_CSS}${SETTINGS_CSS}${MARKS_CSS}`;
 const style = document.createElement('style');
 style.textContent = composedCSS;
 document.head.append(style);
@@ -97,11 +99,31 @@ function paintServices(state) {
   fitWindow();
 }
 
+// The same layer the editor draws, from the same composite. This window is a
+// launcher rather than a writing surface, so the marks are the whole of the
+// in-text feedback here: there is no room beside the field for a list.
+const marks = attachMarkSurface({
+  input: quickInput,
+  layer: quickMarks,
+  onActivate({ issueId }) {
+    const index = (controller.state().result?.matches || []).findIndex((issue) => issue.id === issueId);
+    if (index >= 0) showIssue(index);
+  },
+  onInvalidate() { issuePopover.hidden = true; fitWindow(); },
+});
+
+function paintMarks() {
+  const state = controller.state();
+  if (!state.result) { marks.clear(); return; }
+  marks.render(state.document.text, { issues: state.result.matches, relationships: state.result.relationships });
+}
+
 async function check() {
   paintStats();
   const view = await controller.check();
   if (view.stale) return;
   paintIndicator(view);
+  paintMarks();
   showIssue(0);
 }
 

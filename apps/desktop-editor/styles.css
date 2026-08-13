@@ -32,7 +32,10 @@ h1 { font: 500 28px/1.1 var(--font-serif); margin: 0; }
    on the field and the overlay in one rule. Restating any of them here is how
    the underlines come to sit under the wrong words, so this app sets only what
    the overlay does not have to agree with. */
-.slice-footer { color: var(--fg-3); display: flex; font: 12px/1 var(--font-mono); justify-content: space-between; }
+.slice-footer { color: var(--fg-3); display: flex; font: 12px/1 var(--font-mono); gap: var(--space-4); justify-content: space-between; }
+/* A statement of fact about the draft, not a warning to act on — this is a
+   scratch pad by design, and the writer only needs to know it once. */
+.slice-unsaved { color: var(--fg-4); margin-inline-end: auto; }
 /* The status of the draft, in the corner of the draft. Inset far enough to
    clear the field's own resize grip, which lives in the same corner and stays
    usable. */

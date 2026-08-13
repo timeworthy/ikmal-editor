@@ -25,11 +25,16 @@ assert.match(preload, /onEditorText/);
 // The editor owns settings, so it legitimately reaches service state, style
 // guides, and preferences. What it must never receive is the legacy surface
 // wholesale — the point was a preload shaped by what this window does, not a
-// copy of all 55 capabilities. `configureIntegrations` and `openCompact` stand
-// for that: neither belongs to writing or to settings as built.
-// The editor owns every settings surface now, so the forbidden list is what
-// belongs to the launcher or to no window at all.
-assert.doesNotMatch(preload, /openCompact|setCompactExpanded|setCompactHeight|onQuickCheck/);
+// copy of all 55 capabilities. The forbidden list is what belongs to the
+// launcher and to no other window: sizing the compact window, expanding it, and
+// hearing its clipboard checks all describe a window this one is not.
+//
+// `openCompact` used to be on that list and has been taken off deliberately.
+// It describes this window's route out, not the launcher's own state, and the
+// editor is the only window that would ever call it — the launcher does not
+// need to open itself. Leaving it forbidden kept the route between the two
+// windows running one way.
+assert.doesNotMatch(preload, /setCompactExpanded|setCompactHeight|onQuickCheck/);
 // Settings live here and only here, so these must be present.
 for (const capability of ['getCheckingPreferences', 'getAnnotationPreferences', 'getStyleGuideState', 'getServiceState', 'getRecentChecks', 'getIntegrationStatus', 'getSpellServerState', 'getOfficeBridgeState', 'revealExtension']) {
   assert.ok(preload.includes(capability), `the editor owns settings and is missing ${capability}`);

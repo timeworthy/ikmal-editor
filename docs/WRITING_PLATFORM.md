@@ -648,7 +648,41 @@ way back belongs. Adding it here would have meant relaxing the assertion that
 keeps the editor's preload shaped by what that window does, for a button E3 has
 not designed yet.
 
-### E3 — Surfaces with no equivalent
+### E3 — Surfaces with no equivalent — **done**
+
+Auditing the legacy editor's remaining surfaces shrank this from four items to
+four much smaller ones, because two of them were containers rather than
+features:
+
+- **The app menu** held exactly two entries — Settings (⌘,) and "Open writing
+  tester". Both are header buttons in the rewrite, which is better than a menu
+  that hides them. What was missing from it was the shortcut and the route, not
+  the menu: ⌘, opens settings now, and "Quick check" opens the launcher.
+- **Recent sessions** was a second sidebar listing recent checks. The rewrite's
+  sidebar is the findings list, and recent checks live in Privacy, where the
+  tray already routes. A second list would be a second place to maintain.
+- **The way back** was real. `openCompact` is in the editor's preload now, which
+  meant deliberately taking it off the forbidden list: it describes this
+  window's route out rather than the launcher's own state, and the editor is the
+  only window that would ever call it. The other three — sizing the compact
+  window, expanding it, hearing its clipboard checks — stay forbidden, because
+  they describe a window this one is not.
+- **"Not saved" was a real regression.** The legacy placeholder read "This
+  scratch pad is not saved"; the rewrite dropped it, so nothing told a writer
+  their draft was not kept. It is back, and in the footer as well as the
+  placeholder — the placeholder is gone the moment there is a draft to lose.
+
+And the gap E1 left open is closed: **the launcher marks its own field.** The
+legacy compact window underlined findings there and the rewrite did not. This
+window has no room for a list beside the field, so the marks are the whole of
+its in-text feedback. Guarded in the smoke with the geometry, not just the
+count, because an overlay that lays text out differently from its field puts
+marks under the wrong words while still looking plausible.
+
+Still unconsumed: `indicator_popover` and `selection_popover`. `review` stopped
+being unconsumed in this phase.
+
+### E3 — original scope
 
 - **Recent checks.** The legacy compact window has a *Recent* tab with its own
   list, clear action and live region. The rewrite counts them in Privacy and can

@@ -16,7 +16,9 @@
       <!-- Settings is a mode, and a mode needs a way out that says so. It was
            left by pressing the same button that opened it, which reads as a
            toggle only to whoever wrote it. -->
-      <div class="slice-actions"><span id="service-status" class="slice-service">Local checker</span><button id="check" class="cnt-btn" type="button">Check</button><button id="open-settings" class="cnt-btn" type="button">Settings</button><button id="close-settings" class="cnt-btn" type="button" hidden>Done</button></div>
+      <!-- The route between the two windows ran one way: the launcher could open
+           this window, and this window could not open the launcher. -->
+      <div class="slice-actions"><span id="service-status" class="slice-service">Local checker</span><button id="open-launcher" class="cnt-btn" type="button" title="Quick check (the menubar window)">Quick check</button><button id="check" class="cnt-btn" type="button">Check</button><button id="open-settings" class="cnt-btn" type="button">Settings</button><button id="close-settings" class="cnt-btn" type="button" hidden>Done</button></div>
     </header>
     <!-- Two ways to see findings, both real choices. The sidebar is the
          default because working through a document is what this window is for;
@@ -33,7 +35,7 @@
            draft read a second time. The card is anchored inside the surface so
            it can point at the mark it describes. -->
       <div class="writing-marks-surface" id="editor-surface">
-        <textarea id="editor-input" class="writing-marks-input" spellcheck="true" placeholder="Write or paste a passage here."></textarea>
+        <textarea id="editor-input" class="writing-marks-input" spellcheck="true" placeholder="Write or paste a passage here. This scratch pad is not saved."></textarea>
         <div class="writing-marks" id="editor-marks" aria-hidden="true"></div>
         <!-- In the corner of the field it describes, which is where a writer
              looks for it. It sat under the card as a loose pill, far enough
@@ -42,7 +44,9 @@
         <div id="indicator-anchor" class="slice-indicator" aria-live="polite"></div>
         <div id="issue-popover" class="slice-popover" hidden></div>
       </div>
-      <div class="slice-footer"><span id="counts">0 words · 0 characters</span><span id="revision">Revision 0</span></div>
+      <!-- Said where a writer who has already started typing can still see it:
+           the placeholder is gone the moment there is a draft to lose. -->
+      <div class="slice-footer"><span id="counts">0 words · 0 characters</span><span class="slice-unsaved">Not saved</span><span id="revision">Revision 0</span></div>
     </section>
     <aside class="slice-review cnt-card" id="review-sidebar" aria-label="Findings"></aside>
     </div>

@@ -377,6 +377,13 @@ reviewSidebar.addEventListener('click', (event) => {
 });
 
 document.addEventListener('keydown', (event) => {
+  // The shortcut the legacy app menu advertised beside its Settings item, and
+  // the one every desktop application on this platform uses.
+  if (event.key === ',' && (event.metaKey || event.ctrlKey)) {
+    event.preventDefault();
+    void showSettings(settingsView.hidden);
+    return;
+  }
   if (event.key !== 'Escape') return;
   // The card first, then the mode. Escape means "back out of the innermost
   // thing", and closing the whole settings page because a card happened to be
@@ -469,6 +476,9 @@ function showSettings(show) {
 
 document.querySelector('#open-settings').addEventListener('click', () => void showSettings(true));
 document.querySelector('#close-settings').addEventListener('click', () => void showSettings(false));
+// Named for what it opens rather than for the window it is: "Launcher" describes
+// our architecture, "Quick check" describes what the writer gets.
+document.querySelector('#open-launcher').addEventListener('click', () => void window.ikmal.openCompact?.());
 
 // One accordion open/close handler for the whole page: the group composite
 // renders a button per section and owns its own aria-expanded.
