@@ -80,8 +80,24 @@ const settingsPage = fs.readFileSync(path.join(app, 'settings_page.js'), 'utf8')
 // a shape when it meant a property.
 const sectionOrder = [...settingsPage.matchAll(/(?:id: '([a-z]+)', title: ')|(?:\n\s*section\('([a-z]+)', ')/g)]
   .map((match) => match[1] || match[2]);
-assert.deepEqual(sectionOrder, ['checking', 'appearance', 'rules', 'quality', 'extension', 'integrations', 'spell', 'office', 'services', 'privacy', 'about'],
+// The order is still a product contract; the contract changed on purpose.
+// General leads because whether the product is present at all is a different
+// question from how it marks a draft, and it sat under three controls about the
+// colour of underlines. The quality model is gone as a section: it is a service
+// on this machine, and it now sits with the others rather than claiming a peer
+// of Checking. Nothing was dropped — `qualityModelBody` is asserted below to
+// still be rendered.
+assert.deepEqual(sectionOrder, ['general', 'checking', 'appearance', 'rules', 'extension', 'integrations', 'spell', 'office', 'services', 'privacy', 'about'],
   'settings sections are out of canonical order');
+// Consolidating a section must not quietly delete what was in it.
+for (const body of ['generalBody', 'qualityModelBody', 'servicesBody']) {
+  assert.match(settingsPage, new RegExp(`\\b${body}\\(`), `${body} is defined but never rendered`);
+}
+// Bands group the page without merging what they group: each section under one
+// keeps its own summary, which is the whole reason for grouping rather than
+// consolidating four connection sections into one.
+assert.match(settingsPage, /heading: 'Where ikmal works'/, 'the settings page has no bands');
+assert.ok((settingsPage.match(/\{ heading: '/g) || []).length >= 3, 'the settings page is one flat list of sections');
 // Built from the shared composites, not restyled.
 for (const composite of ['renderSettingsGroups', 'renderServiceHealth', 'renderStyleGuideCard']) {
   assert.ok(settingsPage.includes(composite), `settings page does not use ${composite}`);
@@ -109,13 +125,16 @@ const covers = {
   'LanguageTool plugins': 'integrations',
   'Browser extension': 'extension',
   'Microsoft Office': 'office',
-  'Quality model': 'quality',
+  // The quality model is a service on this machine, and shares that section now.
+  'Quality model': 'services',
   'Style guide': 'rules',
   'Checking behavior': 'checking',
   'Native macOS spell service': 'spell',
   'Highlighting': 'appearance',
-  'App access': 'appearance',
-  'Advanced': 'appearance',
+  // Menu bar, Dock and open-at-login moved out of Appearance into General:
+  // where the app lives is not how it marks a draft.
+  'App access': 'general',
+  'Advanced': 'general',
 };
 for (const group of legacyGroups) {
   const section = covers[group];

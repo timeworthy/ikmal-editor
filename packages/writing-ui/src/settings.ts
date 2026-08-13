@@ -66,6 +66,11 @@ export const SETTINGS_CSS = `
 .writing-health-name { align-items: center; display: flex; gap: var(--space-2); }
 .writing-health-endpoint { color: var(--fg-4); font: 400 11px/1.3 var(--font-mono); }
 .writing-guide-row { align-items: center; display: flex; gap: var(--space-3); justify-content: space-between; }
+/* Bands. Set in the page's own voice rather than as another row, so the eye
+   reads them as dividers and not as sections that failed to open. */
+.writing-settings-band { align-items: baseline; color: var(--fg-3); display: flex; flex-wrap: wrap; font: 600 11px/1 var(--font-mono); gap: var(--space-3); letter-spacing: .08em; margin: var(--space-5) 0 0; text-transform: uppercase; }
+.writing-settings-band:first-child { margin-top: 0; }
+.writing-settings-band span { color: var(--fg-4); font: 400 12px/1.4 var(--font-sans); letter-spacing: normal; text-transform: none; }
 `;
 
 const HEALTH_LABELS: Record<HealthState, string> = {
@@ -105,9 +110,34 @@ export function renderSettingsGroup(group: SettingsGroupState): string {
     + '</div>';
 }
 
-export function renderSettingsGroups(groups: SettingsGroupState[]): string {
-  const valid = Array.isArray(groups) ? groups.filter((group) => group && typeof group.id === 'string') : [];
-  return `<div class="cnt-accordion writing-settings-groups">${valid.map(renderSettingsGroup).join('')}</div>`;
+/**
+ * A band heading, for pages long enough that a flat list of sections stops
+ * being scannable. It groups without consolidating: four ways of reaching other
+ * apps read as one concern under a heading, while each keeps the summary that
+ * says whether it is worth opening — which merging them into one section would
+ * have thrown away.
+ */
+export interface SettingsBand {
+  heading: string;
+  description?: string;
+}
+
+export type SettingsPageItem = SettingsGroupState | SettingsBand;
+
+function isBand(item: SettingsPageItem): item is SettingsBand {
+  return typeof (item as SettingsBand).heading === 'string';
+}
+
+export function renderSettingsGroups(groups: SettingsPageItem[]): string {
+  const valid = Array.isArray(groups)
+    ? groups.filter((group) => group && (isBand(group) || typeof (group as SettingsGroupState).id === 'string'))
+    : [];
+  const rendered = valid.map((item) => (isBand(item)
+    ? `<h2 class="writing-settings-band">${escapeHTML(item.heading)}`
+      + (item.description ? `<span>${escapeHTML(item.description)}</span>` : '')
+      + '</h2>'
+    : renderSettingsGroup(item))).join('');
+  return `<div class="cnt-accordion writing-settings-groups">${rendered}</div>`;
 }
 
 /**

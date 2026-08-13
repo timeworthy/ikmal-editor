@@ -42,6 +42,26 @@ export const SETTINGS_PAGE_CSS = `${SETTINGS_CSS}
 .settings-history-item { align-items: baseline; display: flex; gap: var(--space-4); justify-content: space-between; }
 .settings-history-text { color: var(--fg-2); font: 400 13px/1.45 var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .settings-history-meta { align-items: center; color: var(--fg-4); display: flex; flex: none; font: 400 11px/1 var(--font-mono); gap: var(--space-2); }
+/* Two sliders read better side by side than stacked: they are the same kind of
+   control answering related questions, and stacked they put a help line between
+   each label and the next. One column when there is no room for two. */
+.settings-sliders { display: grid; gap: var(--space-4) var(--space-5); grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+/* An explanation the reader opens. Closed by default — it is for the person who
+   is unsure, and it should not push the controls down for everyone else. */
+.settings-explain { color: var(--fg-3); }
+.settings-explain summary { color: var(--fg-2); cursor: pointer; font: 500 12px/1.4 var(--font-sans); }
+.settings-explain summary:focus-visible { border-radius: var(--radius-1); box-shadow: var(--shadow-focus); outline: 2px solid transparent; }
+.settings-explain-body { display: grid; gap: var(--space-3); padding: var(--space-3) 0 0; }
+.settings-explain-row { display: grid; gap: var(--space-1); }
+.settings-explain-term { color: var(--fg-2); font: 600 12px/1.4 var(--font-sans); }
+.settings-explain-text { color: var(--fg-3); font: 400 12px/1.5 var(--font-sans); }
+.settings-explain-note { color: var(--fg-4); }
+/* The words a rule would actually catch, set apart from the sentence about
+   them so the example is not read as part of the explanation. */
+.settings-sample { background: var(--bg-2); border-radius: var(--radius-1); color: var(--fg-2); font: 400 12px/1.4 var(--font-mono); padding: 1px var(--space-2); }
+/* Between the two halves of a merged section, so they read as related rather
+   than as one long body that changes subject without warning. */
+.settings-divider { background: var(--border-1); border: 0; height: 1px; margin: var(--space-2) 0; }
 `;
 
 function escapeHTML(value) {
@@ -113,6 +133,37 @@ function steps(items) {
     + '</ol>';
 }
 
+/**
+ * An explanation the reader opens, with examples.
+ *
+ * A control's help line has room for what a setting does and none for what it
+ * means. "Lower shows more suggestions, including less confident ones" is true
+ * and still leaves someone unable to guess what they would actually see
+ * differently — and four categories named Grammar, Repeats, Style and Other
+ * cannot be told apart without an example of each.
+ *
+ * A disclosure rather than a tooltip: a tooltip cannot be reached by keyboard
+ * or touch, and this is the text most likely to be wanted by someone who is
+ * not sure what they are looking at.
+ */
+function explain(summary, rows) {
+  const items = rows.map(([term, example]) =>
+    `<div class="settings-explain-row"><span class="settings-explain-term">${escapeHTML(term)}</span>`
+    + `<span class="settings-explain-text">${example}</span></div>`).join('');
+  return `<details class="settings-explain"><summary>${escapeHTML(summary)}</summary>`
+    + `<div class="settings-explain-body">${items}</div></details>`;
+}
+
+/**
+ * An example of the text a rule catches, so a category name is not the only
+ * clue. A correction is shown as one — the arrow is what makes "teh the" read
+ * as a fix rather than as two words.
+ */
+function sample(text, correction) {
+  return `<span class="settings-sample">${escapeHTML(text)}</span>`
+    + (correction ? ` <span class="settings-explain-note">&rarr; ${escapeHTML(correction)}</span>` : '');
+}
+
 /** Literal text a user has to type or find, kept apart from the prose. */
 function literal(value) {
   return `<code class="cnt-kbd">${escapeHTML(value)}</code>`;
@@ -134,6 +185,10 @@ function checkingBody(preferences = {}) {
       ['automatic', 'Automatically as I write'],
       ['manual', 'Only when I ask'],
     ]))
+    // Side by side: two sliders answering related questions about the same
+    // thing. Stacked, each label was separated from the next by a help line, so
+    // the pair read as two unrelated settings that happened to be adjacent.
+    + '<div class="settings-sliders">'
     // The steps are the shell's own rounding: it snaps the pause to 50 ms and
     // the sensitivity to 5. A finer control offers precision that is discarded
     // on the way in, so the number released on is not the number kept.
@@ -147,8 +202,24 @@ function checkingBody(preferences = {}) {
     + slider('sensitivity', 'Suggestion sensitivity', preferences.sensitivity ?? 55, {
       min: 0, max: 100, step: 5,
       format: (value) => `${value}%`,
-      help: 'Lower shows more suggestions, including less confident ones.',
+      help: 'How sure a suggestion must be before you see it.',
     })
+    + '</div>'
+    // Sensitivity is the hardest control on this page to guess the effect of.
+    // A percentage with no referent tells the reader nothing about what would
+    // appear or stop appearing, so the ends of the range are described by what
+    // they actually let through.
+    + explain('What does sensitivity change?', [
+      ['Higher — only confident findings',
+        'Spelling and agreement, where there is one right answer. '
+        + sample('The results is wrong', 'The results are wrong')],
+      ['Lower — suggestions as well',
+        'Judgement calls that may be fine as written: passive voice, a long '
+        + 'sentence, a word repeated across a paragraph. ' + sample('was reviewed by the team')],
+      ['It never changes what is checked',
+        'Only how sure a finding must be before it is shown. Turning a whole kind of '
+        + 'finding off is what the checkboxes below are for.'],
+    ])
     // Named for what each category actually catches. "Style" alone does not say
     // that an imported guide's rules arrive under it, and "Repetition" reads as
     // a duplicate-word check rather than the echoes it also finds.
@@ -162,11 +233,49 @@ function checkingBody(preferences = {}) {
     // what they would stop seeing. The engines are named where they are the
     // subject — Services, Integrations — and nowhere else.
     + checkbox('category:languagetool', 'Other suggestions', categories.languagetool !== false)
-    + '</div></div>'
+    + '</div>'
+    // Four names cannot be told apart without an example of each, and the
+    // difference between "Grammar" and "Other suggestions" is the one nobody
+    // can guess: both come from the same checker, and the split is between what
+    // has a single right answer and what does not.
+    + explain('What is the difference between these?', [
+      ['Grammar and agreement',
+        'Subject and verb, tense, articles, spelling. There is a right answer '
+        + 'and it can be applied. ' + sample('teh', 'the')],
+      ['Repeats and echoes',
+        'The same word or root used again close by, including forms of it. '
+        + sample('the report … the report')],
+      ['Style and guide rules',
+        'How something is written rather than whether it is correct — passive '
+        + 'voice, wordiness — plus every rule from a style guide you have imported.'],
+      ['Other suggestions',
+        'Everything else the checker reports that does not fall into the three '
+        + 'above. Turning this off is the way to quieten the long tail without '
+        + 'losing the categories you rely on.'],
+    ])
+    + '</div>'
     + '</div>';
 }
 
-function appearanceBody(annotations = {}, presence = {}, launchAtLogin = false) {
+/**
+ * Where the app itself lives. First, because it is what someone opening
+ * settings for the first time is most likely to be looking for — and because
+ * these three decide whether the product is present at all, which is a
+ * different question from how it marks a draft. They sat at the bottom of
+ * Appearance, under three controls about the colour of underlines.
+ */
+function generalBody(presence = {}, launchAtLogin = false) {
+  return '<div class="settings-form"><div class="settings-inline">'
+    + toggle('menubarIcon', 'Show in the menu bar', presence.menubarIcon !== false)
+    + (presence.dockSupported ? toggle('dockIcon', 'Show in the Dock', presence.dockIcon !== false) : '')
+    + toggle('launchAtLogin', 'Open at login', Boolean(launchAtLogin))
+    + '</div>'
+    + (presence.dockSupported ? '' : '<p class="settings-note">Dock visibility is managed by the '
+      + 'operating system on this platform.</p>')
+    + '</div>';
+}
+
+function appearanceBody(annotations = {}) {
   return '<div class="settings-form">'
     // First, because it decides the shape of the window the other three are
     // describing. Both are real choices: a list beside the draft is the better
@@ -183,16 +292,12 @@ function appearanceBody(annotations = {}, presence = {}, launchAtLogin = false) 
     + field('Mark palette', select('annotationPalette', annotations.palette || 'balanced', [
       ['balanced', 'Balanced'], ['warm', 'Warm'], ['cool', 'Cool'], ['contrast', 'High contrast'],
     ]), 'How strongly the categories are told apart by colour.')
-    + slider('annotationIntensity', 'Mark intensity', annotations.intensity ?? 60, {
-      min: 0, max: 100,
+    + slider('annotationIntensity', 'Mark intensity', annotations.intensity ?? 55, {
+      min: 0, max: 100, step: 5,
       format: (value) => `${value}%`,
       help: 'How prominent the marks are against your text.',
     })
-    + '<div class="settings-inline">'
-    + toggle('menubarIcon', 'Show in the menu bar', presence.menubarIcon !== false)
-    + (presence.dockSupported ? toggle('dockIcon', 'Show in the Dock', presence.dockIcon !== false) : '')
-    + toggle('launchAtLogin', 'Open at login', Boolean(launchAtLogin))
-    + '</div></div>';
+    + '</div>';
 }
 
 function rulesBody(styleGuides = {}) {
@@ -491,11 +596,6 @@ function sectionSummaries(state = {}) {
     set('rules', !guides ? 'None imported' : state.styleGuides.enabled ? `${guides} active` : `${guides} imported, off`,
       guides && !state.styleGuides.enabled ? 'warning' : undefined);
   }
-  if (state.quality?.components?.length) {
-    set('quality', !state.quality.ready ? 'Not installed'
-      : state.quality.transformerRunning ? 'Running' : 'Installed, not running',
-      !state.quality.ready ? undefined : state.quality.transformerRunning ? 'success' : 'warning');
-  }
   if (state.integrations?.targets) {
     const targets = state.integrations.targets;
     const configured = targets.filter((target) => target.configured).length;
@@ -514,13 +614,25 @@ function sectionSummaries(state = {}) {
         : state.office.configured ? 'Bridge stopped' : 'Not set up',
       state.office.running ? 'success' : undefined);
   }
+  // Both halves of the merged section in one line. Saying "Both running" while
+  // the optional model is missing would answer a question nobody asked and hide
+  // the one they did.
   if (state.services && state.services.languageToolReady !== undefined) {
     const running = [state.services.languageToolReady, state.services.qualityReady].filter(Boolean).length;
-    set('services', running === 2 ? 'Both running' : running ? '1 of 2 running' : 'Stopped',
+    const services = running === 2 ? 'Both running' : running ? '1 of 2 running' : 'Stopped';
+    const model = state.quality?.components?.length
+      ? state.quality.ready ? (state.quality.transformerRunning ? 'model running' : 'model idle') : 'no model'
+      : '';
+    set('services', model ? `${services} · ${model}` : services,
       running === 2 ? 'success' : 'warning');
   }
   if (Array.isArray(state.recentChecks)) {
     set('privacy', state.recentChecks.length === 1 ? '1 check kept' : `${state.recentChecks.length} checks kept`);
+  }
+  if (state.presence && state.presence.menubarIcon !== undefined) {
+    const where = [state.presence.menubarIcon !== false ? 'Menu bar' : '', state.presence.dockIcon ? 'Dock' : '']
+      .filter(Boolean).join(' + ');
+    set('general', where || 'Hidden', where ? undefined : 'warning');
   }
   set('about', state.version);
   return summaries;
@@ -540,16 +652,24 @@ export function renderSettingsPage(state = {}) {
   const section = (id, title, description, body) => ({
     id, title, description, body, open: open.has(id), ...(summaries[id] || {}),
   });
+  // Three bands, because eleven sections in a flat list stopped being
+  // scannable. They group without consolidating: four ways of reaching other
+  // apps read as one concern, while each keeps the summary that says whether it
+  // is worth opening — which merging them into a single section would have
+  // thrown away. The one real consolidation is the quality model, which is a
+  // service on this machine and now sits with the others.
   return `<div class="settings-page">${renderSettingsGroups([
+    { heading: 'Writing', description: 'What the product does while you write.' },
+    section('general', 'General', 'Where ikmal appears, and whether it starts with your session.',
+      generalBody(state.presence, state.launchAtLogin)),
     section('checking', 'Checking', 'When checks run and what they surface.', checkingBody(state.checking)),
-    section('appearance', 'Appearance', 'How findings are marked, and where the app appears.',
-      appearanceBody(state.annotations, state.presence, state.launchAtLogin)),
+    section('appearance', 'Appearance', 'How findings are shown and marked.', appearanceBody(state.annotations)),
     // Named for what it contains. It was "Dictionary and rules" while holding
     // no dictionary — the shell can add a word but cannot list or remove one,
     // so a title promising dictionary management had nothing behind it.
     section('rules', 'Style guides', 'Imported guides and the rules they add.', rulesBody(state.styleGuides)),
-    section('quality', 'Local quality model', 'Suggestions beyond LanguageTool, from a model on this machine.',
-      qualityModelBody(state.quality, state.services)),
+
+    { heading: 'Where ikmal works', description: 'The other places you write.' },
     // Every other description names what the section covers; this one told the
     // reader to go and do something. It also now says whose extension it is,
     // which is the distinction the body goes on to draw.
@@ -557,7 +677,11 @@ export function renderSettingsPage(state = {}) {
     section('integrations', 'Integrations', 'LanguageTool plugins and editors pointed at this machine.', integrationsBody(state.integrations)),
     section('spell', 'Native macOS spell service', 'ikmal in the system spelling menu.', spellServerBody(state.spellServer)),
     section('office', 'Microsoft Office', 'Task panes served over local HTTPS.', officeBody(state.office)),
-    section('services', 'Services and diagnostics', 'What is running on this machine.', servicesBody(state.services)),
+
+    { heading: 'On this machine', description: 'What runs here, what is kept, and what it is built on.' },
+    section('services', 'Services and model', 'What is running here, and the optional local model.',
+      `<div class="settings-stack">${servicesBody(state.services)}`
+      + `<hr class="settings-divider">${qualityModelBody(state.quality, state.services)}</div>`),
     section('privacy', 'Privacy and data', 'What is kept on this machine, and how to remove it.', privacyBody(state.recentChecks)),
     section('about', 'About', 'Version and licences.', aboutBody(state.version)),
   ])}</div>`;
