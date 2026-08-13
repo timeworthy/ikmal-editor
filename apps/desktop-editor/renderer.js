@@ -154,6 +154,9 @@ settingsStyle.textContent = SETTINGS_PAGE_CSS;
 document.head.append(settingsStyle);
 
 let settingsState = {};
+// Which sections the reader has open. Held here rather than read back off the
+// DOM so a repaint restores it instead of destroying it.
+const openSections = new Set(['checking']);
 
 // Read once, then re-read only what a change invalidates. A settings page that
 // refetches everything on every keystroke makes the shell do work the user did
@@ -187,7 +190,7 @@ async function loadSettings() {
 }
 
 function paintSettings() {
-  settingsView.innerHTML = renderSettingsPage(settingsState);
+  settingsView.innerHTML = renderSettingsPage({ ...settingsState, open: openSections });
 }
 
 function showSettings(show) {
@@ -207,9 +210,11 @@ document.querySelector('#open-settings').addEventListener('click', () => showSet
 settingsView.addEventListener('click', async (event) => {
   const head = event.target.closest?.('.cnt-acc-head');
   if (head) {
-    const body = head.nextElementSibling;
+    const group = head.closest('.cnt-acc-item')?.dataset.group;
     const open = head.getAttribute('aria-expanded') === 'true';
+    if (open) openSections.delete(group); else openSections.add(group);
     head.setAttribute('aria-expanded', String(!open));
+    const body = head.nextElementSibling;
     if (body) body.hidden = open;
     return;
   }

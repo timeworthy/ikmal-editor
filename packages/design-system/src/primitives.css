@@ -293,6 +293,9 @@
   gap: var(--space-2);
   height: 22px;
   padding: 0 var(--space-2);
+  /* A tag is a short label. Wrapping one breaks its own height and reads as a
+     broken control rather than a long value. */
+  white-space: nowrap;
 }
 .cnt-tag[data-intent="info"] { background: color-mix(in oklab, var(--info) 16%, var(--bg-2)); color: var(--info); }
 .cnt-tag[data-intent="success"] { background: color-mix(in oklab, var(--success) 16%, var(--bg-2)); color: var(--success); }

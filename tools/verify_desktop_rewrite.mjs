@@ -115,3 +115,13 @@ for (const group of legacyGroups) {
   assert.ok(section, `legacy settings group "${group}" has no mapping to a rewrite section`);
   assert.ok(sectionOrder.includes(section), `legacy group "${group}" maps to a missing section: ${section}`);
 }
+
+// A repaint must not close a section the reader opened. Service state is pushed
+// while settings are visible, so the page repaints on its own — holding the
+// open set outside the render is what keeps it from snapping shut underneath
+// them.
+const editorRenderer = fs.readFileSync(path.join(app, 'renderer.js'), 'utf8');
+assert.match(editorRenderer, /const openSections = new Set\(/, 'open sections are not held across repaints');
+assert.match(editorRenderer, /renderSettingsPage\(\{ \.\.\.settingsState, open: openSections \}\)/,
+  'the settings render does not receive the open set');
+assert.match(settingsPage, /state\.open instanceof Set/, 'the settings page ignores which sections are open');

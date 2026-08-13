@@ -297,17 +297,21 @@ function aboutBody(version) {
  * page does not reflow as state loads.
  */
 export function renderSettingsPage(state = {}) {
+  // Which sections are open is the reader's state, not the data's. A repaint
+  // driven by a service-state push would otherwise snap every open section
+  // shut underneath them.
+  const open = state.open instanceof Set ? state.open : new Set(['checking']);
   return `<div class="settings-page">${renderSettingsGroups([
-    { id: 'checking', title: 'Checking', description: 'When checks run and what they surface.', badge: 'Control', open: true, body: checkingBody(state.checking) },
-    { id: 'appearance', title: 'Appearance', description: 'How findings are marked, and where the app appears.', badge: 'Display', body: appearanceBody(state.annotations, state.presence, state.launchAtLogin) },
-    { id: 'rules', title: 'Dictionary and rules', description: 'Imported style guides and the rules they add.', badge: 'Optional', body: rulesBody(state.styleGuides) },
-    { id: 'quality', title: 'Local quality model', description: 'Optional local suggestions beyond LanguageTool.', badge: 'Optional', body: qualityModelBody(state.quality, state.services) },
-    { id: 'extension', title: 'Browser extension', description: 'Check text fields in your browser against this machine.', badge: 'Optional', body: browserExtensionBody() },
-    { id: 'integrations', title: 'Integrations', description: 'LanguageTool plugins and editors pointed at this machine.', badge: 'Optional', body: integrationsBody(state.integrations) },
-    { id: 'spell', title: 'Native macOS spell service', description: 'ikmal in the system spelling menu.', badge: 'Optional', body: spellServerBody(state.spellServer) },
-    { id: 'office', title: 'Microsoft Office', description: 'Task panes served over local HTTPS.', badge: 'Optional', body: officeBody(state.office) },
-    { id: 'services', title: 'Services and diagnostics', description: 'What is running on this machine.', body: servicesBody(state.services) },
-    { id: 'privacy', title: 'Privacy and data', description: 'What is stored locally, and removing it.', body: privacyBody(state.recentChecks) },
-    { id: 'about', title: 'About', description: 'Version and licences.', body: aboutBody(state.version) },
+    { id: 'checking', title: 'Checking', description: 'When checks run and what they surface.', badge: 'Control', body: checkingBody(state.checking), open: open.has('checking') },
+    { id: 'appearance', title: 'Appearance', description: 'How findings are marked, and where the app appears.', badge: 'Display', body: appearanceBody(state.annotations, state.presence, state.launchAtLogin), open: open.has('appearance') },
+    { id: 'rules', title: 'Dictionary and rules', description: 'Imported style guides and the rules they add.', badge: 'Optional', body: rulesBody(state.styleGuides), open: open.has('rules') },
+    { id: 'quality', title: 'Local quality model', description: 'Optional local suggestions beyond LanguageTool.', badge: 'Optional', body: qualityModelBody(state.quality, state.services), open: open.has('quality') },
+    { id: 'extension', title: 'Browser extension', description: 'Check text fields in your browser against this machine.', badge: 'Optional', body: browserExtensionBody(), open: open.has('extension') },
+    { id: 'integrations', title: 'Integrations', description: 'LanguageTool plugins and editors pointed at this machine.', badge: 'Optional', body: integrationsBody(state.integrations), open: open.has('integrations') },
+    { id: 'spell', title: 'Native macOS spell service', description: 'ikmal in the system spelling menu.', badge: 'Optional', body: spellServerBody(state.spellServer), open: open.has('spell') },
+    { id: 'office', title: 'Microsoft Office', description: 'Task panes served over local HTTPS.', badge: 'Optional', body: officeBody(state.office), open: open.has('office') },
+    { id: 'services', title: 'Services and diagnostics', description: 'What is running on this machine.', body: servicesBody(state.services), open: open.has('services') },
+    { id: 'privacy', title: 'Privacy and data', description: 'What is stored locally, and removing it.', body: privacyBody(state.recentChecks), open: open.has('privacy') },
+    { id: 'about', title: 'About', description: 'Version and licences.', body: aboutBody(state.version), open: open.has('about') },
   ])}</div>`;
 }
