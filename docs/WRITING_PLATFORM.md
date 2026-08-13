@@ -479,10 +479,75 @@ running.
 deletion test made mechanical: the legacy file cannot lose coverage silently,
 and it cannot be deleted while the mapping still reads from it.
 
-**Remaining for the exit:** the flag is still off. Flipping it is now a decision
-rather than a blocker — every legacy settings group has an equivalent, and the
-remaining ten capabilities are compact-window shell concerns (window sizing,
-quick-check invocation) rather than user-facing features.
+**Remaining for the exit:** the flag is still off, and the claim that once stood
+here — that flipping it was a decision rather than a blocker, because what was
+left was shell plumbing — was wrong. It was asserted from a capability count and
+never checked against what the legacy renderers do. Auditing that produced
+[Phase E](#phase-e--what-the-legacy-renderers-still-do), which is real work and
+includes one feature the rewrite ships settings for and cannot perform.
+
+## Phase E — what the legacy renderers still do
+
+The capability diff is 14, but five of those are the per-host Office manifest
+channels, which one parametrised capability already covers. The other nine, and
+the surfaces behind them, are the real remaining work.
+
+### E1 — Controls that currently do nothing
+
+**Appearance's three mark controls write preferences nothing reads.** The
+rewrite has no mark layer: `apps/desktop-editor` has no highlight element, the
+design system defines no mark styles, and `desktop/annotation_preferences.js` —
+which applies the preference as a data attribute for legacy CSS to style — was
+never ported. Mark style, palette and intensity are settings for a feature the
+new surface cannot perform.
+
+This is the one item that has to be resolved before the flag flips in either
+direction: either the marks are ported, or the section says the feature is
+unavailable. Shipping a control that changes nothing is worse than either.
+
+### E2 — Tray actions that are inert, and failures that are silent
+
+| Event | Emitted by | In the rewrite |
+| --- | --- | --- |
+| `service-error` | 4 sites, incl. missing manager binary and services exiting | nothing subscribes — failures are silent |
+| `quick-check` | tray "Quick check clipboard" | nothing subscribes — the item does nothing |
+| `show-history` | tray "Recent checks (N)" | nothing subscribes, and there is no panel |
+| `compact-invoked` | tray "Open writing tester" | nothing subscribes |
+| `checking-preferences` | a change made in another window | settings go stale |
+| `annotation-preferences` | a change made in another window | settings go stale |
+
+Two of the six tray items are dead under the flag. `service-error` is the most
+serious: a manager binary that cannot be found reports itself to a listener that
+does not exist.
+
+### E3 — Surfaces with no equivalent
+
+- **Recent checks.** The legacy compact window has a *Recent* tab with its own
+  list, clear action and live region. The rewrite counts them in Privacy and can
+  clear them, but cannot show them — and `show-history` has nowhere to go.
+- **The review list.** `writing-ui/review` — workspace, row, undo notice — is
+  built, tested and in the gallery, and **no host renders it**. The rewrite shows
+  one finding at a time; the legacy editor has a suggestions list.
+- **The way back.** The launcher opens the editor; the editor cannot return.
+  Needs `openCompact`.
+- **The app menu** in the legacy editor.
+
+`indicator_popover` and `selection_popover` are also unconsumed: three of the
+seven composites have never been rendered by a host.
+
+### E4 — Genuinely small
+
+`platform`, `setCompactExpanded`.
+
+### Order
+
+E1 first, because it is a correctness problem in shipped settings rather than a
+missing feature. Then E2, which is small and stops the product failing silently.
+E3 is the largest and is where the unconsumed composites finally get a host —
+which is also the first real test of whether they fit one.
+
+The flag flips after E1 and E2. E3 can follow it only if the legacy renderers
+stay until it lands, so the honest sequence is E1 → E2 → E3 → flip → delete.
 
 ### Phase D — original scope
 
