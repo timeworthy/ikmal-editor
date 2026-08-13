@@ -15,7 +15,7 @@ Chrome, or the network — a host attaches the result wherever it belongs.
 | `indicator_popover` | The full "right now": state, counts, modes, inline review |
 | `issue_popover` | Explain and correct the finding nearest attention |
 | `selection_popover` | What the writer just highlighted |
-| `mode_picker` | Automatic, Pause, Zen — with all four durations |
+| `mode_picker` | Automatic, Pause, Zen — and, only while one is running, how long for |
 | `review` | The full review workspace, the review row, and the undo notice |
 | `settings` | Settings group, service health card, style-guide card |
 
@@ -48,6 +48,12 @@ learned from the legacy implementation, which remains the behavioural oracle:
 - **The service card says `managed` or `existing`.** Whether the app started a
   service decides whether restarting the app can fix it.
 - **A refused correction is not presented as an applied one.**
+- **Duration exists only while a timed mode is running**, and lives in the
+  segment that mode occupies. Choosing Pause used to drop a menu below the row,
+  so the click that said "pause" was not the one that paused anything, and the
+  duration list was on screen while nothing was timed. Now the first click
+  pauses — indefinitely, which is already what the shell does with a duration it
+  does not recognise — and the segment becomes the control for changing that.
 
 ## An obligation on hosts
 

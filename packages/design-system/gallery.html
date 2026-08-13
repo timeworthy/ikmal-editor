@@ -146,6 +146,7 @@
   const review = await import('../writing-ui/dist/review.js');
   const selection = await import('../writing-ui/dist/selection_popover.js');
   const issue = await import('../writing-ui/dist/issue_popover.js');
+  const modes = await import('../writing-ui/dist/mode_picker.js');
   const composites = document.querySelector('#composites');
   const issues = [
     { id: 'i1', message: 'A plural subject takes a plural verb.', matchedText: 'results is', source: 'LanguageTool', category: 'grammar' },
@@ -156,6 +157,11 @@
     + selection.SELECTION_POPOVER_CSS + issue.ISSUE_POPOVER_CSS;
   document.head.append(style);
   composites.innerHTML = [
+    // Both states, because the property worth seeing is the difference between
+    // them: nothing about duration exists until a timed mode is running, and
+    // then it lives in the segment that mode already occupies.
+    `<div id="modes-automatic" class="cnt-card">${modes.renderModePicker({ mode: 'active' })}</div>`,
+    `<div id="modes-paused" class="cnt-card">${modes.renderModePicker({ mode: 'paused', duration: '1h', until: 'until 14:20' })}</div>`,
     ui.renderIndicatorPopover({ status: 'issues', issueCount: 2, words: 1284, characters: 7310, issues, modes: { mode: 'active' } }),
     settings.renderServiceHealth([
       { name: 'LanguageTool', state: 'ready', endpoint: '127.0.0.1:8097', managed: true },

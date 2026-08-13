@@ -76,6 +76,7 @@ function showIssue(index = issueIndex) {
 function paintModes() {
   modes.innerHTML = renderModePicker({
     mode: focusState.mode,
+    ...(focusState.duration ? { duration: focusState.duration } : {}),
     ...(focusState.label ? { until: focusState.label } : {}),
   });
 }
@@ -130,19 +131,30 @@ issuePopover.addEventListener('click', (event) => {
   if (action === 'next') showIssue(issueIndex + 1);
 });
 
+// Choosing a mode applies it. Pause used to do nothing until a duration was
+// picked from a list that dropped below the row, so the click that said "pause"
+// was not the one that paused. A mode entered without a duration runs
+// indefinitely — which is already what the shell does — and the segment it
+// lands on becomes the control for changing that.
 modes.addEventListener('click', (event) => {
-  const control = event.target.closest?.('[data-mode]');
+  const control = event.target.closest?.('button[data-mode]');
   if (!control) return;
-  const mode = control.dataset.mode;
-  const duration = control.dataset.duration;
-  // Automatic is the absence of a timed mode, so it applies immediately.
-  // The others need a duration, which the picker asks for on the next click.
-  if (mode === 'active' || duration) {
-    void window.ikmal.setFocusMode(mode, duration).then((state) => { focusState = state || focusState; paintModes(); });
-    return;
-  }
-  modes.innerHTML = renderModePicker({ mode: focusState.mode, open: mode });
+  void applyFocus(control.dataset.mode);
 });
+
+// The running mode's duration, changed in place without leaving the mode.
+modes.addEventListener('change', (event) => {
+  const control = event.target.closest?.('select[data-duration-for]');
+  if (!control) return;
+  void applyFocus(control.dataset.durationFor, control.value);
+});
+
+function applyFocus(mode, duration) {
+  return window.ikmal.setFocusMode(mode, duration).then((state) => {
+    focusState = state || focusState;
+    paintModes();
+  });
+}
 
 services.addEventListener('click', (event) => {
   if (event.target.closest?.('[data-action="start-services"]')) void window.ikmal.startServices();

@@ -131,6 +131,45 @@ try {
   const accent = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
   if (accent && hoveredBackground.includes(accent)) throw new Error('A disabled button still lights up on hover.');
 
+  // The duration control exists only while a timed mode is running, and lives
+  // in the segment that mode occupies rather than on a row of its own. Asserted
+  // in a browser because the point of the change is what is on screen: choosing
+  // Pause used to drop a menu below the row, so the click that said "pause" was
+  // not the one that paused.
+  const modePicker = await page.evaluate(() => ({
+    automatic: document.querySelectorAll('#modes-automatic select').length,
+    paused: document.querySelectorAll('#modes-paused select').length,
+    rowsAutomatic: document.querySelectorAll('#modes-automatic .writing-modes > *').length,
+    rowsPaused: document.querySelectorAll('#modes-paused .writing-modes > *').length,
+    inSegment: Boolean(document.querySelector('#modes-paused .cnt-segmented select')),
+    readable: (() => {
+      const select = document.querySelector('#modes-paused select');
+      const segment = select.closest('[data-selected="true"]');
+      return getComputedStyle(select).color === getComputedStyle(segment).color;
+    })(),
+  }));
+  if (modePicker.automatic !== 0) throw new Error('Automatic offers a duration it has no use for.');
+  // A segment marked selected must look it, in whichever idiom it uses to say
+  // so. The segmented primitive styled only `aria-selected`, so moving these
+  // buttons to `aria-pressed` — correct, because they toggle a mode rather than
+  // reveal a panel — silently left the running mode looking unselected.
+  const selection = await page.evaluate(() => {
+    const read = (selector) => getComputedStyle(document.querySelector(selector)).backgroundColor;
+    return {
+      pressed: read('#modes-automatic [aria-pressed="true"]'),
+      unpressed: read('#modes-automatic [aria-pressed="false"]'),
+      dataSelected: read('#modes-paused [data-selected="true"]'),
+    };
+  });
+  if (selection.pressed === selection.unpressed) throw new Error('A pressed segment looks the same as an unpressed one.');
+  if (selection.dataSelected !== selection.pressed) throw new Error('The two ways of marking a segment selected do not look the same.');
+  if (modePicker.paused !== 1) throw new Error(`A running timed mode offers ${modePicker.paused} duration controls, not 1.`);
+  if (!modePicker.inSegment) throw new Error('The duration control is not inside the segment its mode occupies.');
+  if (modePicker.rowsPaused !== modePicker.rowsAutomatic) {
+    throw new Error('Choosing a timed mode adds a row, which is the clutter the control exists to avoid.');
+  }
+  if (!modePicker.readable) throw new Error('The duration control does not take its segment\'s foreground, so it is unreadable when selected.');
+
   // A full-width control must not overflow its container. This is what caught
   // the missing box-sizing: the gallery's textarea ran past its column, and
   // every settings form built on the primitive would have inherited it.

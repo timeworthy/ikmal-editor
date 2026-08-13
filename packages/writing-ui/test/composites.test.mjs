@@ -13,14 +13,31 @@ import { renderReviewWorkspace, renderUndoNotice } from '../dist/review.js';
 
 const src = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src');
 
-test('modes offer every duration, and Automatic has none to offer', () => {
-  assert.deepEqual(FOCUS_DURATIONS.map((d) => d.id), ['15m', '1h', '4h', 'until-off']);
-  const html = renderModePicker({ mode: 'paused', open: 'paused', until: 'until 14:20' });
-  for (const label of ['15 minutes', '1 hour', '4 hours', 'Until turned off']) assert.match(html, new RegExp(label));
-  assert.match(html, /data-mode="paused" aria-selected="true"|aria-selected="true" data-mode="paused"/);
-  assert.match(html, /until 14:20/);
-  // Automatic is the absence of a timed mode, so it opens no duration list.
-  assert.doesNotMatch(html, /data-mode="active"[^>]*aria-haspopup/);
+test('only a running timed mode offers a duration, and it offers every one', () => {
+  // The ids are writing-core's. They were a parallel set, and `until-off`
+  // against the core's `forever` only worked because the core treats an
+  // unrecognised id as indefinite — the right answer for the wrong reason.
+  assert.deepEqual(FOCUS_DURATIONS.map((d) => d.id), ['15m', '1h', '4h', 'forever']);
+
+  const paused = renderModePicker({ mode: 'paused', duration: '1h', until: 'until 14:20' });
+  for (const label of ['15 minutes', '1 hour', '4 hours', 'Until turned off']) assert.match(paused, new RegExp(label));
+  assert.match(paused, /data-mode="paused"[^>]*data-selected="true"|data-selected="true" data-mode="paused"/);
+  assert.match(paused, /<option value="1h" selected>/);
+  assert.match(paused, /until 14:20/);
+  // The running segment carries the control; the others stay plain buttons, so
+  // there is exactly one duration control on screen and only while one is due.
+  assert.equal((paused.match(/<select/g) || []).length, 1);
+  assert.match(paused, /<button[^>]*data-mode="zen"/);
+
+  // Automatic is the absence of a timed mode, so nothing about duration exists.
+  const automatic = renderModePicker({ mode: 'active' });
+  assert.doesNotMatch(automatic, /<select|15 minutes/);
+  assert.equal((automatic.match(/<button/g) || []).length, 3);
+
+  // A mode entered without a duration runs indefinitely, which is what the
+  // shell does with an id it does not recognise.
+  assert.equal(normalizeModePickerState({ mode: 'paused' }).duration, 'forever');
+  assert.equal(normalizeModePickerState({ mode: 'paused', duration: 'nonsense' }).duration, 'forever');
   assert.equal(normalizeModePickerState({ mode: 'nonsense' }).mode, 'active');
 });
 

@@ -197,6 +197,13 @@ function focusModeState() {
   const state = focus.resolveFocusState(desktopPreferences?.focusMode);
   return {
     ...state,
+    // Which duration is running, so a control for changing it can show what it
+    // is changing. The core's focus state is a deadline — it deliberately does
+    // not carry the choice that produced it — and a deadline cannot be read
+    // backwards into one, because the time remaining shrinks away from it. So
+    // the choice is kept here beside the deadline, and dropped with it: a mode
+    // that has expired is Automatic, and Automatic has no duration.
+    ...(state.mode === 'active' ? {} : { duration: desktopPreferences?.focusMode?.duration || 'forever' }),
     label: focus.describeFocusState(state),
     durations: focus.FOCUS_DURATIONS,
     effective: focus.applyFocusState(checkingPreferencesState(), state),
@@ -1044,7 +1051,13 @@ function registerIPC() {
     const state = requested.mode === 'active' || !focus.FOCUS_MODES.includes(requested.mode)
       ? { mode: 'active', until: null }
       : focus.startFocusState(requested.mode, requested.duration);
-    desktopPreferences = { ...desktopPreferences, focusMode: state };
+    // The chosen duration is kept beside the deadline it produced. The core
+    // normalizes focus state down to mode and deadline, so this is the only
+    // place the choice itself survives.
+    desktopPreferences = {
+      ...desktopPreferences,
+      focusMode: state.mode === 'active' ? state : { ...state, duration: requested.duration || 'forever' },
+    };
     saveDesktopPreferences();
     const full = focusModeState();
     send('focus-mode', full);

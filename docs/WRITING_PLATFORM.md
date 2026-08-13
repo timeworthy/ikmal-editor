@@ -185,7 +185,8 @@ new CSS beyond layout.
 
 ### Phase B — Finish the writing composites — **built, not yet consumed**
 
-Done: mode picker (all four durations), indicator popover, review row, review
+Done: mode picker (all four durations, offered only while one is running),
+indicator popover, review row, review
 workspace, undo notice, settings group, service health card, style-guide card.
 Eleven composites, every one composed from the primitives rather than restyling
 them — a test rejects a composite that declares its own colour, and the gallery
@@ -261,6 +262,33 @@ Needs groups 1, 2, 4 and part of 3.
 
 **Exit:** compact runs on the new architecture with no legacy renderer, and the
 legacy compact can be deleted without losing a tested capability.
+
+### Focus durations, where they are called upon
+
+The duration a timed mode runs for had no home: the legacy compact panel carried
+a "For how long" row that was on screen whether or not anything was timed, and
+the rewrite had dropped it with no replacement.
+
+It lives in the mode picker now, and only while it applies. Choosing Pause
+applies it — it used to open a list and do nothing until the second click — and
+the segment Pause occupies becomes the duration control. Automatic never carries
+one, because it is the absence of a timed mode.
+
+Three defects came out of building it:
+
+- The composite's duration ids were a **parallel set to writing-core's**, and
+  `until-off` against the core's `forever` only produced the right answer
+  because the core treats an unrecognised id as indefinite — the right result
+  for the wrong reason, and wrong for any other duration.
+- **The core's focus state is a deadline and deliberately carries no duration**,
+  and a deadline cannot be read backwards into one because the time remaining
+  shrinks away from it. The choice is now kept in the shell beside the deadline,
+  and dropped with it.
+- Moving the segments to `aria-pressed` — correct, since they toggle a mode
+  rather than reveal a panel, and a tab may not contain the select the running
+  segment carries — **left the running mode looking unselected**, because the
+  segmented primitive styled only `aria-selected`. The gallery asserts all three
+  idioms now paint the same.
 
 ### Phase D — Settings, once, in the editor — **compared section by section**
 

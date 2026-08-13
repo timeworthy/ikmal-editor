@@ -196,7 +196,13 @@
   font: 500 13px/1 var(--font-sans);
   padding: var(--space-2) var(--space-3);
 }
+/* Three ways of saying selected, because a segmented control is built from
+   whichever is correct for what its segments do: `aria-selected` for tabs,
+   `aria-pressed` for toggle buttons, `data-selected` for a segment that is not
+   a control itself because it contains one. Styling only the first left a
+   pressed segment looking unselected. */
 .cnt-segmented > [aria-selected="true"],
+.cnt-segmented > [aria-pressed="true"],
 .cnt-segmented > [data-selected="true"] { background: var(--accent); color: var(--accent-fg); }
 .cnt-segmented > *:focus-visible { box-shadow: var(--shadow-focus); outline: 2px solid transparent; }
 
