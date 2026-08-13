@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { loadChromium, resolveChromium } from './chromium_launch.mjs';
+import { focusUntilMounted, loadChromium, resolveChromium } from './chromium_launch.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const packageDir = path.join(root, 'bin', 'browser-extension');
@@ -45,9 +45,10 @@ try {
   page.on('pageerror', (error) => pageErrors.push(error.message));
   await page.goto(`http://127.0.0.1:${fixturePort}/apps/browser-extension/test/fixture.html`, { waitUntil: 'domcontentloaded' });
   const field = page.locator('#editor');
-  await field.focus();
   const indicator = page.locator('#ikmal-rewrite-indicator');
-  await indicator.waitFor({ state: 'attached', timeout: 10000 });
+  // The extension mounts on focus, so focusing once and waiting races its
+  // start-up: a focus delivered too early is missed rather than queued.
+  await focusUntilMounted(page, field, '#ikmal-rewrite-indicator');
   await field.fill('Write teh draft');
   await page.waitForFunction(() => document.querySelector('#ikmal-rewrite-indicator')?.shadowRoot?.querySelector('.indicator')?.dataset.status === 'unavailable', null, { timeout: 7000 });
   const state = await indicator.evaluate((host) => ({ status: host.shadowRoot?.querySelector('.indicator')?.dataset.status, label: host.shadowRoot?.querySelector('.indicator')?.getAttribute('aria-label') }));

@@ -55,3 +55,32 @@ export function resolveChromium(chromium) {
   if (system) return { executablePath: system, source: `unpinned system Chromium (${system})` };
   throw new Error('No Chromium available. Run `npx playwright install chromium`, or set IKMAL_CHROMIUM to a browser already on this machine.');
 }
+
+/**
+ * Focus a field until the content script has mounted its indicator.
+ *
+ * The extension mounts on focus, so a focus that lands before the extension has
+ * finished loading is not early — it is missed. Nothing mounts, and waiting
+ * longer cannot help, because the event that would have mounted it is gone.
+ * That made the browser smokes race the extension's own start-up: the injection
+ * one happened to do enough work before focusing to usually win, the
+ * unavailable one did not, and the same commit passed on one branch and failed
+ * on the other.
+ *
+ * Focusing again is what fixes it. The field is blurred first because focusing
+ * an already-focused element fires nothing.
+ */
+export async function focusUntilMounted(page, field, selector, timeout = 20000) {
+  const deadline = Date.now() + timeout;
+  for (;;) {
+    await page.evaluate(() => document.activeElement?.blur?.());
+    await field.focus();
+    try {
+      await page.locator(selector).waitFor({ state: 'attached', timeout: 1000 });
+      return;
+    } catch (error) {
+      if (Date.now() >= deadline) throw error;
+      await page.waitForTimeout(200);
+    }
+  }
+}

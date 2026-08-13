@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { loadChromium, resolveChromium } from './chromium_launch.mjs';
+import { focusUntilMounted, loadChromium, resolveChromium } from './chromium_launch.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const packageDir = path.join(root, 'bin', 'browser-extension');
@@ -89,9 +89,10 @@ try {
   const frameIndicatorCount = await page.evaluate(() => document.querySelector('#embedded')?.contentDocument?.querySelectorAll('#ikmal-rewrite-indicator').length || 0);
   if (frameIndicatorCount !== 0) throw new Error(`MV3 all_frames isolation failed: ${frameIndicatorCount} frame indicators`);
   const field = page.locator('#editor');
-  await field.focus();
   const indicator = page.locator('#ikmal-rewrite-indicator');
-  await indicator.waitFor({ state: 'attached', timeout: 10000 });
+  // The extension mounts on focus, so focusing once and waiting races its
+  // start-up: a focus delivered too early is missed rather than queued.
+  await focusUntilMounted(page, field, '#ikmal-rewrite-indicator');
   await page.waitForFunction(() => document.querySelector('#ikmal-rewrite-indicator')?.shadowRoot?.querySelector('.indicator')?.dataset.status !== 'checking', null, { timeout: 7000 });
   await field.fill('teh');
   await page.waitForFunction(() => document.querySelector('#ikmal-rewrite-indicator')?.shadowRoot?.querySelector('.indicator')?.dataset.status === 'issues', null, { timeout: 7000 });
@@ -263,9 +264,9 @@ try {
     theme: 'dark', density: 'compact', contrast: 'high', palette: 'bathymetric',
   }));
   const darkField = darkPage.locator('#editor');
-  await darkField.focus();
   const darkIndicator = darkPage.locator('#ikmal-rewrite-indicator');
-  await darkIndicator.waitFor({ state: 'attached', timeout: 10000 });
+  // A second page races the extension the same way the first did.
+  await focusUntilMounted(darkPage, darkField, '#ikmal-rewrite-indicator');
   await darkField.fill('teh');
   await darkPage.waitForFunction(() => document.querySelector('#ikmal-rewrite-indicator')?.shadowRoot?.querySelector('.indicator')?.dataset.status === 'issues', null, { timeout: 7000 });
   await darkIndicator.evaluate((host) => host.shadowRoot.querySelector('.indicator').click());
