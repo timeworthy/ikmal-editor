@@ -386,13 +386,36 @@ function qualityModelBody(quality = {}, serviceState = {}) {
       : `<div class="cnt-alert" data-intent="warning"><div class="cnt-alert-text">All components are installed, but the local model is not running, so quality suggestions are coming from the deterministic checks only. ${escapeHTML(remedy)}</div></div>`)
     : '';
 
+  // "Non-commercial" is the most misread word on this page, and the common
+  // misreading is that it forbids writing you are paid for. What the licence
+  // actually restricts is stated in its own words, and what we cannot answer is
+  // said rather than guessed at: Creative Commons makes the test turn on the
+  // use rather than the user, and declines to draw a line. Telling someone
+  // their case is fine would be legal advice this product is in no position to
+  // give — so it says what is certain, and where to read the rest.
   const licence = quality.modelIsDefault
     ? '<div class="cnt-alert" data-intent="warning"><div>'
       + '<div class="cnt-alert-title">Non-commercial model</div>'
       + `<div class="cnt-alert-text">The default model ${escapeHTML(quality.modelId || '')} is licensed `
       + `${escapeHTML(quality.modelLicense || '')}. ikmal editor's own MIT licence does not cover these weights, and `
-      + 'installing them makes this machine the party bound by that licence. For commercial use, set '
-      + 'IKMAL_TRANSFORMER_MODEL to a permissively licensed model before installing.</div></div></div>'
+      + 'installing them makes this machine the party bound by that licence.</div></div></div>'
+      + explain('What does non-commercial mean here?', [
+        ['It applies to these model weights and nothing else',
+          'Every other part of ikmal editor is MIT licensed. Choosing a '
+          + 'permissively licensed model leaves nothing non-commercial installed.'],
+        ['The licence\'s own words',
+          'CC BY-NC-SA 4.0 defines NonCommercial as ' + sample('not primarily intended for or '
+          + 'directed towards commercial advantage or monetary compensation') + '.'],
+        ['Whether your use qualifies is not something this app can tell you',
+          'Creative Commons treats it as depending on the use rather than on who '
+          + 'you are, and does not draw a line. Writing that earns you money is '
+          + 'not obviously inside or outside it, and this is not legal advice — '
+          + 'if it matters, read the licence or ask someone qualified.'],
+        ['The way to avoid the question',
+          'Set ' + literal('IKMAL_TRANSFORMER_MODEL') + ' to a permissively licensed '
+          + 'model before installing — ' + literal('Unbabel/gec-t5_small') + ' is Apache-2.0. '
+          + 'Third-party notices below has the full terms and the links.'],
+      ])
     : '';
 
   const install = quality.ready ? '' : '<div class="settings-stack">'
@@ -561,6 +584,21 @@ function privacyBody(recentChecks = []) {
 function aboutBody(version) {
   return '<div class="settings-stack">'
     + `<div class="settings-row"><span>Version</span><span class="cnt-tag">${escapeHTML(version || 'unknown')}</span></div>`
+    + '<div class="settings-row"><span>Licence</span><span class="cnt-tag">MIT</span></div>'
+    // What someone comes to About to find out. The notices file has always had
+    // this and the page never said any of it, so the only way to learn what you
+    // were bound by was to open a markdown file and read a table.
+    + explain('What is this licensed under?', [
+      ['ikmal editor itself', 'MIT. Use it for anything, including work you are paid for.'],
+      ['The services it runs',
+        'LanguageTool is LGPL-2.1 and runs as a separate process this app talks to '
+        + 'over loopback. The quality adapter is MIT.'],
+      ['The optional local model',
+        'The only part with a restriction. The default weights are CC BY-NC-SA 4.0 '
+        + '(non-commercial); Services and model explains what that covers and how to '
+        + 'install a permissively licensed model instead.'],
+      ['Everything, in full', 'Third-party notices lists every dependency, its version and its licence.'],
+    ])
     + '<div class="settings-inline">'
     + '<button class="cnt-btn" type="button" data-action="open-notices">Third-party notices</button>'
     + '</div></div>';
