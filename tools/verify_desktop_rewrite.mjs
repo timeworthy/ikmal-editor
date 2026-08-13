@@ -22,7 +22,16 @@ const preload = fs.readFileSync(path.join(app, 'preload.cjs'), 'utf8');
 assert.match(preload, /contextBridge\.exposeInMainWorld\(['"]ikmal['"]/);
 assert.match(preload, /checkText/);
 assert.match(preload, /onEditorText/);
-assert.doesNotMatch(preload, /getServiceState|openCompact|configureIntegrations|setFocusMode/);
+// The editor owns settings, so it legitimately reaches service state, style
+// guides, and preferences. What it must never receive is the legacy surface
+// wholesale — the point was a preload shaped by what this window does, not a
+// copy of all 55 capabilities. `configureIntegrations` and `openCompact` stand
+// for that: neither belongs to writing or to settings as built.
+assert.doesNotMatch(preload, /configureIntegrations|openCompact|revealOfficeManifest|installSpellServer/);
+// Settings live here and only here, so these must be present.
+for (const capability of ['getCheckingPreferences', 'getAnnotationPreferences', 'getStyleGuideState', 'getServiceState', 'getRecentChecks']) {
+  assert.ok(preload.includes(capability), `the editor owns settings and is missing ${capability}`);
+}
 const packageSource = fs.readFileSync(path.join(root, 'desktop', 'package_desktop.mjs'), 'utf8');
 assert.match(packageSource, /assets', 'ikmal_editor'/, 'fresh desktop packaging must use product-branded icon assets');
 assert.doesNotMatch(packageSource, /assets', 'ikmal_languagetool'/, 'fresh desktop packaging must not use legacy LanguageTool icon assets');
@@ -58,3 +67,26 @@ assert.doesNotMatch(compactStyles, /#[0-9a-f]{3,8}\b/i, 'launcher styles hard-co
 assert.doesNotMatch(compactStyles, /\brgba?\(\s*\d/, 'launcher styles hard-code a colour');
 assert.ok(fs.readFileSync(path.join(root, 'desktop', 'main.cjs'), 'utf8').includes('desktopCompactPagePath'),
   'the shell must be able to load the launcher slice');
+
+// Settings live in the editor and nowhere else. The canonical order is a
+// product contract: a host may omit a section it cannot support, but it may not
+// reorder the conceptual system.
+const settingsPage = fs.readFileSync(path.join(app, 'settings_page.js'), 'utf8');
+const sectionOrder = [...settingsPage.matchAll(/id: '([a-z]+)', title: '([^']+)'/g)].map((match) => match[1]);
+assert.deepEqual(sectionOrder, ['checking', 'appearance', 'rules', 'services', 'privacy', 'about'],
+  'settings sections are out of canonical order');
+// Built from the shared composites, not restyled.
+for (const composite of ['renderSettingsGroups', 'renderServiceHealth', 'renderStyleGuideCard']) {
+  assert.ok(settingsPage.includes(composite), `settings page does not use ${composite}`);
+}
+assert.doesNotMatch(settingsPage.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, ''),
+  /#[0-9a-f]{3,8}\b|\brgba?\(\s*\d/i, 'the settings page hard-codes a colour');
+// The control names are the shell's preference keys. A translation layer here
+// is a place for the two to drift apart.
+// Matched in either form: a control may carry the attribute literally or get it
+// from the select helper, and the property being asserted is the binding, not
+// which helper produced it.
+for (const key of ['mode', 'delay', 'sensitivity']) {
+  assert.match(settingsPage, new RegExp(`data-setting="${key}"|select\\('${key}'`),
+    `settings page does not bind the ${key} preference`);
+}

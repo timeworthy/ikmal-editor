@@ -19,6 +19,7 @@ const copies = [
   ['packages/writing-adapters/dist/desktop_slice.js', 'desktop_slice.js'],
   ['packages/writing-ui/dist/indicator.js', 'indicator.js'],
   ['packages/writing-ui/dist/issue_popover.js', 'issue_popover.js'],
+  ['packages/writing-ui/dist/settings.js', 'settings.js'],
   ['packages/design-system/src/tokens.css', 'tokens.css'],
   ['packages/design-system/src/primitives.css', 'primitives.css'],
 ];

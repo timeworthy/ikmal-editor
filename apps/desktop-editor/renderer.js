@@ -2,6 +2,7 @@ import * as core from './writing-core.js';
 import { createDesktopSliceController } from './desktop_slice.js';
 import { INDICATOR_CSS, mountIndicator, renderIndicator } from './indicator.js';
 import { ISSUE_POPOVER_CSS, renderIssuePopover } from './issue_popover.js';
+import { renderSettingsPage, SETTINGS_PAGE_CSS } from './settings_page.js';
 
 const input = document.querySelector('#editor-input');
 const checkButton = document.querySelector('#check');
@@ -141,3 +142,109 @@ document.addEventListener('keydown', (event) => {
   issuePopover.innerHTML = '';
   indicatorShadow.querySelector('.indicator')?.focus();
 }, true);
+
+// ---------------------------------------------------------------------------
+// Settings. One implementation, in this window, rendered from the shared
+// composites. The launcher opens the editor to reach it.
+// ---------------------------------------------------------------------------
+
+const settingsView = document.querySelector('#settings-view');
+const settingsStyle = document.createElement('style');
+settingsStyle.textContent = SETTINGS_PAGE_CSS;
+document.head.append(settingsStyle);
+
+let settingsState = {};
+
+// Read once, then re-read only what a change invalidates. A settings page that
+// refetches everything on every keystroke makes the shell do work the user did
+// not ask for.
+async function loadSettings() {
+  const [checking, annotations, presence, launchAtLogin, services, recentChecks] = await Promise.all([
+    window.ikmal.getCheckingPreferences(),
+    window.ikmal.getAnnotationPreferences(),
+    window.ikmal.getDesktopPresence(),
+    window.ikmal.getLaunchAtLogin().catch(() => false),
+    window.ikmal.getServiceState(),
+    window.ikmal.getRecentChecks().catch(() => []),
+  ]);
+  // The style-guide service may not be running; a settings page that fails to
+  // open because an optional feature is down would be worse than one that says
+  // the feature has nothing to show.
+  const styleGuides = await window.ikmal.getStyleGuideState().catch(() => ({ guides: [] }));
+  settingsState = { checking, annotations, presence, launchAtLogin, services, recentChecks, styleGuides, version: settingsState.version };
+  paintSettings();
+}
+
+function paintSettings() {
+  settingsView.innerHTML = renderSettingsPage(settingsState);
+}
+
+function showSettings(show) {
+  settingsView.hidden = !show;
+  document.querySelector('.slice-editor').hidden = show;
+  document.querySelector('#indicator-anchor').hidden = show;
+  // The issue card floats above the workspace, so it would otherwise sit on top
+  // of the settings page it has nothing to do with.
+  if (show) { issuePopover.hidden = true; issuePopover.innerHTML = ''; }
+  if (show) void loadSettings();
+}
+
+document.querySelector('#open-settings').addEventListener('click', () => showSettings(settingsView.hidden));
+
+// One accordion open/close handler for the whole page: the group composite
+// renders a button per section and owns its own aria-expanded.
+settingsView.addEventListener('click', async (event) => {
+  const head = event.target.closest?.('.cnt-acc-head');
+  if (head) {
+    const body = head.nextElementSibling;
+    const open = head.getAttribute('aria-expanded') === 'true';
+    head.setAttribute('aria-expanded', String(!open));
+    if (body) body.hidden = open;
+    return;
+  }
+  const action = event.target.closest?.('[data-action]')?.dataset.action;
+  if (!action) return;
+  if (action === 'start-services') { await window.ikmal.startServices(); await loadSettings(); }
+  if (action === 'stop-services') { await window.ikmal.stopServices(); await loadSettings(); }
+  if (action === 'clear-history') { await window.ikmal.clearRecentChecks(); await loadSettings(); }
+  if (action === 'open-notices') await window.ikmal.openThirdPartyNotices();
+  if (action === 'import-guide') { await window.ikmal.importStyleGuide(); await loadSettings(); }
+});
+
+settingsView.addEventListener('change', async (event) => {
+  const control = event.target.closest?.('[data-setting]');
+  if (!control) return;
+  const name = control.dataset.setting;
+  const value = control.type === 'checkbox' ? control.checked : control.value;
+
+  if (name.startsWith('category:')) {
+    const categories = { ...(settingsState.checking?.categories || {}), [name.slice('category:'.length)]: value };
+    settingsState.checking = await window.ikmal.setCheckingPreferences({ ...settingsState.checking, categories });
+    return;
+  }
+  // The shell's preference keys are mode/delay/sensitivity; the controls name
+  // them the same way so no translation layer can drift.
+  if (['mode', 'delay', 'sensitivity'].includes(name)) {
+    settingsState.checking = await window.ikmal.setCheckingPreferences({ ...settingsState.checking, [name]: value });
+    // The delay's help text names the current value, so it is repainted.
+    if (name === 'delay') paintSettings();
+    return;
+  }
+  if (['annotationStyle', 'annotationPalette', 'annotationIntensity'].includes(name)) {
+    const key = name.replace('annotation', '').toLowerCase();
+    settingsState.annotations = await window.ikmal.setAnnotationPreferences({ ...settingsState.annotations, [key]: value });
+    return;
+  }
+  if (['menubarIcon', 'dockIcon'].includes(name)) {
+    settingsState.presence = await window.ikmal.setDesktopPresence({ ...settingsState.presence, [name]: value });
+    return;
+  }
+  if (name === 'launchAtLogin') { await window.ikmal.setLaunchAtLogin(value); return; }
+  if (control.dataset.action === 'select-guide') { await window.ikmal.selectStyleGuide(value); await loadSettings(); }
+  if (control.dataset.action === 'enable-guide') { await window.ikmal.setStyleGuideEnabled(value); await loadSettings(); }
+});
+
+window.ikmal.onServiceState?.((state) => {
+  settingsState.services = state;
+  if (!settingsView.hidden) paintSettings();
+});

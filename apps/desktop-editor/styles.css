@@ -15,3 +15,9 @@ h1 { font: 500 28px/1.1 var(--font-serif); margin: 0; }
 .slice-popover { max-width: 380px; }
 .slice-popover[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
+
+/* A class that sets display beats the user-agent [hidden] rule, so hiding by
+   attribute silently does nothing. Declared per app rather than in the shared
+   package: a design system has no business imposing a global rule on its
+   hosts. */
+[hidden] { display: none !important; }

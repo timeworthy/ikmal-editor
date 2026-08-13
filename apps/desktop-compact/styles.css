@@ -26,4 +26,8 @@ body {
 .launcher-foot { display: flex; gap: var(--space-2); }
 .launcher-foot .cnt-btn { flex: 1; }
 
-#issue-popover[hidden] { display: none; }
+/* A class that sets display beats the user-agent [hidden] rule, so hiding by
+   attribute silently does nothing. Declared per app rather than in the shared
+   package: a design system has no business imposing a global rule on its
+   hosts. */
+[hidden] { display: none !important; }

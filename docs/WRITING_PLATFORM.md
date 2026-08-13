@@ -27,7 +27,7 @@ it. Measured:
 | `packages/writing-adapters` | **7 modules** | Browser field, browser slice, desktop slice, desktop IPC, extension messages, chunked checks, raw matches |
 | `packages/design-system` | **63 tokens, 60 classes** | `cnt-btn`, `cnt-card`, `cnt-field`, `cnt-menu`, `cnt-popover`, `cnt-badge`, `cnt-status-dot`, and variants |
 | `packages/writing-ui` | **12 composites** | indicator, issue popover, selection summary, mode picker, indicator popover, review row, review workspace, undo notice, settings group, service health card, style-guide card |
-| `apps/desktop-editor` | **3 host capabilities** | `checkText`, `addDictionaryWord`, `onEditorText` |
+| `apps/desktop-editor` | **22 host capabilities** | writing, plus the settings surface — the product's only settings implementation |
 | `apps/browser-extension` | **1 message type** | `check` |
 | `apps/desktop-compact` | **launcher, 9 capabilities** | quick check, service health, focus modes, route into the editor — no settings |
 | `apps/office`, `apps/vscode` | **do not exist** | |
@@ -36,7 +36,7 @@ Against the legacy surface still shipping:
 
 | Surface | Legacy | On the new architecture |
 | --- | --- | --- |
-| Desktop host capabilities | 55 | 12 |
+| Desktop host capabilities | 55 | 31 |
 | Extension message types | 15 | 1 |
 | Extension HTML surfaces | 3 (popup, options, workspace) | 0 |
 | Desktop settings groups | 10 | 0 |
@@ -266,7 +266,39 @@ Needs groups 1, 2, 4 and part of 3.
 **Exit:** compact runs on the new architecture with no legacy renderer, and the
 legacy compact can be deleted without losing a tested capability.
 
-### Phase D — Settings, once, in the editor
+### Phase D — Settings, once, in the editor — **six sections built**
+
+Built in the canonical order and driven end to end: Checking, Appearance,
+Dictionary and rules, Services and diagnostics, Privacy and data, About. Every
+control is a shared primitive; every card a shared composite. A change writes
+through the shell and comes back — `automatic → manual` was verified through the
+real IPC, as was a nested category write.
+
+Absorbed: groups 3 (preferences), 5 (history), 6 (style guides), and the
+service half of group 1.
+
+`verify_desktop_rewrite.mjs` now asserts the canonical section order, that the
+page uses the composites rather than restyling, that it hard-codes no colour,
+and that its controls bind the shell's own preference keys so no translation
+layer can drift. All mutation-checked.
+
+Two assertions had to be corrected rather than satisfied, because Phase D
+changed their premise: the editor preload was asserted *not* to contain
+`getServiceState`, from when the editor slice was meant to be minimal; and the
+smoke's preload allow-list was the three writing capabilities. Both now describe
+the intentional surface — bounded, but the boundary moved when settings arrived.
+
+Running it found the usual class of thing: a class that sets `display` beats the
+user-agent `[hidden]` rule, so hiding by attribute silently did nothing; and the
+shell's preference keys are `mode`/`delay`/`sensitivity`, not the
+`checkMode`/`checkDelay`/`checkSensitivity` I guessed.
+
+**Remaining for the exit:** Integrations, native spell server, and Office
+(groups 8, 9, 10) — about 20 capabilities. Until they are here, the legacy
+compact settings tab still carries them, so the legacy renderers cannot be
+deleted and the flag cannot become the default.
+
+### Phase D — original scope
 
 Build the canonical settings page in `apps/desktop-editor` on Phase A/B
 components, in the canonical order: Checking, Appearance, Dictionary and rules,
@@ -307,10 +339,10 @@ The old gates measured depth. This measures breadth, and both are required.
 
 | Metric | Now | Target |
 | --- | --- | --- |
-| Desktop host capabilities on the new architecture | 12 / 55 | 55 / 55 |
+| Desktop host capabilities on the new architecture | 31 / 55 | 55 / 55 |
 | Extension message types | 1 / 15 | 15 / 15 |
 | Extension HTML surfaces | 0 / 3 | 3 / 3 |
-| Settings groups on shared components | 0 / 10 | 10 / 10 |
+| Settings groups on shared components | **6 / 10** | 10 / 10 |
 | `design-system` primitives | **33 / ~30 — complete** | ~30 |
 | `writing-ui` composites | **12 / ~10 — complete** | ~10 |
 | Legacy files deleted | 0 | all |

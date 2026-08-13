@@ -197,7 +197,19 @@ try {
   // exact match instead failed the moment the slice gained the dictionary
   // capability its popover legitimately offers, which is how it came to be
   // wrong rather than protective.
-  const allowedPreload = ['addDictionaryWord', 'checkText', 'onEditorText'];
+  // Writing plus settings, because settings live in this window and nowhere
+  // else. The property is still boundedness: an intentional surface, not the
+  // legacy 55 handed over wholesale. Anything outside this list fails.
+  const allowedPreload = [
+    'addDictionaryWord', 'checkText', 'onEditorText',
+    'getCheckingPreferences', 'setCheckingPreferences',
+    'getAnnotationPreferences', 'setAnnotationPreferences',
+    'getDesktopPresence', 'setDesktopPresence',
+    'getLaunchAtLogin', 'setLaunchAtLogin',
+    'getStyleGuideState', 'importStyleGuide', 'selectStyleGuide', 'setStyleGuideEnabled',
+    'getServiceState', 'startServices', 'stopServices', 'onServiceState',
+    'getRecentChecks', 'clearRecentChecks', 'openThirdPartyNotices',
+  ];
   const unexpectedPreload = preloadSurface.filter((key) => !allowedPreload.includes(key));
   if (unexpectedPreload.length || !preloadSurface.includes('checkText')) {
     throw new Error(`Fresh renderer received an unexpected preload surface: ${JSON.stringify(preloadSurface)}`);
