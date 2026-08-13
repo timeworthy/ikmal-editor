@@ -188,3 +188,42 @@ for (const category of ['Optional', 'Control', 'Display']) {
 const summaries = settingsPage.slice(settingsPage.indexOf('function sectionSummaries'));
 const summaryBody = summaries.slice(0, summaries.indexOf('\n}'));
 assert.match(summaryBody, /state\./, 'section summaries are not read from state');
+
+// The mark layer. Appearance ships three controls for it — style, palette and
+// intensity — and for the whole of Phase D they wrote a preference that nothing
+// in the rewrite read: there was no overlay, no mark styles in the design
+// system, and the legacy annotation surface was never ported. A settings
+// section for a feature the window cannot perform is worse than an absent one,
+// so the wiring is asserted rather than assumed.
+const editorMarkup = fs.readFileSync(path.join(app, 'index.html'), 'utf8');
+assert.match(editorMarkup, /class="writing-marks-surface"/, 'the editor has no mark surface');
+assert.match(editorMarkup, /id="editor-marks"[^>]*|class="writing-marks"/, 'the editor has no mark overlay');
+assert.match(editorMarkup, /class="writing-marks-input"/, 'the editor field is not part of the mark surface');
+// The overlay is a second copy of the draft. Announced, it would be the whole
+// document read twice, so it is hidden — and nothing inside it may be
+// focusable, which is the pairing the legacy surface got wrong.
+assert.match(editorMarkup.slice(editorMarkup.indexOf('writing-marks"')), /aria-hidden="true"/,
+  'the mark overlay is announced, so the draft is read twice');
+const marksSource = fs.readFileSync(path.join(root, 'packages', 'writing-ui', 'src', 'marks.ts'), 'utf8');
+assert.doesNotMatch(marksSource.slice(marksSource.indexOf('export function renderMarks')), /tabindex/,
+  'marks are focusable inside a hidden overlay');
+
+// Every preference must reach the paint. Storing one is not applying it, and
+// storing one was exactly what the three controls did.
+for (const preference of ['annotationStyle', 'annotationPalette', 'annotationIntensity']) {
+  assert.ok(settingsPage.includes(`data-setting="${preference}"`) || settingsPage.includes(`'${preference}'`),
+    `Appearance does not offer ${preference}`);
+}
+assert.match(editorRenderer, /applyAnnotationPreferences\(document\.documentElement/,
+  'the editor never applies the annotation preferences it saves');
+assert.match(editorRenderer, /attachMarkSurface\(/, 'the editor does not attach the mark surface');
+
+// The field and the overlay must take their geometry from one place. Every
+// property that decides where a glyph lands is set on both by the composite, so
+// restating any of them in the app is how the marks come to sit under the wrong
+// words — silently, and only on some drafts.
+const editorStyles = fs.readFileSync(path.join(app, 'styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+for (const property of ['font', 'font-size', 'line-height', 'padding', 'letter-spacing', 'white-space', 'word-break']) {
+  assert.doesNotMatch(editorStyles, new RegExp(`#editor-input[^{]*\\{[^}]*\\b${property}\\s*:`),
+    `the app restates ${property} on the field, which the mark overlay has to match`);
+}

@@ -8,11 +8,16 @@ h1 { font: 500 28px/1.1 var(--font-serif); margin: 0; }
 .slice-service { color: var(--fg-3); font: 12px/1 var(--font-mono); }
 .slice-editor { display: grid; gap: var(--space-3); }
 .slice-editor label { color: var(--fg-2); font: 600 12px/1 var(--font-mono); }
-#editor-input { background: var(--bg-0); border: 1px solid var(--border-1); border-radius: var(--radius-2); color: var(--fg-1); font: 16px/1.65 var(--font-sans); min-height: 260px; padding: var(--space-4); resize: vertical; width: 100%; }
-#editor-input:focus { border-color: var(--accent); box-shadow: var(--shadow-focus); outline: none; }
+/* The field's own box and typography come from the mark layer, which sets them
+   on the field and the overlay in one rule. Restating any of them here is how
+   the underlines come to sit under the wrong words, so this app sets only what
+   the overlay does not have to agree with. */
 .slice-footer { color: var(--fg-3); display: flex; font: 12px/1 var(--font-mono); justify-content: space-between; }
 .slice-indicator { min-height: 32px; }
-.slice-popover { max-width: 380px; }
+/* Anchored to the mark it describes rather than parked under the editor: the
+   card answers "what is wrong with this word", and the writer should not have
+   to look somewhere else to read the answer. */
+.slice-popover { --issue-measure: 380px; max-width: 380px; position: absolute; z-index: 2; }
 .slice-popover[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
 

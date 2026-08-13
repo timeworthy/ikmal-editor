@@ -2,6 +2,7 @@ import * as core from './writing-core.js';
 import { createDesktopSliceController } from './desktop_slice.js';
 import { INDICATOR_CSS, mountIndicator, renderIndicator } from './indicator.js';
 import { ISSUE_POPOVER_CSS, renderIssuePopover } from './issue_popover.js';
+import { applyAnnotationPreferences, attachMarkSurface, MARKS_CSS, renderRelationshipCard } from './marks.js';
 import { renderSettingsPage, SETTINGS_PAGE_CSS } from './settings_page.js';
 
 const input = document.querySelector('#editor-input');
@@ -11,6 +12,11 @@ const revision = document.querySelector('#revision');
 const status = document.querySelector('#service-status');
 const indicatorAnchor = document.querySelector('#indicator-anchor');
 const issuePopover = document.querySelector('#issue-popover');
+const surface = document.querySelector('#editor-surface');
+const marksLayer = document.querySelector('#editor-marks');
+const marksStyle = document.createElement('style');
+marksStyle.textContent = MARKS_CSS;
+document.head.append(marksStyle);
 const DESIGN_ATTRIBUTES = ['theme', 'palette', 'density', 'contrast'];
 function syncDesignAttributes() {
   for (const attribute of DESIGN_ATTRIBUTES) {
@@ -36,20 +42,92 @@ function renderIndicatorView(view) {
 
 let issueIndex = 0;
 
+// What the writer is actually being shown. Ignoring a finding has to remove it
+// from the marks, the count and the card's "3 of 7" together, or the three
+// disagree about how much is left to look at.
+function visibleIssues() {
+  return (controller?.state().result?.matches || []).filter((issue) => !ignored.has(issue.id));
+}
+
+// Findings the writer has dismissed. Session-scoped and keyed by the core's
+// issue id, which is derived from the finding's text and offset — so an ignore
+// survives a recheck of untouched prose, and is correctly forgotten once an
+// edit earlier in the draft moves the words it referred to.
+const ignored = new Set();
+
+function markFor(issueId) {
+  if (!issueId) return null;
+  return Array.from(marksLayer.querySelectorAll('.writing-underline'))
+    .find((mark) => mark.dataset.issueId === issueId) || null;
+}
+
+// The card points at the words it is about. Clamped to the surface so a finding
+// near the right edge or the last line does not open the card off-screen.
+function anchorCard(mark) {
+  const surfaceRect = surface.getBoundingClientRect();
+  const width = issuePopover.offsetWidth;
+  const height = issuePopover.offsetHeight;
+  // Whether the card is attached to a mark decides whether leaving the marks
+  // should close it. One opened from the indicator is not the pointer's to
+  // dismiss.
+  issuePopover.dataset.anchored = mark ? 'mark' : 'surface';
+  if (!mark) {
+    issuePopover.style.left = `${Math.max(0, (surface.clientWidth - width) / 2)}px`;
+    issuePopover.style.top = `${Math.max(0, surface.clientHeight - height - 8)}px`;
+    return;
+  }
+  const markRect = mark.getBoundingClientRect();
+  const left = Math.min(Math.max(0, markRect.left - surfaceRect.left), Math.max(0, surface.clientWidth - width));
+  // The card may hang past the surface — nothing clips it — so what it has to
+  // stay inside is the window. Clamping it to the surface instead put a card
+  // for a first-line finding on top of that finding, which is the one thing it
+  // must never cover. Below the mark unless the window has no room for it
+  // there and does have room above.
+  const roomBelow = window.innerHeight - markRect.bottom >= height + 16;
+  const roomAbove = markRect.top >= height + 16;
+  const top = roomBelow || !roomAbove
+    ? markRect.bottom - surfaceRect.top + 8
+    : markRect.top - surfaceRect.top - height - 8;
+  issuePopover.style.left = `${left}px`;
+  issuePopover.style.top = `${top}px`;
+}
+
 function showIssue(index = issueIndex) {
-  const issues = controller?.state().result?.matches || [];
+  const issues = visibleIssues();
   // Clamped rather than wrapped: a recheck can shorten the list under an open
   // card, and wrapping would move the writer somewhere they did not ask to go.
   const requested = Number.isFinite(index) ? index : issueIndex;
   issueIndex = Math.min(Math.max(0, requested), Math.max(0, issues.length - 1));
   const issue = issues[issueIndex];
-  if (!issue) { issuePopover.hidden = true; issuePopover.innerHTML = ''; return; }
+  if (!issue) { hideCard(); return; }
   issuePopover.innerHTML = `<style>${ISSUE_POPOVER_CSS}</style>${renderIssuePopover(issue, {
     canAddToDictionary: Boolean(window.ikmal.addDictionaryWord),
     index: issueIndex,
     total: issues.length,
   })}`;
   issuePopover.hidden = false;
+  anchorCard(markFor(issue.id));
+}
+
+// A pronoun link has nothing to apply or ignore, so it gets the card that
+// explains it rather than the one built for corrections.
+function showRelationship(relationshipId, mark) {
+  const group = (controller?.state().result?.relationships || []).find((candidate) => candidate.id === relationshipId);
+  if (!group) return;
+  const text = controller.state().document.text;
+  const read = (range) => (range ? text.slice(range.offset, range.offset + range.length) : '');
+  issuePopover.innerHTML = `<style>${MARKS_CSS}${ISSUE_POPOVER_CSS}</style>${renderRelationshipCard({
+    pronoun: group.labels?.[0] || read(group.ranges[0]),
+    antecedent: group.labels?.[1] || read(group.ranges[1]),
+    note: 'This connection shows what the pronoun is pointing to.',
+  })}`;
+  issuePopover.hidden = false;
+  anchorCard(mark);
+}
+
+function hideCard() {
+  issuePopover.hidden = true;
+  issuePopover.innerHTML = '';
 }
 
 // The host owns the dictionary and applies it while filtering a check result,
@@ -74,6 +152,19 @@ function scheduleFullCheck(view) {
   fullCheckTimer = window.setTimeout(() => void checkDraft('document'), 1500);
 }
 
+// Drawn from the text the result describes, not from the field, so a draft
+// edited while a check was in flight cannot have the previous result's offsets
+// painted onto it.
+function paintMarks() {
+  const state = controller?.state();
+  if (!state?.result) { marks.clear(); return; }
+  marks.render(state.document.text, {
+    issues: state.result.matches,
+    relationships: state.result.relationships,
+    ignored,
+  });
+}
+
 async function checkDraft(scope) {
   if (!controller) return;
   checkButton.disabled = true;
@@ -81,7 +172,13 @@ async function checkDraft(scope) {
     const view = await controller.check(undefined, scope ? { scope } : {});
     renderIndicatorView(view);
     scheduleFullCheck(view);
-    showIssue();
+    paintMarks();
+    // Refreshed if it is open, never opened. A check runs 350ms after every
+    // keystroke, and the card is anchored over the draft now — so opening it
+    // here would drop a panel on top of the sentence being written, several
+    // times a paragraph. The marks are the ambient signal; the card is what
+    // the writer asks for by pointing at one.
+    if (!issuePopover.hidden) showIssue();
   } catch (error) {
     status.textContent = error.message || 'Local checker unavailable';
     renderIndicatorView({ ...controller.state(), indicator: core.resolveIndicatorState({ available: false }) });
@@ -95,7 +192,41 @@ controller = createDesktopSliceController({
   field: input,
   service: { checkText: (text) => window.ikmal.checkText(text) },
 });
+
+const marks = attachMarkSurface({
+  input,
+  layer: marksLayer,
+  onActivate({ mark, issueId, relationshipId }) {
+    if (issueId) {
+      const index = visibleIssues().findIndex((issue) => issue.id === issueId);
+      if (index >= 0) showIssue(index);
+      return;
+    }
+    if (relationshipId) showRelationship(relationshipId, mark);
+  },
+  // Only what the marks opened is taken away again. The writer may have opened
+  // this card from the indicator and moved the pointer across the text on the
+  // way to its buttons, and closing it under them would be its own bug.
+  onDismiss() { if (cardCameFromAMark()) hideCard(); },
+  onInvalidate() { hideCard(); },
+});
+
+// The card is inside the surface, so the pointer crossing from a mark to the
+// card leaves the marks. Holding while it is inside is what lets the writer
+// reach Apply.
+issuePopover.addEventListener('mouseenter', () => marks.hold());
+issuePopover.addEventListener('mouseleave', () => marks.release());
+function cardCameFromAMark() {
+  return !issuePopover.hidden && issuePopover.dataset.anchored === 'mark';
+}
+
 renderIndicatorView(controller.state());
+// Applied before the first paint so marks are never drawn in the default
+// palette and then corrected to the writer's, which reads as a flicker on
+// every launch.
+void window.ikmal.getAnnotationPreferences?.()
+  .then((preferences) => applyAnnotationPreferences(document.documentElement, preferences))
+  .catch(() => {});
 // Wrapped, not passed directly: showIssue takes an index now, and a listener
 // would hand it the click event as one.
 indicatorShadow.addEventListener('click', () => showIssue());
@@ -114,7 +245,7 @@ issuePopover.addEventListener('click', (event) => {
   // carries the replacement rather than the popover assuming the first one.
   const control = event.target.closest?.('[data-action]');
   const action = control?.dataset.action;
-  const issue = controller.state().result?.matches?.[issueIndex];
+  const issue = visibleIssues()[issueIndex];
   const value = control?.dataset.value || issue?.replacements?.[0]?.value || '';
   if (action === 'apply' && issue && value) {
     // Refusing a correction whose finding no longer describes the draft is
@@ -125,12 +256,15 @@ issuePopover.addEventListener('click', (event) => {
       void checkDraft();
       return;
     }
-    issuePopover.hidden = true;
+    hideCard();
     void checkDraft();
   }
   if (action === 'dictionary' && issue) void addToDictionary(String(issue.matchedText || '').trim());
-  if (action === 'ignore') issuePopover.hidden = true;
-  if (action === 'close') issuePopover.hidden = true;
+  // Ignoring takes the mark away too. A finding the writer has dismissed that
+  // goes on underlining its words has not been dismissed in any sense they
+  // would recognise.
+  if (action === 'ignore' && issue) { ignored.add(issue.id); hideCard(); paintMarks(); }
+  if (action === 'close') hideCard();
   // Re-rendered at the neighbouring finding rather than mutated in place, so
   // the card cannot drift from the result it describes.
   if (action === 'previous') showIssue(issueIndex - 1);
@@ -138,8 +272,7 @@ issuePopover.addEventListener('click', (event) => {
 });
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape' || issuePopover.hidden) return;
-  issuePopover.hidden = true;
-  issuePopover.innerHTML = '';
+  hideCard();
   indicatorShadow.querySelector('.indicator')?.focus();
 }, true);
 
@@ -276,6 +409,12 @@ settingsView.addEventListener('change', async (event) => {
   if (['annotationStyle', 'annotationPalette', 'annotationIntensity'].includes(name)) {
     const key = name.replace('annotation', '').toLowerCase();
     settingsState.annotations = await window.ikmal.setAnnotationPreferences({ ...settingsState.annotations, [key]: value });
+    // Applied from what the shell stored rather than from the control, so the
+    // marks show the preference that was actually saved. These three used to
+    // write a preference nothing read: the rewrite had no mark layer at all,
+    // and Appearance offered style, palette and intensity for a feature the
+    // window could not perform.
+    applyAnnotationPreferences(document.documentElement, settingsState.annotations);
     return;
   }
   if (['menubarIcon', 'dockIcon'].includes(name)) {
@@ -304,6 +443,13 @@ settingsView.addEventListener('input', (event) => {
   if (!unit) return;
   const readout = control.closest('.cnt-field')?.querySelector('.settings-value');
   if (readout) readout.textContent = unit(control.value);
+  // Intensity previews as the handle moves, without saving. A number on a
+  // slider does not tell anyone how strong a squiggle looks, and persisting on
+  // every pixel of a drag would write the preferences file a hundred times and
+  // fight the pointer with each awaited reply.
+  if (control.dataset.setting === 'annotationIntensity') {
+    applyAnnotationPreferences(document.documentElement, { ...settingsState.annotations, intensity: control.value });
+  }
 });
 
 window.ikmal.onServiceState?.((state) => {

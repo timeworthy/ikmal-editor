@@ -32,6 +32,7 @@ apps/desktop-editor/browser_slice.js
 apps/desktop-editor/desktop_slice.js
 apps/desktop-editor/indicator.js
 apps/desktop-editor/issue_popover.js
+apps/desktop-editor/marks.js
 apps/desktop-editor/settings.js
 apps/desktop-editor/tokens.css
 apps/desktop-editor/primitives.css

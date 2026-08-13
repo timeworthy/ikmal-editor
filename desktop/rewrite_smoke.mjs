@@ -284,6 +284,7 @@ try {
     status: document.querySelector('#indicator-anchor').shadowRoot.querySelector('.indicator').dataset.status,
     count: document.querySelector('#indicator-anchor').shadowRoot.querySelector('.count')?.textContent || '',
     indicatorLabel: document.querySelector('#indicator-anchor').shadowRoot.querySelector('.indicator').getAttribute('aria-label'),
+    marked: [...document.querySelectorAll('#editor-marks .writing-underline')].map((mark) => mark.textContent).join('|'),
     popover: !document.querySelector('#issue-popover').hidden,
     revision: document.querySelector('#revision').textContent
     // The count is asserted through the accessible name rather than the badge.
@@ -291,8 +292,37 @@ try {
     // here already counts — asserting the badge encoded the behaviour that put
     // "1 issue 1" on screen, so the premise was corrected rather than the
     // assertion worked around.
-  })`, (state) => state.status === 'issues' && /\b1\b/.test(state.indicatorLabel || '') && state.popover && state.revision === 'Revision 1', 'Fresh renderer check failed');
+    //
+    // What proves the finding reached the writer is the mark on the words, not
+    // an open card. This asserted the card because the card used to be the only
+    // surface a finding had; now the marks are, and the card is what the writer
+    // asks for by pointing at one. Opening it on every check would drop a panel
+    // over the sentence being typed, because a check runs 350ms after each
+    // keystroke — so the card is asserted closed here, and opened on demand
+    // below.
+  })`, (state) => state.status === 'issues' && /\b1\b/.test(state.indicatorLabel || '') && state.marked === 'is' && !state.popover && state.revision === 'Revision 1', 'Fresh renderer check failed');
   if (flagged.text !== 'The results is ready.' || flagged.indicatorLabel !== '1 issue') throw new Error(`Fresh renderer accessibility state failed: ${JSON.stringify(flagged)}`);
+
+  // Pointing at a mark opens the card for that finding, anchored to it. This is
+  // the whole reason the mark layer exists, so it is asserted end to end rather
+  // than inferred from the marks being present.
+  const pointed = await editor.evaluate(`(() => {
+    const mark = document.querySelector('#editor-marks .writing-underline[data-issue-id]');
+    mark.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    const card = document.querySelector('#issue-popover');
+    const cardRect = card.getBoundingClientRect();
+    const markRect = mark.getBoundingClientRect();
+    return JSON.stringify({
+      open: !card.hidden,
+      anchored: card.dataset.anchored,
+      describesTheMark: card.textContent.includes(mark.textContent),
+      coversItsOwnMark: !(cardRect.bottom <= markRect.top || cardRect.top >= markRect.bottom),
+    });
+  })()`);
+  const pointedState = JSON.parse(pointed);
+  if (!pointedState.open || pointedState.anchored !== 'mark' || !pointedState.describesTheMark || pointedState.coversItsOwnMark) {
+    throw new Error(`Pointing at a mark did not open the card it describes: ${pointed}`);
+  }
 
   await editor.command('Accessibility.enable');
   const accessibilityTree = await editor.command('Accessibility.getFullAXTree');

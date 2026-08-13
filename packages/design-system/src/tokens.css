@@ -22,6 +22,11 @@
   --warning: #e0a458;
   --danger: #d67560;
   --info: #6b8aaf;
+  --mark-grammar: #e47c72;
+  --mark-related: #cd9130;
+  --mark-relationship: #5cb572;
+  --mark-style: #4fa6e9;
+  --mark-language: #a58de6;
 }
 
 :host([data-theme="light"]),
@@ -46,6 +51,11 @@
   --warning: #a56e2d;
   --danger: #a64d3c;
   --info: #3f668d;
+  --mark-grammar: #a04038;
+  --mark-related: #8d5500;
+  --mark-relationship: #137738;
+  --mark-style: #0068a7;
+  --mark-language: #6a51a4;
 }
 
 :host,
@@ -80,7 +90,39 @@
   --dur-fast: 120ms;
   --dur-default: 200ms;
   --dur-modal-in: 360ms;
+  /* How strongly a mark is drawn, composed against the writing surface at the
+     point of use. A number rather than a colour so one preference can tint all
+     five roles, and named alpha because it tints the mark, not the text. The
+     host writes it from the writer's intensity setting. */
+  --mark-alpha: .7525;
+  --mark-fill-alpha: .17;
 }
+
+/* Inline mark colours: which kind of finding a mark in the text is. A second
+   semantic axis from --accent, and the only one the writer picks directly —
+   Appearance offers these four.
+
+   Derived rather than transcribed. The legacy palettes were five hand-picked
+   literals each, and measuring them found two roles collapsed onto one colour
+   in two of the four: warm drew style #da945a beside related #e0a458, and cool
+   drew style beside related the same way — a separation of dE 4-7, which is
+   no separation. These are five fixed hues on the wheel, rotated and
+   re-chroma'd per palette, so a palette changes the cast without ever putting
+   two roles on the same colour. Every theme-palette pair clears 3:1 against
+   its surface at the default intensity and stays at least dE 20 apart —
+   measured, not judged: `design_system_gallery_smoke.mjs` resolves all eight
+   pairs through the real cascade and fails below either floor.
+
+   Stated twice because a mark is a thin wavy line rather than a filled shape:
+   the dark values are far too pale to read on parchment. Balanced is the theme
+   default above, so only the other three need overriding. */
+[data-annotation-palette="warm"], :host([data-annotation-palette="warm"]) { --mark-grammar: #e38a66; --mark-related: #c1a141; --mark-relationship: #4bbc93; --mark-style: #79a4ef; --mark-language: #bd8edc; }
+[data-annotation-palette="cool"], :host([data-annotation-palette="cool"]) { --mark-grammar: #e1818c; --mark-related: #d78f4e; --mark-relationship: #7fb265; --mark-style: #41aede; --mark-language: #9498ea; }
+[data-annotation-palette="contrast"], :host([data-annotation-palette="contrast"]) { --mark-grammar: #ff796d; --mark-related: #f59b00; --mark-relationship: #39d16c; --mark-style: #10b9ff; --mark-language: #bb94ff; }
+
+[data-theme="light"][data-annotation-palette="warm"], :host([data-theme="light"][data-annotation-palette="warm"]) { --mark-grammar: #93421e; --mark-related: #775900; --mark-relationship: #00724e; --mark-style: #355ba0; --mark-language: #73478f; }
+[data-theme="light"][data-annotation-palette="cool"], :host([data-theme="light"][data-annotation-palette="cool"]) { --mark-grammar: #983f4d; --mark-related: #8f4d00; --mark-relationship: #3f6f23; --mark-style: #006b97; --mark-language: #5656a2; }
+[data-theme="light"][data-annotation-palette="contrast"], :host([data-theme="light"][data-annotation-palette="contrast"]) { --mark-grammar: #a10005; --mark-related: #8b3700; --mark-relationship: #006c00; --mark-style: #0053b1; --mark-language: #5e2dad; }
 
 [data-palette="bathymetric"], :host([data-palette="bathymetric"]) { --accent: #34c6c0; --accent-hover: #5bd7d2; --accent-press: #159e9a; --accent-soft: rgba(52,198,192,0.16); }
 [data-palette="sediment"], :host([data-palette="sediment"]) { --accent: #db8a44; --accent-hover: #e7a261; --accent-press: #b86b2e; --accent-soft: rgba(219,138,68,0.16); }

@@ -223,6 +223,105 @@ try {
   if (composites.usesPrimitives < 10) throw new Error(`Composites barely use primitives: ${composites.usesPrimitives} found.`);
   if (composites.strayClasses.length) throw new Error(`Composites use classes outside the system: ${[...new Set(composites.strayClasses)].join(', ')}`);
 
+  // The mark palettes, measured rather than eyeballed. Five roles are only
+  // useful if a reader can tell them apart, and a mark is a thin wavy line on
+  // the writing surface rather than a filled shape — so both properties are
+  // easy to lose and impossible to notice in a screenshot. The legacy palettes
+  // this replaced put style and related within dE 4-7 of each other in two of
+  // the four, which is to say they had four roles, not five.
+  const MARK_ROLES = ['grammar', 'style', 'language', 'relationship', 'related'];
+  const marksReport = await page.evaluate(({ MARK_ROLES, palettes, themes }) => {
+    const probe = document.createElement('span');
+    document.body.append(probe);
+    const channels = (value) => value.match(/[\d.]+/g).slice(0, 3).map(Number);
+    const read = (expression) => { probe.style.color = expression; return channels(getComputedStyle(probe).color); };
+    const previous = { ...document.documentElement.dataset };
+    const rows = [];
+    for (const theme of themes) {
+      for (const palette of palettes) {
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.annotationPalette = palette;
+        rows.push({
+          theme,
+          palette,
+          surface: read('var(--bg-0)'),
+          alpha: Number(getComputedStyle(document.documentElement).getPropertyValue('--mark-alpha')) || 0,
+          inks: MARK_ROLES.map((role) => read(`var(--mark-${role})`)),
+        });
+      }
+    }
+    Object.assign(document.documentElement.dataset, previous);
+    probe.remove();
+    return rows;
+  }, { MARK_ROLES, palettes: ['balanced', 'warm', 'cool', 'contrast'], themes: ['dark', 'light'] });
+
+  const toLinear = (c) => { const s = c / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
+  const luminance = ([r, g, b]) => 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+  const contrastRatio = (a, b) => { const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+  const composite = (ink, surface, alpha) => ink.map((c, i) => c * alpha + surface[i] * (1 - alpha));
+  const toLab = ([r, g, b]) => {
+    const [x, y, z] = [
+      toLinear(r) * 0.4124 + toLinear(g) * 0.3576 + toLinear(b) * 0.1805,
+      toLinear(r) * 0.2126 + toLinear(g) * 0.7152 + toLinear(b) * 0.0722,
+      toLinear(r) * 0.0193 + toLinear(g) * 0.1192 + toLinear(b) * 0.9505,
+    ];
+    const f = (t) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+    const [fx, fy, fz] = [f(x / 0.95047), f(y), f(z / 1.08883)];
+    return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+  };
+  const deltaE = (a, b) => Math.hypot(...toLab(a).map((v, i) => v - toLab(b)[i]));
+
+  let worstMarkContrast = { ratio: Infinity };
+  let worstMarkPair = { distance: Infinity };
+  for (const row of marksReport) {
+    if (!(row.alpha > 0)) throw new Error(`--mark-alpha is unset for ${row.theme}/${row.palette}, so marks paint as nothing.`);
+    const painted = row.inks.map((ink) => composite(ink, row.surface, row.alpha));
+    painted.forEach((colour, index) => {
+      const ratio = contrastRatio(colour, row.surface);
+      if (ratio < worstMarkContrast.ratio) worstMarkContrast = { ratio, ...row, role: MARK_ROLES[index] };
+    });
+    for (let i = 0; i < painted.length; i += 1) {
+      for (let j = i + 1; j < painted.length; j += 1) {
+        const distance = deltaE(painted[i], painted[j]);
+        if (distance < worstMarkPair.distance) worstMarkPair = { distance, ...row, pair: `${MARK_ROLES[i]}/${MARK_ROLES[j]}` };
+      }
+    }
+  }
+  if (worstMarkContrast.ratio < 3) {
+    throw new Error(`A mark is below 3:1 against the writing surface: ${worstMarkContrast.theme}/${worstMarkContrast.palette} ${worstMarkContrast.role} at ${worstMarkContrast.ratio.toFixed(2)}:1.`);
+  }
+  if (worstMarkPair.distance < 15) {
+    throw new Error(`Two mark roles are the same colour: ${worstMarkPair.theme}/${worstMarkPair.palette} ${worstMarkPair.pair} at dE ${worstMarkPair.distance.toFixed(1)}.`);
+  }
+
+  // And the overlay must lie exactly over the field it annotates. Every
+  // property that decides where a glyph lands has to match, or the marks sit
+  // under the wrong words — which is the one way this layer fails that still
+  // looks plausible on screen.
+  const markGeometry = await page.evaluate(() => {
+    const input = document.querySelector('#marks-demo-input');
+    const layer = document.querySelector('#marks-demo-layer');
+    if (!input || !layer) return { missing: true };
+    const PROPS = ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'wordSpacing',
+      'textIndent', 'paddingTop', 'paddingLeft', 'paddingRight', 'borderTopWidth', 'borderLeftWidth',
+      'whiteSpace', 'overflowWrap', 'wordBreak', 'tabSize', 'boxSizing', 'textTransform'];
+    const a = getComputedStyle(input);
+    const b = getComputedStyle(layer);
+    return {
+      differing: PROPS.filter((name) => a[name] !== b[name]).map((name) => `${name}: ${a[name]} vs ${b[name]}`),
+      widthGap: Math.abs(input.clientWidth - layer.clientWidth),
+      heightGap: Math.abs(input.scrollHeight - layer.scrollHeight),
+      marks: layer.querySelectorAll('.writing-underline').length,
+      roles: [...new Set([...layer.querySelectorAll('.writing-underline')].map((mark) => mark.dataset.role))].sort(),
+    };
+  });
+  if (markGeometry.missing) throw new Error('The gallery does not render the mark layer, so nothing checks it.');
+  if (markGeometry.differing.length) throw new Error(`The mark overlay does not lay text out like the field: ${markGeometry.differing.join(', ')}`);
+  if (markGeometry.widthGap > 0.5 || markGeometry.heightGap > 0.5) {
+    throw new Error(`The mark overlay is a different size from its field: ${markGeometry.widthGap}px wide, ${markGeometry.heightGap}px tall.`);
+  }
+  if (markGeometry.roles.length < 5) throw new Error(`The gallery shows only ${markGeometry.roles.length} mark roles: ${markGeometry.roles.join(', ')}`);
+
   // Keyboard focus must be visible on a control, not only on a button.
   const focusRing = await page.evaluate(() => {
     const input = document.querySelector('.cnt-input');
@@ -242,7 +341,7 @@ try {
   if (shadow.background === 'rgba(0, 0, 0, 0)') throw new Error('Shadow DOM primitives did not receive their tokens.');
 
   if (errors.length) throw new Error(`Gallery raised page errors: ${errors.join('; ')}`);
-  console.log(`Design-system gallery passed: ${required.length} primitives, theme/density/palette axes reach computed styles, intents distinct, focus visible, Shadow DOM isolated and styled (${JSON.stringify({ browser: browserSource, accent: { slateAccent, bathymetricAccent }, controlHeights: { comfortable, compact, spacious } })}).`);
+  console.log(`Design-system gallery passed: ${required.length} primitives, theme/density/palette axes reach computed styles, intents distinct, focus visible, Shadow DOM isolated and styled, mark palettes legible and separated (${JSON.stringify({ browser: browserSource, accent: { slateAccent, bathymetricAccent }, controlHeights: { comfortable, compact, spacious }, marks: { worstContrast: `${worstMarkContrast.ratio.toFixed(2)}:1`, worstPair: `dE ${worstMarkPair.distance.toFixed(1)}`, roles: markGeometry.roles.length } })}).`);
 } finally {
   await context?.close();
   await new Promise((resolve) => server.close(resolve));

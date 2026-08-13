@@ -17,11 +17,20 @@
     </header>
     <section class="slice-editor cnt-card">
       <label for="editor-input">Draft</label>
-      <textarea id="editor-input" spellcheck="true" placeholder="Write or paste a passage here."></textarea>
+      <!-- The field and the mark overlay are one surface: the overlay is a
+           second copy of the draft with transparent text, so it must sit in the
+           same box with the same metrics or the underlines drift off the words.
+           It is hidden from assistive tech because it would otherwise be the
+           draft read a second time. The card is anchored inside the surface so
+           it can point at the mark it describes. -->
+      <div class="writing-marks-surface" id="editor-surface">
+        <textarea id="editor-input" class="writing-marks-input" spellcheck="true" placeholder="Write or paste a passage here."></textarea>
+        <div class="writing-marks" id="editor-marks" aria-hidden="true"></div>
+        <div id="issue-popover" class="slice-popover" hidden></div>
+      </div>
       <div class="slice-footer"><span id="counts">0 words · 0 characters</span><span id="revision">Revision 0</span></div>
     </section>
     <div id="indicator-anchor" class="slice-indicator" aria-live="polite"></div>
-    <div id="issue-popover" class="slice-popover" hidden></div>
     <!-- The product's only settings implementation. The launcher routes here
          rather than carrying a copy of it. -->
     <section id="settings-view" hidden aria-label="Settings"></section>

@@ -147,14 +147,16 @@
   const selection = await import('../writing-ui/dist/selection_popover.js');
   const issue = await import('../writing-ui/dist/issue_popover.js');
   const modes = await import('../writing-ui/dist/mode_picker.js');
+  const marks = await import('../writing-ui/dist/marks.js');
   const composites = document.querySelector('#composites');
   const issues = [
     { id: 'i1', message: 'A plural subject takes a plural verb.', matchedText: 'results is', source: 'LanguageTool', category: 'grammar' },
     { id: 'i2', message: 'This clause uses passive voice.', matchedText: 'was reviewed', source: 'quality-sidecar', category: 'style' },
   ];
+  const MARK_TEXT = 'The report says the results is wrong, so the team will utilise teh sombre report they filed.';
   const style = document.createElement('style');
   style.textContent = ui.INDICATOR_POPOVER_CSS + settings.SETTINGS_CSS + review.REVIEW_CSS
-    + selection.SELECTION_POPOVER_CSS + issue.ISSUE_POPOVER_CSS;
+    + selection.SELECTION_POPOVER_CSS + issue.ISSUE_POPOVER_CSS + marks.MARKS_CSS;
   document.head.append(style);
   composites.innerHTML = [
     // Both states, because the property worth seeing is the difference between
@@ -179,7 +181,29 @@
     selection.renderSelectionPopover({ status: 'ready', words: 12, characters: 63, issues: 2, language: 'en-US', text: 'The results is wrong and the sentence was reviewed by the team before it shipped.' }),
     selection.renderSelectionPopover({ status: 'too-large', words: 41200, characters: 236000 }),
     issue.renderIssuePopover({ id: 'a', category: 'spelling', source: 'LanguageTool', severity: 'medium', message: 'Use the correct spelling.', matchedText: 'teh', actionability: 'safe-apply', replacements: [{ value: 'the' }] }, { index: 1, total: 3, canAddToDictionary: true }),
+    // The mark layer, shown as a host uses it: a real field with the overlay
+    // over it, so the gallery would show the two drifting apart rather than
+    // only proving the marks render. Every role appears, because the colours
+    // are only as good as their worst pair and that is what wants looking at.
+    `<div class="cnt-card"><div class="writing-marks-surface" id="marks-demo" style="--mark-min-height:150px">
+       <textarea class="writing-marks-input" id="marks-demo-input" spellcheck="false">${MARK_TEXT}</textarea>
+       <div class="writing-marks" id="marks-demo-layer" aria-hidden="true"></div>
+     </div></div>`,
+    marks.renderRelationshipCard({ pronoun: 'they', antecedent: 'the team', note: 'This connection shows what the pronoun is pointing to.' }),
   ].join('');
+
+  // Rendered after the container is in the document so the overlay measures
+  // against the field it has to agree with.
+  document.querySelector('#marks-demo-layer').innerHTML = marks.renderMarks(MARK_TEXT, marks.buildMarkSpans(MARK_TEXT, {
+    issues: [
+      { id: 'm1', offset: MARK_TEXT.indexOf('results is'), length: 10, category: 'grammar' },
+      { id: 'm2', offset: MARK_TEXT.indexOf('utilise'), length: 7, category: 'style' },
+      { id: 'm3', offset: MARK_TEXT.indexOf('teh'), length: 3, category: 'spelling' },
+      { id: 'm4', offset: MARK_TEXT.indexOf('sombre'), length: 6, category: 'languagetool' },
+      { id: 'm5', offset: MARK_TEXT.indexOf('report', MARK_TEXT.indexOf('sombre')), length: 6, category: 'repetition', relatedRanges: [{ offset: MARK_TEXT.indexOf('report'), length: 6 }] },
+    ],
+    relationships: [{ id: 'r1', kind: 'antecedent', ranges: [{ offset: MARK_TEXT.indexOf('they'), length: 4 }, { offset: MARK_TEXT.indexOf('the team'), length: 8 }] }],
+  }));
 
   // The extension renders primitives inside a Shadow DOM, so the gallery proves
   // they survive there with their own copy of the stylesheets.

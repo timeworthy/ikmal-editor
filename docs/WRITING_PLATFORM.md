@@ -492,18 +492,53 @@ The capability diff is 14, but five of those are the per-host Office manifest
 channels, which one parametrised capability already covers. The other nine, and
 the surfaces behind them, are the real remaining work.
 
-### E1 — Controls that currently do nothing
+### E1 — Controls that currently do nothing — **done**
 
-**Appearance's three mark controls write preferences nothing reads.** The
-rewrite has no mark layer: `apps/desktop-editor` has no highlight element, the
-design system defines no mark styles, and `desktop/annotation_preferences.js` —
-which applies the preference as a data attribute for legacy CSS to style — was
-never ported. Mark style, palette and intensity are settings for a feature the
-new surface cannot perform.
+**Appearance's three mark controls wrote preferences nothing read.** The rewrite
+had no mark layer: `apps/desktop-editor` had no overlay, the design system
+defined no mark styles, and `desktop/annotation_surface.js` was never ported.
+Mark style, palette and intensity were settings for a feature the window could
+not perform.
 
-This is the one item that has to be resolved before the flag flips in either
-direction: either the marks are ported, or the section says the feature is
-unavailable. Shipping a control that changes nothing is worse than either.
+The mark layer is now `packages/writing-ui/src/marks.ts`, and the editor draws
+underlines under the writer's own words again — with the source colouring,
+pronoun links and repeated-occurrence grouping the legacy surface had.
+
+Three things are better than a transcription would have been:
+
+- **It is built from the core's normalised issues and relationship groups**,
+  not from raw LanguageTool matches. The legacy surface reconstructed pronoun
+  links out of `ikmalAntecedents` and repeated occurrences out of
+  `ikmalRelatedOccurrences` itself, which put that knowledge in a renderer. The
+  core already resolves both, so the layer only places them.
+- **The palettes are derived rather than picked.** Measuring the legacy ones
+  found two roles collapsed onto a single colour in two of the four: warm drew
+  `style` #da945a beside `related` #e0a458, and cool did the same — a
+  separation of dE 4-7, which is to say they had four roles, not five. The
+  replacements are five fixed hues rotated per palette; every theme-palette
+  pair clears 3:1 against its surface and stays at least dE 20 apart, measured
+  through the real cascade by the gallery smoke. `derive_mark_palettes.mjs` is
+  how they were computed and how a fifth would be.
+- **The overlay is hidden from assistive tech and nothing inside it is
+  focusable.** It is a second copy of the draft, so announcing it would read the
+  whole document twice. The legacy surface hid it *and* gave every mark a
+  `tabindex`, which is focusable content inside a hidden subtree. Findings are
+  reached through the indicator and the card's previous/next, which is a
+  complete keyboard path and an announced one.
+
+Two things the port changed on purpose. The card no longer opens on every
+check — a check runs 350ms after each keystroke and the card is anchored over
+the draft now, so opening it there would drop a panel on the sentence being
+written; the marks are the ambient signal and the card is what the writer asks
+for by pointing at one. And **Ignore** now removes the mark as well as the card,
+because a dismissed finding that goes on underlining its words has not been
+dismissed in any sense the writer would recognise.
+
+Not ported: the launcher's quick-check field has no marks. The legacy compact
+window had them, so this is a real gap at the flip, and it belongs with the
+[E3](#e3--surfaces-with-no-equivalent) inventory rather than here — the
+launcher is a popover for checking pasted text, not a writing surface, and
+whether it should carry a mark layer is a product question rather than a port.
 
 ### E2 — Tray actions that are inert, and failures that are silent
 
@@ -533,7 +568,12 @@ does not exist.
 - **The app menu** in the legacy editor.
 
 `indicator_popover` and `selection_popover` are also unconsumed: three of the
-seven composites have never been rendered by a host.
+eight composites have never been rendered by a host. `marks` is the one that
+stopped being unconsumed, and putting it in a host immediately surfaced two
+placement defects its unit tests could not see — a card that opened over the
+draft on every keystroke, and one that covered the very mark it described.
+That is the argument for E3 in miniature: a composite is not known to fit a
+host until a host has rendered it.
 
 ### E4 — Genuinely small
 
@@ -541,10 +581,10 @@ seven composites have never been rendered by a host.
 
 ### Order
 
-E1 first, because it is a correctness problem in shipped settings rather than a
-missing feature. Then E2, which is small and stops the product failing silently.
-E3 is the largest and is where the unconsumed composites finally get a host —
-which is also the first real test of whether they fit one.
+E1 first, because it was a correctness problem in shipped settings rather than a
+missing feature. **E1 is done.** Then E2, which is small and stops the product
+failing silently. E3 is the largest and is where the unconsumed composites
+finally get a host — which is also the first real test of whether they fit one.
 
 The flag flips after E1 and E2. E3 can follow it only if the legacy renderers
 stay until it lands, so the honest sequence is E1 → E2 → E3 → flip → delete.
