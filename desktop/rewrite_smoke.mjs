@@ -190,6 +190,20 @@ try {
     if (launcher.settingsGroups !== 0) {
       throw new Error(`The launcher grew ${launcher.settingsGroups} settings groups; settings belong in the editor.`);
     }
+    // Services are reported by exception. Two permanent rows naming LanguageTool
+    // and the quality checks put our architecture on the surface a writer looks
+    // at to check a sentence — which of two local services answered is not
+    // something they chose or can act on. The fake shell here answers both
+    // health checks, so the section must be showing nothing at all.
+    const serviceReporting = await compact.evaluate(`(() => {
+      const section = document.querySelector('#services');
+      return JSON.stringify({ hidden: section.hidden, text: section.textContent.trim() });
+    })()`);
+    const reporting = JSON.parse(serviceReporting);
+    if (!reporting.hidden || reporting.text) {
+      throw new Error(`The launcher reports healthy services it should stay quiet about: ${serviceReporting}`);
+    }
+
     if (!launcher.hasModes || !launcher.hasServices) {
       throw new Error(`Launcher is missing its own surfaces: ${JSON.stringify(launcher)}`);
     }

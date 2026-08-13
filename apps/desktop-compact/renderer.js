@@ -4,7 +4,7 @@ import { mountIndicator, renderIndicator, INDICATOR_CSS } from './indicator.js';
 import { renderIssuePopover, ISSUE_POPOVER_CSS } from './issue_popover.js';
 import { renderModePicker, MODE_PICKER_CSS } from './mode_picker.js';
 import { attachMarkSurface, MARKS_CSS } from './marks.js';
-import { renderServiceHealth, SETTINGS_CSS } from './settings.js';
+import { SETTINGS_CSS } from './settings.js';
 
 // The launcher renderer.
 //
@@ -85,17 +85,38 @@ function paintModes() {
   fitWindow();
 }
 
+/**
+ * Services, reported by exception.
+ *
+ * This window used to carry two permanent rows naming LanguageTool and the
+ * quality checks and reporting both as ready — our architecture, on the surface
+ * a writer looks at to check a sentence. Which of two local services answered
+ * is not something they chose, can act on, or need to know while everything
+ * works; the indicator above already says whether checking is working.
+ *
+ * So nothing is shown while both are up. When one is not, the window says what
+ * that means for checking rather than which process is down, and offers the one
+ * action that helps. The full per-service detail is in Settings, where someone
+ * who wants to diagnose something goes looking for it.
+ */
 function paintServices(state) {
-  // Reports what is answering, not what is installed. Whether the app started a
-  // service decides what restarting it can do, so that is stated rather than
-  // left for the reader to work out.
-  const managed = state?.managerRunning === true;
-  services.innerHTML = renderServiceHealth([
-    { name: 'LanguageTool', state: state?.languageToolReady ? 'ready' : 'stopped', managed },
-    { name: 'Quality checks', state: state?.qualityReady ? 'ready' : 'stopped', managed },
-  ]) + (state?.languageToolReady && state?.qualityReady
-    ? ''
-    : '<button class="cnt-btn" type="button" data-action="start-services">Start services</button>');
+  const ready = state?.languageToolReady && state?.qualityReady;
+  if (ready) {
+    services.hidden = true;
+    services.innerHTML = '';
+    fitWindow();
+    return;
+  }
+  const none = !state?.languageToolReady && !state?.qualityReady;
+  const message = state?.managerRunning
+    ? 'Starting the checker…'
+    : none
+      ? 'The checker is not running, so nothing is being checked.'
+      : 'Part of the checker is not running, so some findings will be missing.';
+  services.hidden = false;
+  services.innerHTML = `<div class="cnt-alert" data-intent="${state?.managerRunning ? 'info' : 'warning'}">`
+    + `<div class="cnt-alert-text">${message}</div></div>`
+    + (state?.managerRunning ? '' : '<button class="cnt-btn" type="button" data-action="start-services">Start services</button>');
   fitWindow();
 }
 

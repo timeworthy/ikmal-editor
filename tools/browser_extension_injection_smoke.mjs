@@ -96,6 +96,25 @@ try {
   await page.waitForFunction(() => document.querySelector('#ikmal-rewrite-indicator')?.shadowRoot?.querySelector('.indicator')?.dataset.status !== 'checking', null, { timeout: 7000 });
   await field.fill('teh');
   await page.waitForFunction(() => document.querySelector('#ikmal-rewrite-indicator')?.shadowRoot?.querySelector('.indicator')?.dataset.status === 'issues', null, { timeout: 7000 });
+  // The badge belongs to the field it describes, not to the corner of the
+  // window. It was pinned to the viewport, which says nothing about which field
+  // it is for and floats over unrelated content once the field scrolls away.
+  const anchored = await page.evaluate(() => {
+    const host = document.querySelector('#ikmal-rewrite-indicator');
+    const field = document.querySelector('#editor');
+    const badge = host.getBoundingClientRect();
+    const box = field.getBoundingClientRect();
+    return {
+      insideField: badge.right <= box.right + 1 && badge.bottom <= box.bottom + 1
+        && badge.left >= box.left - 1 && badge.top >= box.top - 1,
+      nearBottomRight: (box.right - badge.right) < 24 && (box.bottom - badge.bottom) < 24,
+      fixed: getComputedStyle(host).position === 'fixed',
+    };
+  });
+  if (!anchored.insideField || !anchored.nearBottomRight || !anchored.fixed) {
+    throw new Error(`The indicator is not anchored to its field: ${JSON.stringify(anchored)}`);
+  }
+
   const issueState = await indicator.evaluate((host) => ({ shadow: Boolean(host.shadowRoot), label: host.shadowRoot?.querySelector('.indicator')?.getAttribute('aria-label') || '', theme: host.dataset.theme }));
   const issueCount = Number(issueState.label.match(/^(\d+) issue/)?.[1] || 0);
   if (!issueState.shadow || issueCount < 1 || issueState.theme !== 'light') throw new Error(`Injected indicator state failed: ${JSON.stringify(issueState)}`);

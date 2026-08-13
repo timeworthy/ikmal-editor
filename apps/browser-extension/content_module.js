@@ -40,12 +40,41 @@ function ensureIndicator() {
   const host = document.createElement('div');
   host.id = 'ikmal-rewrite-indicator';
   syncDesignAttributes(host);
-  host.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:2147483646;';
+  host.style.cssText = 'position:fixed;z-index:2147483646;';
   document.documentElement.append(host);
   const shadow = mountIndicator(host, { status: 'clean', issueCount: 0, label: 'No issues' });
   state.indicator = host;
   shadow.addEventListener('click', () => openPopover());
+  positionIndicator();
   return host;
+}
+
+/**
+ * In the corner of the field it describes.
+ *
+ * It was pinned to the corner of the viewport, which says nothing about which
+ * field it belongs to — and on a page with several, or with the field scrolled
+ * away entirely, it was a badge floating over unrelated content. Fixed
+ * positioning is kept because a page's own overflow and stacking cannot be
+ * trusted, so the coordinates are computed from the field's viewport rect
+ * instead and refreshed when the page moves under it.
+ */
+function positionIndicator() {
+  const host = state.indicator;
+  const field = state.active;
+  if (!host?.isConnected || !field?.isConnected) return;
+  const box = field.getBoundingClientRect();
+  // Off-screen fields take the badge with them rather than leaving it pointing
+  // at nothing.
+  const offscreen = box.bottom < 0 || box.top > window.innerHeight || box.right < 0 || box.left > window.innerWidth;
+  host.style.display = offscreen ? 'none' : '';
+  if (offscreen) return;
+  const size = host.getBoundingClientRect();
+  const inset = 8;
+  const left = Math.max(inset, Math.min(box.right - size.width - inset, window.innerWidth - size.width - inset));
+  const top = Math.max(inset, Math.min(box.bottom - size.height - inset, window.innerHeight - size.height - inset));
+  host.style.left = `${Math.round(left)}px`;
+  host.style.top = `${Math.round(top)}px`;
 }
 
 function updateIndicator(view) {
@@ -53,6 +82,9 @@ function updateIndicator(view) {
   const shadow = host.shadowRoot;
   if (!shadow) return;
   shadow.innerHTML = `<style>${state.tokenCSS}${state.primitiveCSS}${INDICATOR_CSS}</style>${renderIndicator(view.indicator)}`;
+  // The label changes width with the count, and the badge is anchored by its
+  // right edge, so it has to be placed again after it is drawn.
+  positionIndicator();
 }
 
 function closePopover() {
@@ -132,6 +164,7 @@ function activate(field) {
   if (state.active === field && state.controller) return;
   closePopover();
   state.active = field;
+  positionIndicator();
   state.controller = createBrowserSliceController({
     core,
     field: createBrowserFieldCapability(field),
@@ -170,6 +203,11 @@ document.addEventListener('focusin', () => {
   const field = activeField();
   if (field) activate(field);
 }, true);
+// A page that scrolls or reflows moves the field out from under its badge.
+// Capture, because the scroll that matters is usually a container's rather than
+// the document's.
+window.addEventListener('scroll', positionIndicator, true);
+window.addEventListener('resize', positionIndicator);
 document.addEventListener('input', () => {
   const field = activeField();
   if (!field || field !== state.active) return;
