@@ -38,6 +38,20 @@
 .cnt-icon-button:focus-visible { box-shadow: var(--shadow-focus); outline: 2px solid transparent; }
 .cnt-icon-btn,
 .cnt-icon-button { min-width: 36px; padding: 0; }
+/* A disabled button had no appearance of its own, so it looked exactly like one
+   that works and answered a click with nothing. Hover is cancelled too — a
+   control that lights up under the pointer promises an action it will refuse. */
+.cnt-btn[disabled],
+.cnt-button[disabled],
+.cnt-icon-btn[disabled],
+.cnt-icon-button[disabled] {
+  background: var(--bg-2);
+  border-color: var(--border-1);
+  color: var(--fg-4);
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
 
 .cnt-card {
   background: var(--bg-1);
@@ -241,6 +255,10 @@
 .cnt-empty { color: var(--fg-3); padding: var(--space-8) var(--space-5); text-align: center; }
 .cnt-empty-title { color: var(--fg-1); font: 600 15px/1.3 var(--font-sans); }
 .cnt-empty-text { color: var(--fg-4); font: 400 13px/1.5 var(--font-sans); margin-top: var(--space-2); }
+/* The way out of an empty state belongs inside it. Left as a sibling, the
+   button aligned to the panel's edge while the text it answered was centred,
+   and read as unrelated to it. */
+.cnt-empty-action { display: flex; gap: var(--space-2); justify-content: center; margin-top: var(--space-4); }
 
 /* ---------------------------------------------------------------------------
    Surfaces, feedback, and progress.
@@ -347,6 +365,13 @@
 .cnt-step[data-state="current"] .cnt-step-dot { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
 .cnt-step[data-state="done"] .cnt-step-dot { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .cnt-step-label { color: var(--fg-3); font: 500 12px/1.3 var(--font-sans); }
+/* Vertical steps are for instructions rather than progress. The horizontal form
+   gives each step an equal share of the width, which squashes a step whose
+   label is a sentence — and setup steps are always sentences. */
+.cnt-steps[data-orientation="vertical"] { flex-direction: column; gap: var(--space-3); }
+.cnt-steps[data-orientation="vertical"] .cnt-step { align-items: baseline; flex-direction: row; gap: var(--space-3); }
+.cnt-steps[data-orientation="vertical"] .cnt-step-dot { flex: none; height: 24px; width: 24px; }
+.cnt-steps[data-orientation="vertical"] .cnt-step-label { color: var(--fg-2); font: 400 13px/1.5 var(--font-sans); }
 
 .cnt-btn-group { display: inline-flex; }
 .cnt-btn-group > * { border-radius: 0; }

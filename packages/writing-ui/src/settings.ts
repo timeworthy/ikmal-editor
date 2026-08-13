@@ -120,7 +120,8 @@ export function renderStyleGuideCard(state: Partial<StyleGuideCardState> = {}): 
     return '<div class="cnt-panel"><div class="cnt-empty">'
       + '<div class="cnt-empty-title">No style guide imported</div>'
       + '<div class="cnt-empty-text">Import one to add its rules to the review queue.</div>'
-      + '</div><button class="cnt-btn" type="button" data-action="import-guide">Import a guide</button></div>';
+      + '<div class="cnt-empty-action"><button class="cnt-btn" type="button" data-action="import-guide">Import a guide</button></div>'
+      + '</div></div>';
   }
   const options = guides.map((guide) => {
     const rules = typeof guide.ruleCount === 'number' ? ` (${guide.ruleCount} rules)` : '';

@@ -909,6 +909,10 @@ function registerIPC() {
     shell.showItemInFolder(path.join(target, 'manifest.json'));
     return target;
   });
+  // The one channel this rewrite added. Every other capability it needed
+  // already existed; About had no way to ask what version it was, so the panel
+  // reported "unknown" about the app it was running inside.
+  ipcMain.handle('app-version', () => app.getVersion());
   ipcMain.handle('open-third-party-notices', async () => {
     const candidates = [
       path.join(process.resourcesPath || '', 'THIRD-PARTY-NOTICES.md'),

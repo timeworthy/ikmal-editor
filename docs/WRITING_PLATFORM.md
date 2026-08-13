@@ -27,7 +27,7 @@ it. Measured:
 | `packages/writing-adapters` | **7 modules** | Browser field, browser slice, desktop slice, desktop IPC, extension messages, chunked checks, raw matches |
 | `packages/design-system` | **63 tokens, 60 classes** | `cnt-btn`, `cnt-card`, `cnt-field`, `cnt-menu`, `cnt-popover`, `cnt-badge`, `cnt-status-dot`, and variants |
 | `packages/writing-ui` | **12 composites** | indicator, issue popover, selection summary, mode picker, indicator popover, review row, review workspace, undo notice, settings group, service health card, style-guide card |
-| `apps/desktop-editor` | **36 host capabilities** | writing, plus the settings surface — the product's only settings implementation |
+| `apps/desktop-editor` | **37 host capabilities** | writing, plus the settings surface — the product's only settings implementation |
 | `apps/browser-extension` | **1 message type** | `check` |
 | `apps/desktop-compact` | **launcher, 9 capabilities** | quick check, service health, focus modes, route into the editor — no settings |
 | `apps/office`, `apps/vscode` | **do not exist** | |
@@ -262,6 +262,49 @@ Needs groups 1, 2, 4 and part of 3.
 **Exit:** compact runs on the new architecture with no legacy renderer, and the
 legacy compact can be deleted without losing a tested capability.
 
+### Phase D — Settings, once, in the editor — **compared section by section**
+
+Every section was put beside its legacy counterpart at the same width, which is
+a different test from "does it render" and found things no assertion had.
+
+The rewrite read better everywhere. It also **had quietly dropped the procedural
+knowledge** — the numbered steps for loading the browser extension, for finishing
+the spell-service install, and for the Office certificate. Those were the most
+valuable text on the legacy panels, and they were lost because they *looked* like
+clutter in a layout that squeezed them into a column three words wide. The
+presentation was the problem; the content never was. All three are back, as a
+vertical `cnt-steps` list, and Office's marks which step you are actually on.
+
+Nine more defects the comparison exposed, none of which any test could see:
+
+- A **disabled button had no appearance of its own** — Start and Stop services
+  rendered identically to live controls and answered a click with nothing. This
+  was a design-system gap, so it was reaching every host.
+- **About reported "unknown"** about the app it was running inside.
+- Two of three **sliders reported no value**, so a setting could only be read by
+  judging a handle against a bare track.
+- The **typing pause stayed live in manual mode**, inviting the user to tune
+  something that cannot take effect.
+- The sliders **offered precision the shell discards** — release on 82 and 80 is
+  what gets kept.
+- **"Dictionary and rules"** held no dictionary, and the shell cannot list or
+  remove a word, so the title promised what nothing could deliver.
+- The style-guide **empty state put its own way out beside itself** rather than
+  inside it.
+- Checking's category labels were **terser than the legacy ones** without being
+  clearer: "Style" does not say that an imported guide's rules arrive under it.
+- Office **offered manifests while the bridge was stopped**, which sideloads a
+  pane that cannot load and surfaces the failure inside Office rather than here.
+
+Four now have guards, each mutation-checked: the gallery asserts a disabled
+button is visually distinct and does not light up on hover, and the verifier
+asserts the three procedures exist, that every slider goes through the helper
+that gives it a readout, and that no slider steps finer than the shell's own
+rounding — which it reads out of `desktop/main.cjs` rather than copying.
+
+**One channel was added to the shell**, the only one this rewrite has needed:
+`app-version`. It goes through the versioned IPC contract like every other.
+
 ### Phase D — Settings, once, in the editor — **every legacy group covered**
 
 Built in the canonical order and driven end to end: Checking, Appearance,
@@ -357,7 +400,7 @@ The old gates measured depth. This measures breadth, and both are required.
 
 | Metric | Now | Target |
 | --- | --- | --- |
-| Desktop host capabilities on the new architecture | 45 / 55 | 55 / 55 |
+| Desktop host capabilities on the new architecture | 46 / 56 | 56 / 56 |
 | Extension message types | 1 / 15 | 15 / 15 |
 | Extension HTML surfaces | 0 / 3 | 3 / 3 |
 | Settings groups on shared components | **10 / 10 — every legacy group mapped** | 10 / 10 |
@@ -414,7 +457,7 @@ packages/writing-ui        writing composites, built from primitives
 packages/writing-adapters  host boundaries, contracts, fixtures
         ↑
 apps/desktop-compact   launcher, 9 caps   apps/office    (to build)
-apps/desktop-editor    45 of 55, owns settings
+apps/desktop-editor    46 of 56, owns settings
 apps/browser-extension 1 of 15             apps/vscode    (to build)
 ```
 

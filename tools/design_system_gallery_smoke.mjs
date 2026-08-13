@@ -109,6 +109,28 @@ try {
     throw new Error(`Intent surfaces are not distinct: ${JSON.stringify(intents)}`);
   }
 
+  // A disabled button must not look like one that works. It carried no styling
+  // of its own, so the settings page rendered Start and Stop identically to
+  // live controls and answered a click with nothing. Asserted on computed style
+  // in a real browser, because the defect is what the pixels do — and hover is
+  // included, since a control that lights up under the pointer is still making
+  // a promise it will refuse.
+  const disabledButton = await page.evaluate(() => {
+    const off = document.querySelector('#disabled-btn');
+    const on = off.previousElementSibling;
+    const style = getComputedStyle(off);
+    return {
+      distinct: style.opacity !== getComputedStyle(on).opacity || style.color !== getComputedStyle(on).color,
+      cursor: style.cursor,
+    };
+  });
+  if (!disabledButton.distinct) throw new Error('A disabled button is indistinguishable from an enabled one.');
+  if (disabledButton.cursor !== 'not-allowed') throw new Error(`A disabled button offers the wrong cursor: ${disabledButton.cursor}`);
+  await page.hover('#disabled-btn');
+  const hoveredBackground = await page.evaluate(() => getComputedStyle(document.querySelector('#disabled-btn')).backgroundColor);
+  const accent = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
+  if (accent && hoveredBackground.includes(accent)) throw new Error('A disabled button still lights up on hover.');
+
   // A full-width control must not overflow its container. This is what caught
   // the missing box-sizing: the gallery's textarea ran past its column, and
   // every settings form built on the primitive would have inherited it.

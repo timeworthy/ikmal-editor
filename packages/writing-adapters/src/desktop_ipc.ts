@@ -16,6 +16,9 @@ export const DESKTOP_INVOKE_CHANNELS = [
   'office-bridge-stop', 'office-bridge-remove-certificate', 'office-reveal-manifest',
   'office-reveal-excel-manifest', 'office-reveal-powerpoint-manifest',
   'office-reveal-outlook-manifest', 'office-reveal-onenote-manifest', 'office-reveal-project-manifest',
+  // The only channel the rewrite added. About had no way to ask what version it
+  // was running, so it reported "unknown" about the app around it.
+  'app-version',
 ] as const;
 
 export const DESKTOP_EVENT_CHANNELS = [
@@ -63,7 +66,7 @@ export function parseDesktopInvoke(channel: unknown, args: unknown[] = []): Desk
     'office-bridge-state', 'office-bridge-generate-certificate', 'office-bridge-start',
     'office-bridge-stop', 'office-bridge-remove-certificate', 'office-reveal-manifest',
     'office-reveal-excel-manifest', 'office-reveal-powerpoint-manifest', 'office-reveal-outlook-manifest',
-    'office-reveal-onenote-manifest', 'office-reveal-project-manifest',
+    'office-reveal-onenote-manifest', 'office-reveal-project-manifest', 'app-version',
   ]);
   if (noArguments.has(channel)) return args.length === 0 ? { channel, args: [] } : null;
   if (channel === 'open-editor' || channel === 'add-dictionary-word' || channel === 'style-guide-select') {

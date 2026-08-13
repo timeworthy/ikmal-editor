@@ -214,6 +214,7 @@ try {
     'getOfficeBridgeState', 'generateOfficeCertificate', 'removeOfficeCertificate',
     'startOfficeBridge', 'stopOfficeBridge', 'revealOfficeManifest',
     'getQualityStatus', 'installQualityStack', 'revealExtension',
+    'getAppVersion',
   ];
   const unexpectedPreload = preloadSurface.filter((key) => !allowedPreload.includes(key));
   if (unexpectedPreload.length || !preloadSurface.includes('checkText')) {

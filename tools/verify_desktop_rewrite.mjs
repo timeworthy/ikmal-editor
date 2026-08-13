@@ -85,11 +85,13 @@ assert.doesNotMatch(settingsPage.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.
   /#[0-9a-f]{3,8}\b|\brgba?\(\s*\d/i, 'the settings page hard-codes a colour');
 // The control names are the shell's preference keys. A translation layer here
 // is a place for the two to drift apart.
-// Matched in either form: a control may carry the attribute literally or get it
-// from the select helper, and the property being asserted is the binding, not
-// which helper produced it.
+// Matched in any of the forms a control is authored in: the attribute written
+// out literally, or a helper given the key as its first argument. The property
+// being asserted is that the control binds the shell's own key — not which
+// helper happened to produce the markup, which is how this assertion broke the
+// last two times a helper was introduced.
 for (const key of ['mode', 'delay', 'sensitivity']) {
-  assert.match(settingsPage, new RegExp(`data-setting="${key}"|select\\('${key}'`),
+  assert.match(settingsPage, new RegExp(`data-setting="${key}"|(?:select|slider|toggle|checkbox)\\('${key}'`),
     `settings page does not bind the ${key} preference`);
 }
 
@@ -125,3 +127,44 @@ assert.match(editorRenderer, /const openSections = new Set\(/, 'open sections ar
 assert.match(editorRenderer, /renderSettingsPage\(\{ \.\.\.settingsState, open: openSections \}\)/,
   'the settings render does not receive the open set');
 assert.match(settingsPage, /state\.open instanceof Set/, 'the settings page ignores which sections are open');
+
+// Installing the extension, the spell service, or the Office bridge each leave
+// the user somewhere they have to be told how to finish, and the first pass of
+// this page dropped all three procedures because they read as clutter in the
+// legacy panel that squeezed them into a column three words wide. The content
+// was never the problem, so its absence is now a failure.
+for (const section of ['browserExtensionBody', 'spellServerBody', 'officeBody']) {
+  const body = settingsPage.slice(settingsPage.indexOf(`function ${section}`));
+  const end = body.indexOf('\nfunction ');
+  assert.match(end === -1 ? body : body.slice(0, end), /steps\(\[/,
+    `${section} tells the user what it does but not how to finish it`);
+}
+// Every slider reports the value it is sitting on. Two of the three reported
+// nothing, so the only way to read a setting was to judge a handle's position
+// against a bare track.
+// Exactly one, and it is the helper's own. A second is a slider authored by
+// hand, which is how two of the three came to report nothing.
+assert.equal(
+  (settingsPage.match(/<input class="cnt-slider"/g) || []).length, 1,
+  'a slider is authored by hand rather than through the helper that gives it a readout',
+);
+assert.match(settingsPage.slice(settingsPage.indexOf('function slider('), settingsPage.indexOf('<input class="cnt-slider"')),
+  /settings-value/, 'the slider helper does not render a readout');
+
+// A slider must not offer precision the shell throws away. The shell rounds the
+// typing pause and the sensitivity to fixed grains, so a finer control returns
+// a number that is silently changed on the way in — the value released on is
+// not the value kept. The grains are read out of the shell rather than copied,
+// so the two cannot drift apart.
+const shell = fs.readFileSync(path.join(root, 'desktop', 'main.cjs'), 'utf8');
+const grains = {
+  delay: Number(shell.match(/checkDelay:[^\n]*?Math\.round\(delay \/ (\d+)\)/)?.[1]),
+  sensitivity: Number(shell.match(/checkSensitivity:[^\n]*?Math\.round\(sensitivity \/ (\d+)\)/)?.[1]),
+};
+for (const [key, grain] of Object.entries(grains)) {
+  assert.ok(Number.isFinite(grain) && grain > 0, `could not read the shell's rounding for ${key}`);
+  const step = Number(settingsPage.match(new RegExp(`slider\\('${key}'[\\s\\S]{0,200}?step: (\\d+)`))?.[1]);
+  assert.ok(Number.isFinite(step), `the ${key} slider declares no step`);
+  assert.equal(step % grain, 0,
+    `the ${key} slider steps by ${step}, but the shell rounds to ${grain} — it would report a value it does not keep`);
+}

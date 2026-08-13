@@ -17,6 +17,9 @@ export const SETTINGS_PAGE_CSS = `${SETTINGS_CSS}
 .settings-stack { display: grid; gap: var(--space-3); }
 .settings-inline { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-4); }
 .settings-note { color: var(--fg-4); font: 400 12px/1.45 var(--font-sans); }
+/* A slider's current value, sitting opposite its label. Tabular figures so the
+   number does not shuffle sideways while the handle is being dragged. */
+.settings-value { color: var(--fg-2); font: 500 12px/1.45 var(--font-mono); font-variant-numeric: tabular-nums; }
 `;
 
 function escapeHTML(value) {
@@ -45,39 +48,112 @@ function checkbox(name, label, checked) {
 }
 
 /**
+ * A slider always reports the value it is sitting on.
+ *
+ * Two of the three sliders here used to report nothing, so the only way to read
+ * a setting was to judge a handle's position against a bare track. The value
+ * goes beside the label rather than under the control, because that is where
+ * the eye already is when it reads what the slider is for.
+ */
+function slider(name, label, value, { min, max, step = 1, format, help, disabled, disabledNote } = {}) {
+  const current = Number.isFinite(Number(value)) ? Number(value) : min;
+  const shown = format ? format(current) : String(current);
+  return '<div class="cnt-field">'
+    + `<span class="settings-row"><span class="cnt-label">${escapeHTML(label)}</span>`
+    + `<span class="settings-value">${escapeHTML(shown)}</span></span>`
+    + `<input class="cnt-slider" type="range" min="${min}" max="${max}" step="${step}" data-setting="${name}" value="${current}"${disabled ? ' disabled' : ''}>`
+    + (disabled && disabledNote ? `<span class="cnt-help">${escapeHTML(disabledNote)}</span>`
+      : help ? `<span class="cnt-help">${escapeHTML(help)}</span>` : '')
+    + '</div>';
+}
+
+/**
+ * A numbered procedure.
+ *
+ * The legacy panels carried these for the browser extension, the spell service
+ * and Office, and they were the most valuable text on the page — installing any
+ * of the three leaves the user somewhere they have to be told how to finish.
+ * They were dropped in the first pass because they read as clutter in a legacy
+ * panel that squeezed them into a column three words wide. The content was
+ * never the problem.
+ */
+function steps(items) {
+  // An item may be a string, or [text, state] where state marks it done or
+  // current. A setup sequence the app can already see the progress of should
+  // say so, rather than making the reader work out which step they are on.
+  return '<ol class="cnt-steps" data-orientation="vertical">'
+    + items.map((item, index) => {
+      const [text, state] = Array.isArray(item) ? item : [item, null];
+      return `<li class="cnt-step"${state ? ` data-state="${state}"` : ''}>`
+        + `<span class="cnt-step-dot">${state === 'done' ? '✓' : index + 1}</span>`
+        + `<span class="cnt-step-label">${text}</span></li>`;
+    }).join('')
+    + '</ol>';
+}
+
+/** Literal text a user has to type or find, kept apart from the prose. */
+function literal(value) {
+  return `<code class="cnt-kbd">${escapeHTML(value)}</code>`;
+}
+
+/**
  * Checking comes first because it changes what the product does while the user
  * writes. Pause and Zen are not here: they are quick controls in the indicator,
  * and a writer should never have to open settings to quiet feedback.
  */
 function checkingBody(preferences = {}) {
   const categories = preferences.categories || {};
+  // The delay only means anything while checks run on their own. Left live in
+  // manual mode it invites the user to tune something that cannot take effect,
+  // and then blames them when nothing changes.
+  const manual = preferences.mode === 'manual';
   return '<div class="settings-stack">'
     + field('When to check', select('mode', preferences.mode || 'automatic', [
       ['automatic', 'Automatically as I write'],
       ['manual', 'Only when I ask'],
     ]))
-    + field('Typing delay', `<input class="cnt-slider" type="range" min="200" max="2000" step="100" data-setting="delay" value="${Number(preferences.delay) || 700}">`,
-      `${Number(preferences.delay) || 700} ms after you stop typing`)
-    + field('Suggestion sensitivity', `<input class="cnt-slider" type="range" min="0" max="100" data-setting="sensitivity" value="${Number(preferences.sensitivity) ?? 55}">`,
-      'Lower shows more suggestions, including less confident ones.')
+    // The steps are the shell's own rounding: it snaps the pause to 50 ms and
+    // the sensitivity to 5. A finer control offers precision that is discarded
+    // on the way in, so the number released on is not the number kept.
+    + slider('delay', 'Typing pause', preferences.delay ?? 700, {
+      min: 200, max: 2000, step: 50,
+      format: (value) => `${value} ms`,
+      help: 'How long to wait after you stop typing before checking.',
+      disabled: manual,
+      disabledNote: 'Not used while checks only run when you ask.',
+    })
+    + slider('sensitivity', 'Suggestion sensitivity', preferences.sensitivity ?? 55, {
+      min: 0, max: 100, step: 5,
+      format: (value) => `${value}%`,
+      help: 'Lower shows more suggestions, including less confident ones.',
+    })
+    // Named for what each category actually catches. "Style" alone does not say
+    // that an imported guide's rules arrive under it, and "Repetition" reads as
+    // a duplicate-word check rather than the echoes it also finds.
     + '<div class="settings-stack"><span class="cnt-label">Findings to show</span><div class="settings-inline">'
-    + checkbox('category:grammar', 'Grammar', categories.grammar !== false)
-    + checkbox('category:repetition', 'Repetition', categories.repetition !== false)
-    + checkbox('category:style', 'Style', categories.style !== false)
-    + checkbox('category:languagetool', 'LanguageTool', categories.languagetool !== false)
+    + checkbox('category:grammar', 'Grammar and agreement', categories.grammar !== false)
+    + checkbox('category:repetition', 'Repeats and echoes', categories.repetition !== false)
+    + checkbox('category:style', 'Style and guide rules', categories.style !== false)
+    + checkbox('category:languagetool', 'LanguageTool suggestions', categories.languagetool !== false)
     + '</div></div>'
     + '</div>';
 }
 
 function appearanceBody(annotations = {}, presence = {}, launchAtLogin = false) {
   return '<div class="settings-stack">'
+    // Each control says what choosing it changes. A bare "Mark palette" leaves
+    // the reader to open the menu to find out what a palette decides.
     + field('Mark style', select('annotationStyle', annotations.style || 'squiggle', [
       ['squiggle', 'Squiggles'], ['line', 'Lines'], ['dash', 'Dashes'],
-    ]))
+    ]), 'The shape drawn under text a finding refers to.')
     + field('Mark palette', select('annotationPalette', annotations.palette || 'balanced', [
       ['balanced', 'Balanced'], ['warm', 'Warm'], ['cool', 'Cool'], ['contrast', 'High contrast'],
-    ]))
-    + field('Mark intensity', `<input class="cnt-slider" type="range" min="0" max="100" data-setting="annotationIntensity" value="${Number(annotations.intensity) ?? 60}">`)
+    ]), 'How strongly the categories are told apart by colour.')
+    + slider('annotationIntensity', 'Mark intensity', annotations.intensity ?? 60, {
+      min: 0, max: 100,
+      format: (value) => `${value}%`,
+      help: 'How prominent the marks are against your text.',
+    })
     + '<div class="settings-inline">'
     + toggle('menubarIcon', 'Show in the menu bar', presence.menubarIcon !== false)
     + (presence.dockSupported ? toggle('dockIcon', 'Show in the Dock', presence.dockIcon !== false) : '')
@@ -194,11 +270,18 @@ function qualityModelBody(quality = {}, serviceState = {}) {
 
 /** ikmal's own browser extension, which is not LanguageTool's. */
 function browserExtensionBody() {
+  // Revealing the files is the first move of three, not the whole job. Showing
+  // the button alone leaves the user in a folder with nothing to do next.
   return '<div class="settings-stack">'
-    + '<p class="settings-note">ikmal\'s own extension checks text fields in your browser against this machine. '
-    + 'It is a different product from LanguageTool\'s plugins above; running both underlines everything twice.</p>'
+    + '<p class="settings-note">A different product from LanguageTool\'s plugins above. Running both underlines everything twice.</p>'
+    + steps([
+      `Open ${literal('chrome://extensions')} and turn on <strong>Developer mode</strong>.`,
+      'Choose <strong>Load unpacked</strong>, then pick the folder that opens below.',
+      `It connects to ${literal('127.0.0.1:8096')} on its own — there is no account and nothing to sign in to.`,
+    ])
+    + '<div class="settings-inline">'
     + '<button class="cnt-btn" type="button" data-action="reveal-extension">Show extension files</button>'
-    + '</div>';
+    + '</div></div>';
 }
 
 /** The native macOS spell service. Absent, rather than disabled, off macOS. */
@@ -219,7 +302,19 @@ function spellServerBody(spell = {}) {
       : '<button class="cnt-btn" type="button" data-action="install-spell-server">Install</button>')
     + '</div>'
     + (spell.path ? `<span class="writing-health-endpoint">${escapeHTML(spell.path)}</span>` : '')
-    + '<p class="settings-note">Adds ikmal to the system spelling menu in native macOS apps.</p>'
+    // Installing registers the service; it does not make it appear. Without
+    // these three moves the user sees no change and concludes it failed.
+    + (spell.installed
+      ? steps([
+        'Restart the app you want to check in — it reads the service list at launch.',
+        'Turn on <strong>Check Grammar With Spelling</strong> in its Edit menu.',
+        'Choose <strong>English (ikmal editor)</strong> from the spelling language list.',
+      ])
+      : '<p class="settings-note">Lists ikmal in macOS spelling and grammar settings, so native apps can '
+        + 'check against it. Text stays on this computer.</p>')
+    + (spell.installed
+      ? '<p class="settings-note">ikmal editor must be running for its richer checks to appear.</p>'
+      : '')
     + '</div>';
 }
 
@@ -248,10 +343,24 @@ function officeBody(office = {}) {
       ? '<button class="cnt-btn" type="button" data-action="stop-office-bridge">Stop</button>'
       : `<button class="cnt-btn" type="button" data-action="start-office-bridge"${configured ? '' : ' disabled'}>Start</button>`)
     + '</div>'
-    + (configured ? '' : '<p class="settings-note">Generate the certificate first; the bridge serves the task panes over HTTPS.</p>')
+    // Four moves in a fixed order, each blocked on the one before it, and the
+    // app already knows which are done. Saying so is the difference between a
+    // sequence the user is walked through and one they have to reconstruct.
+    + steps([
+      ['Generate the per-user localhost certificate.', configured ? 'done' : 'current'],
+      ['Approve it in your operating system\'s certificate store — Office refuses to load a task pane it does not trust.',
+        office.trust === 'trusted' ? 'done' : configured ? 'current' : null],
+      ['Start the bridge.', office.running ? 'done' : configured ? 'current' : null],
+      ['Sideload the manifest for the app you want the pane in.', office.running ? 'current' : null],
+    ])
     + '<div class="settings-stack"><span class="cnt-label">Task pane manifests</span><div class="settings-inline">'
-    + hosts.map(([id, name]) => `<button class="cnt-btn" type="button" data-action="reveal-manifest" data-host="${id}">${name}</button>`).join('')
-    + '</div></div></div>';
+    // A manifest points at the bridge. Handing one over while the bridge is
+    // stopped sideloads a pane that cannot load, and the failure surfaces in
+    // Office rather than here, where it could be explained.
+    + hosts.map(([id, name]) => `<button class="cnt-btn" type="button" data-action="reveal-manifest" data-host="${id}"${office.running ? '' : ' disabled'}>${name}</button>`).join('')
+    + '</div>'
+    + (office.running ? '' : '<span class="settings-note">Start the bridge to sideload a manifest.</span>')
+    + '</div></div>';
 }
 
 function servicesBody(serviceState = {}) {
@@ -304,7 +413,10 @@ export function renderSettingsPage(state = {}) {
   return `<div class="settings-page">${renderSettingsGroups([
     { id: 'checking', title: 'Checking', description: 'When checks run and what they surface.', badge: 'Control', body: checkingBody(state.checking), open: open.has('checking') },
     { id: 'appearance', title: 'Appearance', description: 'How findings are marked, and where the app appears.', badge: 'Display', body: appearanceBody(state.annotations, state.presence, state.launchAtLogin), open: open.has('appearance') },
-    { id: 'rules', title: 'Dictionary and rules', description: 'Imported style guides and the rules they add.', badge: 'Optional', body: rulesBody(state.styleGuides), open: open.has('rules') },
+    // Named for what it contains. It was "Dictionary and rules" while holding
+    // no dictionary — the shell can add a word but cannot list or remove one,
+    // so a title promising dictionary management had nothing behind it.
+    { id: 'rules', title: 'Style guides', description: 'Imported guides and the rules they add.', badge: 'Optional', body: rulesBody(state.styleGuides), open: open.has('rules') },
     { id: 'quality', title: 'Local quality model', description: 'Optional local suggestions beyond LanguageTool.', badge: 'Optional', body: qualityModelBody(state.quality, state.services), open: open.has('quality') },
     { id: 'extension', title: 'Browser extension', description: 'Check text fields in your browser against this machine.', badge: 'Optional', body: browserExtensionBody(), open: open.has('extension') },
     { id: 'integrations', title: 'Integrations', description: 'LanguageTool plugins and editors pointed at this machine.', badge: 'Optional', body: integrationsBody(state.integrations), open: open.has('integrations') },

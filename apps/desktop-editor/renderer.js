@@ -170,6 +170,8 @@ async function loadSettings() {
     window.ikmal.getServiceState(),
     window.ikmal.getRecentChecks().catch(() => []),
   ]);
+  // Read once and kept: the version cannot change while the window is open.
+  if (!settingsState.version) settingsState.version = await window.ikmal.getAppVersion().catch(() => '');
   // The style-guide service may not be running; a settings page that fails to
   // open because an optional feature is down would be worse than one that says
   // the feature has nothing to show.
@@ -264,8 +266,11 @@ settingsView.addEventListener('change', async (event) => {
   // them the same way so no translation layer can drift.
   if (['mode', 'delay', 'sensitivity'].includes(name)) {
     settingsState.checking = await window.ikmal.setCheckingPreferences({ ...settingsState.checking, [name]: value });
-    // The delay's help text names the current value, so it is repainted.
-    if (name === 'delay') paintSettings();
+    // Only the mode restructures the section — it decides whether the typing
+    // pause applies at all. The sliders update their own readout on `input`,
+    // which is why neither repaints here: a repaint mid-drag would replace the
+    // element under the pointer and end the drag.
+    if (name === 'mode') paintSettings();
     return;
   }
   if (['annotationStyle', 'annotationPalette', 'annotationIntensity'].includes(name)) {
@@ -287,6 +292,18 @@ settingsView.addEventListener('change', async (event) => {
   }
   if (control.dataset.action === 'select-guide') { await window.ikmal.selectStyleGuide(value); await loadSettings(); }
   if (control.dataset.action === 'enable-guide') { await window.ikmal.setStyleGuideEnabled(value); await loadSettings(); }
+});
+
+// A slider's readout follows the handle while it is being dragged. `change`
+// only fires on release, so without this the number sits at the old value
+// through the whole gesture — the one moment the reader is looking at it.
+const SLIDER_UNITS = { delay: (value) => `${value} ms`, sensitivity: (value) => `${value}%`, annotationIntensity: (value) => `${value}%` };
+settingsView.addEventListener('input', (event) => {
+  const control = event.target.closest?.('input[type=range][data-setting]');
+  const unit = control && SLIDER_UNITS[control.dataset.setting];
+  if (!unit) return;
+  const readout = control.closest('.cnt-field')?.querySelector('.settings-value');
+  if (readout) readout.textContent = unit(control.value);
 });
 
 window.ikmal.onServiceState?.((state) => {

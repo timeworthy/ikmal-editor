@@ -86,5 +86,6 @@ contextBridge.exposeInMainWorld('ikmal', {
   // Privacy and data — what is kept on this machine, and removing it.
   getRecentChecks: () => ipcRenderer.invoke('recent-checks'),
   clearRecentChecks: () => ipcRenderer.invoke('clear-recent-checks'),
+  getAppVersion: () => ipcRenderer.invoke('app-version'),
   openThirdPartyNotices: () => ipcRenderer.invoke('open-third-party-notices'),
 });
