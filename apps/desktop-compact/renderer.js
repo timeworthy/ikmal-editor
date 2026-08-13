@@ -220,8 +220,55 @@ document.querySelector('#open-settings').addEventListener('click', () => {
   void window.ikmal.openEditor(quickInput.value);
 });
 
+// ---------------------------------------------------------------------------
+// What the shell says. Every one of these was already being sent and had
+// nobody listening: two of the six tray items did nothing at all, and service
+// failures were silent.
+// ---------------------------------------------------------------------------
+
+const serviceError = document.querySelector('#service-error');
+const serviceErrorText = document.querySelector('#service-error-text');
+
+function showServiceError(message) {
+  const text = String(message || '').trim();
+  if (!text) return;
+  serviceErrorText.textContent = text;
+  serviceError.hidden = false;
+  // The notice changes how tall the body is, so the window has to be told.
+  fitWindow();
+}
+
+serviceError.addEventListener('click', (event) => {
+  if (!event.target.closest?.('[data-action="dismiss-error"]')) return;
+  serviceError.hidden = true;
+  serviceErrorText.textContent = '';
+  fitWindow();
+});
+
 window.ikmal.onServiceState((state) => paintServices(state));
 window.ikmal.onFocusMode((state) => { focusState = state || focusState; paintModes(); });
+window.ikmal.onServiceError?.((message) => showServiceError(message));
+
+// The tray read the clipboard and asked this window to check it. Filling the
+// field through the controller's own event is what makes the rest of the
+// window — counts, indicator, issue card — agree with it.
+window.ikmal.onQuickCheck?.((text) => {
+  quickInput.value = String(text || '');
+  quickInput.dispatchEvent(new Event('input', { bubbles: true }));
+  quickInput.focus();
+  // The field's own listener debounces by 350ms, which is right for typing and
+  // wrong for a request that has already been made deliberately. Cancelling it
+  // also keeps the same text from being checked twice.
+  window.clearTimeout(timer);
+  void check();
+});
+
+// Opened from the tray on purpose, so it is ready to type into.
+window.ikmal.onCompactInvoked?.(() => quickInput.focus());
+
+// Recent checks live in the editor's Privacy section. Routing there rather than
+// growing a second copy of them here is the same rule the gear follows.
+window.ikmal.onShowHistory?.(() => { void window.ikmal.openEditor(quickInput.value); });
 
 void (async () => {
   paintStats();

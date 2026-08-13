@@ -260,6 +260,10 @@ try {
     'startOfficeBridge', 'stopOfficeBridge', 'revealOfficeManifest',
     'getQualityStatus', 'installQualityStack', 'revealExtension',
     'getAppVersion',
+    // Listening to what the shell already broadcasts. Not new powers — every
+    // channel was already in the contract and already being sent — this is the
+    // end of the shell talking to nobody.
+    'onServiceError', 'onCheckingPreferences', 'onAnnotationPreferences', 'onShowHistory',
   ];
   const unexpectedPreload = preloadSurface.filter((key) => !allowedPreload.includes(key));
   if (unexpectedPreload.length || !preloadSurface.includes('checkText')) {

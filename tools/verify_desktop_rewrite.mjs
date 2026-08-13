@@ -227,3 +227,41 @@ for (const property of ['font', 'font-size', 'line-height', 'padding', 'letter-s
   assert.doesNotMatch(editorStyles, new RegExp(`#editor-input[^{]*\\{[^}]*\\b${property}\\s*:`),
     `the app restates ${property} on the field, which the mark overlay has to match`);
 }
+
+// No event the shell broadcasts may land on nobody.
+//
+// This is the defect E2 exists to remove, and it was invisible because a
+// send() to a window with no listener succeeds. Two of the six tray items —
+// "Quick check clipboard" and "Recent checks" — did nothing at all, and four
+// service failures including a manager binary that cannot be found reported
+// themselves into silence. Derived from the contract rather than listed here,
+// so a channel added later cannot be added without a listener.
+const contractSource = fs.readFileSync(path.join(root, 'packages', 'writing-adapters', 'src', 'desktop_ipc.ts'), 'utf8');
+const eventBlock = contractSource.slice(contractSource.indexOf('DESKTOP_EVENT_CHANNELS'));
+const eventChannels = [...eventBlock.slice(0, eventBlock.indexOf('] as const')).matchAll(/'([a-z-]+)'/g)].map((match) => match[1]);
+assert.ok(eventChannels.length >= 9, `could not read the event channels from the contract: ${JSON.stringify(eventChannels)}`);
+const preloads = {
+  launcher: compactPreload,
+  editor: preload,
+};
+for (const channel of eventChannels) {
+  const heard = Object.entries(preloads).filter(([, source]) =>
+    source.includes(`subscribe('${channel}')`) || source.includes(`ipcRenderer.on('${channel}'`));
+  assert.ok(heard.length, `the shell broadcasts "${channel}" and no rewrite window listens for it`);
+}
+
+// And a preload that exposes a subscription no renderer calls is the same
+// defect one level up: the capability exists, and nothing happens.
+const compactRenderer = fs.readFileSync(path.join(compact, 'renderer.js'), 'utf8');
+for (const [name, source, renderer] of [['launcher', compactPreload, compactRenderer], ['editor', preload, editorRenderer]]) {
+  for (const [, handler] of source.matchAll(/^\s*(on[A-Z]\w+):/gm)) {
+    assert.match(renderer, new RegExp(`window\\.ikmal\\.${handler}`),
+      `the ${name} preload exposes ${handler} and its renderer never calls it`);
+  }
+}
+
+// The tray's "Recent checks" has a destination that can answer the question it
+// is opened to ask. Privacy showed a count and a Clear button, which is not a
+// list of recent checks by any reading.
+assert.match(settingsPage, /settings-history-item/, 'Privacy counts recent checks but cannot show them');
+assert.match(editorRenderer, /onShowHistory/, 'nothing routes the tray history request anywhere');

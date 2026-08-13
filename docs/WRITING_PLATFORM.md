@@ -540,7 +540,7 @@ window had them, so this is a real gap at the flip, and it belongs with the
 launcher is a popover for checking pasted text, not a writing surface, and
 whether it should carry a mark layer is a product question rather than a port.
 
-### E2 — Tray actions that are inert, and failures that are silent
+### E2 — Tray actions that are inert, and failures that are silent — **done**
 
 | Event | Emitted by | In the rewrite |
 | --- | --- | --- |
@@ -554,6 +554,49 @@ whether it should carry a mark layer is a product question rather than a port.
 Two of the six tray items are dead under the flag. `service-error` is the most
 serious: a manager binary that cannot be found reports itself to a listener that
 does not exist.
+
+All six are wired now. A `send()` to a window with no listener succeeds, which
+is why none of this ever showed up as an error — so the guard is derived from
+the contract rather than from a list: every channel in `DESKTOP_EVENT_CHANNELS`
+must be subscribed by at least one rewrite preload, and every subscription a
+preload exposes must be called by its renderer. A channel added later cannot be
+added without a listener.
+
+- **`service-error`** reaches both windows. The launcher gained a dismissible
+  alert above the quick-check field — sized into the window, since it changes
+  how tall the body is — and the editor writes it to the status line that
+  already existed for exactly this and had only ever been written to from
+  inside the renderer.
+- **`quick-check`** fills the launcher's field and checks it immediately,
+  cancelling the 350ms debounce that is right for typing and wrong for a
+  request already made deliberately.
+- **`compact-invoked`** focuses the field, because the window was opened on
+  purpose.
+- **`checking-preferences`** and **`annotation-preferences`** re-sync the
+  settings page from what the shell actually kept. The shell clamps and rounds,
+  then announces the result; without these the page went on showing what it
+  asked for. The annotation one also repaints the marks, which is how it was
+  tested — with the settings page closed, so it proves the subscription rather
+  than the settings handler.
+- **`show-history`** had nowhere to go, and Privacy could not have been that
+  destination while it showed a count and a Clear button. Privacy now lists the
+  recent checks themselves, and the tray request routes there. The window may
+  not exist when the request is made, so it is held and delivered on ready — the
+  same pattern the shell already uses for pending editor text.
+
+### E4 — resolved by not needing them
+
+Neither survived contact. **`platform`** is not needed: the rewrite's Appearance
+section branches on `presence.dockSupported`, which the shell already reports,
+and which is the better shape — a capability fact rather than an operating
+system name to re-derive one from. **`setCompactExpanded`** is superseded by
+`setCompactHeight`, which the launcher already uses to size itself to its
+content.
+
+`openCompact` stays out until [E3](#e3--surfaces-with-no-equivalent), where the
+way back belongs. Adding it here would have meant relaxing the assertion that
+keeps the editor's preload shaped by what that window does, for a button E3 has
+not designed yet.
 
 ### E3 — Surfaces with no equivalent
 
@@ -575,15 +618,10 @@ draft on every keystroke, and one that covered the very mark it described.
 That is the argument for E3 in miniature: a composite is not known to fit a
 host until a host has rendered it.
 
-### E4 — Genuinely small
-
-`platform`, `setCompactExpanded`.
-
 ### Order
 
 E1 first, because it was a correctness problem in shipped settings rather than a
-missing feature. **E1 is done.** Then E2, which is small and stops the product
-failing silently. E3 is the largest and is where the unconsumed composites
+missing feature. **E1 and E2 are done, and E4 turned out to be nothing.** E3 is the largest and is where the unconsumed composites
 finally get a host — which is also the first real test of whether they fit one.
 
 The flag flips after E1 and E2. E3 can follow it only if the legacy renderers

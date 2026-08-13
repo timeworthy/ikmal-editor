@@ -9,6 +9,13 @@ const { contextBridge, ipcRenderer } = require('electron');
 //
 // Every channel already exists in the shell. Nothing was added to the main
 // process for this.
+const subscribe = (channel) => (callback) => {
+  if (typeof callback !== 'function') return () => {};
+  const listener = (_event, payload) => callback(payload);
+  ipcRenderer.on(channel, listener);
+  return () => ipcRenderer.removeListener(channel, listener);
+};
+
 contextBridge.exposeInMainWorld('ikmal', {
   // Writing
   checkText: (text) => ipcRenderer.invoke('check-text', String(text ?? '')),
@@ -19,6 +26,20 @@ contextBridge.exposeInMainWorld('ikmal', {
     ipcRenderer.on('editor-text', listener);
     return () => ipcRenderer.removeListener('editor-text', listener);
   },
+
+  // A failure with nobody listening is a failure the user meets as the product
+  // silently not working. Four sites send this, including a manager binary that
+  // cannot be found.
+  onServiceError: subscribe('service-error'),
+
+  // The shell is the authority on what a preference ended up as — it clamps and
+  // rounds — and it announces the result. Without these, a settings page shows
+  // what it asked for rather than what was kept, and two windows disagree.
+  onCheckingPreferences: subscribe('checking-preferences'),
+  onAnnotationPreferences: subscribe('annotation-preferences'),
+
+  // The tray's "Recent checks" opens this window at the section that holds them.
+  onShowHistory: subscribe('show-history'),
 
   // Checking — what the product does while you write.
   getCheckingPreferences: () => ipcRenderer.invoke('get-checking-preferences'),
@@ -43,12 +64,7 @@ contextBridge.exposeInMainWorld('ikmal', {
   getServiceState: () => ipcRenderer.invoke('service-state'),
   startServices: () => ipcRenderer.invoke('start-services'),
   stopServices: () => ipcRenderer.invoke('stop-services'),
-  onServiceState: (callback) => {
-    if (typeof callback !== 'function') return () => {};
-    const listener = (_event, state) => callback(state);
-    ipcRenderer.on('service-state', listener);
-    return () => ipcRenderer.removeListener('service-state', listener);
-  },
+  onServiceState: subscribe('service-state'),
 
   // The optional local model: the one part of this product that installs
   // third-party code and model weights onto the user's machine.

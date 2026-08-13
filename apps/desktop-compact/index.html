@@ -27,6 +27,15 @@
   </header>
 
   <main class="launcher-body">
+    <!-- Where the shell's failures land. Four sites report one — a manager
+         binary that cannot be found, services exiting, an empty clipboard —
+         and until now none of them reached a listener, so the product simply
+         stopped working without saying so. -->
+    <div id="service-error" class="cnt-alert" data-intent="warning" role="alert" hidden>
+      <div class="cnt-alert-text" id="service-error-text"></div>
+      <button class="cnt-icon-btn" type="button" data-action="dismiss-error" aria-label="Dismiss">&times;</button>
+    </div>
+
     <section aria-label="Quick check">
       <textarea id="quick-input" class="cnt-textarea" rows="4" placeholder="Paste or type something to check…" aria-label="Text to check"></textarea>
       <div class="launcher-stats" id="quick-stats"></div>

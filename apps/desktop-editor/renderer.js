@@ -328,17 +328,21 @@ function paintSettings() {
   settingsView.innerHTML = renderSettingsPage({ ...settingsState, open: openSections });
 }
 
+// Returns the load, so a caller that needs the page painted before it acts —
+// opening at a named section, scrolling to one — can wait for it rather than
+// race it.
 function showSettings(show) {
   settingsView.hidden = !show;
   document.querySelector('.slice-editor').hidden = show;
   document.querySelector('#indicator-anchor').hidden = show;
   // The issue card floats above the workspace, so it would otherwise sit on top
   // of the settings page it has nothing to do with.
-  if (show) { issuePopover.hidden = true; issuePopover.innerHTML = ''; }
-  if (show) void loadSettings();
+  if (!show) return Promise.resolve();
+  hideCard();
+  return loadSettings();
 }
 
-document.querySelector('#open-settings').addEventListener('click', () => showSettings(settingsView.hidden));
+document.querySelector('#open-settings').addEventListener('click', () => void showSettings(settingsView.hidden));
 
 // One accordion open/close handler for the whole page: the group composite
 // renders a button per section and owns its own aria-expanded.
@@ -455,4 +459,42 @@ settingsView.addEventListener('input', (event) => {
 window.ikmal.onServiceState?.((state) => {
   settingsState.services = state;
   if (!settingsView.hidden) paintSettings();
+});
+
+// ---------------------------------------------------------------------------
+// What the shell says. Each of these was already being broadcast to a window
+// that never listened.
+// ---------------------------------------------------------------------------
+
+// A failure the user meets as the product quietly not working. The status line
+// already exists for exactly this and was only ever written to from here.
+window.ikmal.onServiceError?.((message) => {
+  const text = String(message || '').trim();
+  if (text) status.textContent = text;
+});
+
+// The shell clamps and rounds what it is given, then announces what it kept.
+// Without this the page goes on showing what it asked for.
+window.ikmal.onCheckingPreferences?.((preferences) => {
+  if (!preferences) return;
+  settingsState.checking = preferences;
+  if (!settingsView.hidden) paintSettings();
+});
+window.ikmal.onAnnotationPreferences?.((preferences) => {
+  if (!preferences) return;
+  settingsState.annotations = preferences;
+  // The marks are drawn from these, so this is the one preference event with
+  // an effect outside the settings page.
+  applyAnnotationPreferences(document.documentElement, preferences);
+  if (!settingsView.hidden) paintSettings();
+});
+
+// The tray's "Recent checks" opens this window at the section that holds them.
+// Re-read first: the count and the list are exactly what the reader came for,
+// and showing a stale one would answer the wrong question.
+window.ikmal.onShowHistory?.(async () => {
+  openSections.clear();
+  openSections.add('privacy');
+  await showSettings(true);
+  document.querySelector('[data-group="privacy"]')?.scrollIntoView({ block: 'nearest' });
 });

@@ -30,6 +30,7 @@ let quitting = false;
 let launchAtLogin;
 let desktopPreferences;
 let editorPendingText = '';
+let editorPendingHistory = false;
 // True once the editor page has finished loading and its IPC listeners exist.
 let editorReady = false;
 // Set while a native dialog owned by the compact window is open, so its
@@ -654,6 +655,22 @@ function deliverEditorText() {
   editorPendingText = '';
 }
 
+// "Recent checks" in the tray asks for a surface the launcher does not have —
+// the rewrite keeps recent checks in the editor's Privacy section, and the
+// launcher routes there. That window may not exist yet, so the request is held
+// the same way pending text is, and delivered once the page is listening.
+// Nothing is held when the editor is already up: the broadcast reached it.
+function requestHistory() {
+  send('show-history');
+  editorPendingHistory = !(editorWindow && editorReady);
+}
+
+function deliverEditorHistory() {
+  if (!editorWindow || !editorReady || !editorPendingHistory) return;
+  send('show-history');
+  editorPendingHistory = false;
+}
+
 function showEditorWindow(text = '') {
   const initialText = String(text || '');
   // Only replace the editor's contents when there is text to hand over.
@@ -685,6 +702,7 @@ function showEditorWindow(text = '') {
     editorWindow.webContents.on('did-finish-load', () => {
       editorReady = true;
       deliverEditorText();
+      deliverEditorHistory();
     });
     editorWindow.once('ready-to-show', () => {
       editorWindow.show();
@@ -692,7 +710,7 @@ function showEditorWindow(text = '') {
       deliverEditorText();
     });
     const editorContentsID = editorWindow.webContents.id;
-    editorWindow.on('closed', () => { checkStates.delete(editorContentsID); editorWindow = undefined; editorReady = false; });
+    editorWindow.on('closed', () => { checkStates.delete(editorContentsID); editorWindow = undefined; editorReady = false; editorPendingHistory = false; });
     return;
   }
   editorWindow.show();
@@ -730,7 +748,7 @@ function createTray() {
       { label: 'Quick check clipboard', click: quickCheckClipboard },
       { label: 'Open editor…', click: () => showEditorWindow() },
       { label: 'Open writing tester', click: showWindow },
-      { label: `Recent checks (${readRecentChecks().length})`, click: () => { showWindow(); send('show-history'); } },
+      { label: `Recent checks (${readRecentChecks().length})`, click: () => { showWindow(); requestHistory(); } },
       { type: 'separator' },
       { label: 'Start services', click: startManager },
       { label: 'Stop services', click: stopManager },

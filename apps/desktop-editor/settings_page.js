@@ -33,6 +33,12 @@ export const SETTINGS_PAGE_CSS = `${SETTINGS_CSS}
 /* A slider's current value, sitting opposite its label. Tabular figures so the
    number does not shuffle sideways while the handle is being dragged. */
 .settings-value { color: var(--fg-2); font: 500 12px/1.45 var(--font-mono); font-variant-numeric: tabular-nums; }
+/* What was checked recently. One line each, because the point is to recognise
+   an entry and decide whether to keep the list, not to read it back. */
+.settings-history { display: grid; gap: var(--space-2); list-style: none; margin: 0; padding: 0; }
+.settings-history-item { align-items: baseline; display: flex; gap: var(--space-4); justify-content: space-between; }
+.settings-history-text { color: var(--fg-2); font: 400 13px/1.45 var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.settings-history-meta { align-items: center; color: var(--fg-4); display: flex; flex: none; font: 400 11px/1 var(--font-mono); gap: var(--space-2); }
 `;
 
 function escapeHTML(value) {
@@ -394,14 +400,41 @@ function servicesBody(serviceState = {}) {
     + '</div></div>';
 }
 
+// When a check was kept, said the way someone reads a clock rather than a log.
+function whenChecked(value) {
+  const at = new Date(value);
+  if (Number.isNaN(at.getTime())) return '';
+  const minutes = Math.round((Date.now() - at.getTime()) / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60 * 24) return `${Math.round(minutes / 60)}h ago`;
+  return at.toLocaleDateString();
+}
+
 function privacyBody(recentChecks = []) {
-  const count = Array.isArray(recentChecks) ? recentChecks.length : 0;
+  const entries = Array.isArray(recentChecks) ? recentChecks : [];
+  const count = entries.length;
+  // The list, not only the number. The tray offers "Recent checks (N)" and this
+  // is where it lands, so a count with a Clear button beside it would have been
+  // a destination that could not answer the question it was opened to answer.
+  // Kept short: this is the record the product holds about you, and its purpose
+  // here is that you can see it and delete it.
+  const list = count
+    ? '<ul class="settings-history">'
+      + entries.slice(0, 8).map((entry) => '<li class="settings-history-item">'
+        + `<span class="settings-history-text">${escapeHTML(String(entry?.text ?? '').slice(0, 90))}</span>`
+        + `<span class="settings-history-meta"><span class="cnt-tag">${Number(entry?.matchCount) || 0}</span>`
+        + `<span>${escapeHTML(whenChecked(entry?.checkedAt))}</span></span></li>`).join('')
+      + '</ul>'
+      + (count > 8 ? `<p class="settings-note">${count - 8} older ${count - 8 === 1 ? 'check is' : 'checks are'} also kept.</p>` : '')
+    : '<p class="settings-note">Nothing has been checked yet.</p>';
   return '<div class="settings-stack">'
     + '<div class="cnt-alert" data-intent="info"><div class="cnt-alert-text">'
     + 'Text is checked by services on this machine. There is no account, no cloud model, and nothing is sent anywhere.'
     + '</div></div>'
     + `<div class="settings-row"><span>${count === 1 ? '1 recent check kept locally' : `${count} recent checks kept locally`}</span>`
     + `<button class="cnt-btn" type="button" data-action="clear-history"${count ? '' : ' disabled'}>Clear history</button></div>`
+    + list
     + '</div>';
 }
 
