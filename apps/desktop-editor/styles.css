@@ -2,7 +2,14 @@
 body { background: var(--bg-0); color: var(--fg-1); font: 14px/1.5 var(--font-sans); margin: 0; min-width: 620px; }
 /* Wider when a sidebar is showing, because the draft should not lose measure to
    make room for the findings beside it. */
-.desktop-slice { display: grid; gap: var(--space-5); margin: 0 auto; max-width: 980px; padding: var(--space-6); }
+/* Fills the window. The page stopped 160px short of the bottom, which on a
+   writing surface reads as unfinished — and that space is the most useful thing
+   this window has to give, because it is room to write in. The draft grows into
+   it; everything else keeps its size. */
+.desktop-slice { display: grid; gap: var(--space-5); grid-template-rows: auto minmax(0, 1fr); margin: 0 auto; max-width: 980px; min-height: 100vh; padding: var(--space-6); }
+.slice-workspace, .slice-editor, .slice-review { min-height: 0; }
+/* The field takes the slack inside the card, not the label or the footer. */
+.slice-editor { grid-template-rows: auto minmax(0, 1fr) auto; }
 .desktop-slice:has(#workspace[data-layout="sidebar"]) { max-width: 1360px; }
 /* Settings is read, not written in, so it keeps a reading measure — and the
    page narrows to match it. Leaving the page at its writing width put the
@@ -13,13 +20,15 @@ body { background: var(--bg-0); color: var(--fg-1); font: 14px/1.5 var(--font-sa
 .slice-workspace { display: grid; gap: var(--space-5); }
 .slice-workspace[data-layout="sidebar"] { grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); }
 .slice-workspace[data-layout="panel"] > .slice-review { display: none; }
-.slice-review { max-height: 520px; overflow: hidden; padding: var(--space-4); }
+.slice-review { overflow: hidden; padding: var(--space-4); }
 /* One column when there is not room for two. A 320px list beside a draft
    squeezed to 300px serves neither, so below that the sidebar goes under the
    draft rather than beside it and the writing keeps its width. */
 @media (max-width: 900px) {
   .slice-workspace[data-layout="sidebar"] { grid-template-columns: minmax(0, 1fr); }
+  /* Stacked, the list must not take the whole page from the draft. */
   .slice-review { max-height: 320px; }
+  .desktop-slice { min-height: 0; }
 }
 .slice-header { align-items: end; display: flex; justify-content: space-between; gap: var(--space-4); }
 .slice-kicker { color: var(--accent); font: 600 11px/1 var(--font-mono); letter-spacing: .08em; margin: 0 0 var(--space-2); }

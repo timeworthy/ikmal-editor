@@ -253,6 +253,15 @@ try {
     // border-box, so it stood 32px taller than the window in every state and
     // the footer hung below the bottom edge — in the empty state as much as the
     // full one. The middle row is the only thing allowed to scroll.
+    // Back to rest before measuring the layout. The void this checks for is a
+    // property of the empty state — a window taller than the little it has to
+    // show — and the marks check above filled the field, which hid it.
+    await compact.evaluate(`(async () => {
+      const input = document.querySelector('#quick-input');
+      input.value = '';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+    })()`);
     const layout = await compact.evaluate(`(() => {
       const foot = document.querySelector('.launcher-foot');
       const body = document.querySelector('.launcher-body');
@@ -267,6 +276,9 @@ try {
         // Space between the last thing shown and the buttons. A window sized to
         // its content holds this at the layout gap; a fixed one grows a void.
         gapBeforeFoot: lastVisible ? Math.round(footBox.top - lastVisible.getBoundingClientRect().bottom) : 0,
+        // What the layout itself puts between rows. Read rather than assumed, so
+        // this holds at any density.
+        layoutGap: Math.round(parseFloat(getComputedStyle(document.body).rowGap) || 0),
       };
     })()`);
     if (layout.borderBox !== 'border-box') throw new Error(`The launcher body is ${layout.borderBox}, so its padding is added outside its height.`);
@@ -275,10 +287,13 @@ try {
     }
     if (layout.documentOverflow > 1) throw new Error(`The launcher page scrolls by ${layout.documentOverflow}px; only the middle row may scroll.`);
     if (!layout.middleIsScroller) throw new Error('The launcher middle row is not the scrolling region, so tall content pushes the footer out of reach.');
-    // Generous, because it is catching a void rather than policing spacing: the
-    // fixed-height window left 165px here with nothing to report.
-    if (layout.gapBeforeFoot > 96) {
-      throw new Error(`The launcher leaves ${layout.gapBeforeFoot}px of empty space above its buttons, which reads as something failing to load.`);
+    // Exactly the layout gap, not merely "not a void". This was 96px once, which
+    // let a window taller than its contents pass: the floor sat above what the
+    // resting layout needs, and the 1fr middle row put the difference here. A
+    // window sized to its content has nothing to spare, so the only space above
+    // the buttons is the gap the grid draws between every other row.
+    if (layout.gapBeforeFoot > layout.layoutGap + 2) {
+      throw new Error(`The launcher leaves ${layout.gapBeforeFoot}px above its buttons where the layout gap is ${layout.layoutGap}px, so the window is taller than what it is showing.`);
     }
 
   }
@@ -405,6 +420,27 @@ try {
     const { applyAnnotationPreferences } = await import('./marks.js');
     applyAnnotationPreferences(document.documentElement, await window.ikmal.setAnnotationPreferences({ ...(await window.ikmal.getAnnotationPreferences()), layout: 'sidebar' }));
   })()`);
+
+  // The editor uses the window it was given. The page stopped 160px short of the
+  // bottom, which on a writing surface reads as unfinished — and that space is
+  // the most useful thing this window has, because it is room to write in. The
+  // field takes the slack, so the overlay has to still match it exactly at
+  // whatever height that turns out to be.
+  const filled = await editor.evaluate(`(() => {
+    const slice = document.querySelector('.desktop-slice').getBoundingClientRect();
+    const field = document.querySelector('#editor-input');
+    const layer = document.querySelector('#editor-marks');
+    return JSON.stringify({
+      shortBy: Math.round(window.innerHeight - slice.bottom),
+      overflow: document.documentElement.scrollHeight - window.innerHeight,
+      fieldH: Math.round(field.getBoundingClientRect().height),
+      overlayGap: Math.abs(field.getBoundingClientRect().height - layer.getBoundingClientRect().height),
+    });
+  })()`);
+  const fill = JSON.parse(filled);
+  if (fill.shortBy > 2) throw new Error(`The editor leaves ${fill.shortBy}px of the window unused: ${filled}`);
+  if (fill.overflow > 1) throw new Error(`The editor page scrolls by ${fill.overflow}px: ${filled}`);
+  if (fill.overlayGap > 0.5) throw new Error(`The mark overlay no longer matches the field it grew with: ${filled}`);
 
   await editor.command('Accessibility.enable');
   const accessibilityTree = await editor.command('Accessibility.getFullAXTree');

@@ -638,7 +638,13 @@ function setCompactExpanded(expanded, activate = true) {
 // 440, so the window won and the clamp was decorative. The floor is what the
 // launcher needs with nothing to report — a quick-check field, the modes, and
 // the two ways out of the window.
-const COMPACT_MIN_HEIGHT = 360;
+// A safety net for a degenerate measurement, not a design height. At 360 it was
+// above what the window actually needs — with services reported by exception the
+// resting content is about 305px — so the floor itself was inventing 55px of
+// empty space, and a 1fr middle row put all of it between the modes and the
+// buttons. Kept well below any real content so it can only ever catch a
+// measurement of nothing.
+const COMPACT_MIN_HEIGHT = 240;
 const COMPACT_MAX_HEIGHT = 820;
 
 function setCompactHeight(height) {

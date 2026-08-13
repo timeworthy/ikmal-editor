@@ -217,8 +217,17 @@ function applyFocus(mode, duration) {
  * space being measured away, and asking for that back grew the window on every
  * repaint.
  */
+// Laid out, rather than merely not hidden. `<script>` is a child of `<body>`
+// and carries no hidden attribute, but the user agent gives it display:none, so
+// it never becomes a grid item — counting it added one row gap that the layout
+// never draws, and the window came back 12px taller than its contents with the
+// difference sitting between the modes and the buttons.
+function laidOut(container) {
+  return [...container.children].filter((child) => child.getClientRects().length > 0);
+}
+
 function contentHeight(container) {
-  const children = [...container.children].filter((child) => !child.hidden);
+  const children = laidOut(container);
   const style = getComputedStyle(container);
   const gap = parseFloat(style.rowGap) || 0;
   return children.reduce((total, child) => total + child.offsetHeight, 0)
@@ -234,7 +243,7 @@ function contentHeight(container) {
 // already written its markup.
 let lastRequested = 0;
 function fitWindow() {
-  const visible = [...document.body.children].filter((child) => !child.hidden);
+  const visible = laidOut(document.body);
   const wanted = visible.reduce((total, child) =>
     total + (child.classList.contains('launcher-body') ? contentHeight(child) : child.offsetHeight), 0);
   const style = getComputedStyle(document.body);
