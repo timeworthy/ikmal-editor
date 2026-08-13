@@ -35,7 +35,14 @@ export function normalizeIndicatorSnapshot(value: Partial<IndicatorSnapshot> = {
 
 export function renderIndicator(snapshot: Partial<IndicatorSnapshot> = {}): string {
   const state = normalizeIndicatorSnapshot(snapshot);
-  const count = state.issueCount ? `<span class="count" aria-hidden="true">${state.issueCount}</span>` : '';
+  // The badge carries the number when the label does not. Hosts describe the
+  // state in their own words, and the core's description already counts —
+  // "2 issues" beside a badge reading "2" said it twice, in the one control the
+  // product expects to be read at a glance.
+  const labelStatesCount = new RegExp(`\\b${state.issueCount}\\b`).test(state.label);
+  const count = state.issueCount && !labelStatesCount
+    ? `<span class="count" aria-hidden="true">${state.issueCount}</span>`
+    : '';
   return `<button class="indicator" type="button" data-status="${state.status}" aria-label="${escapeHTML(state.label)}"><span class="dot" aria-hidden="true"></span><span class="label">${escapeHTML(state.label)}</span>${count}</button>`;
 }
 

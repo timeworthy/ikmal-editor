@@ -7,9 +7,13 @@ test('indicator rendering is accessible, bounded, and state-driven', () => {
   assert.deepEqual(normalizeIndicatorSnapshot({ status: 'issues', issueCount: 2, label: '2 issues' }), {
     status: 'issues', issueCount: 2, label: '2 issues',
   });
-  const html = renderIndicator({ status: 'issues', issueCount: 2, label: '2 <issues>' });
+  // The label here names a state rather than a count, which is the case the
+  // badge exists for. It used to read '2 <issues>' and assert the badge beside
+  // it — encoding the behaviour that put "2 issues 2" in the launcher, so the
+  // premise was corrected rather than the assertion worked around.
+  const html = renderIndicator({ status: 'issues', issueCount: 2, label: 'Needs <review>' });
   assert.match(html, /role|button/);
-  assert.match(html, /aria-label="2 &lt;issues&gt;"/);
+  assert.match(html, /aria-label="Needs &lt;review&gt;"/);
   assert.match(html, /data-status="issues"/);
   assert.match(html, />2<\/span>/);
   assert.doesNotMatch(html, /onclick|chrome|electron/i);
@@ -115,4 +119,18 @@ test('an explanation-only finding renders no apply control at all', () => {
   });
   assert.doesNotMatch(html, /data-action="apply"/);
   assert.match(html, /data-action="ignore"/);
+});
+
+test('the indicator never says the same count twice', () => {
+  // Hosts describe the state in their own words and the core's description
+  // already counts, so the badge is only the number the label is missing.
+  const counted = renderIndicator({ status: 'issues', issueCount: 2, label: '2 issues' });
+  assert.doesNotMatch(counted, /class="count"/);
+  assert.match(counted, /2 issues/);
+  // A label that names a state rather than a number still gets its badge.
+  const worded = renderIndicator({ status: 'issues', issueCount: 2, label: 'Needs review' });
+  assert.match(worded, /class="count"[^>]*>2</);
+  // And the accessible name always carries the full description either way.
+  assert.match(counted, /aria-label="2 issues"/);
+  assert.match(worded, /aria-label="Needs review"/);
 });

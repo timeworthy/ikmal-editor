@@ -263,6 +263,35 @@ Needs groups 1, 2, 4 and part of 3.
 **Exit:** compact runs on the new architecture with no legacy renderer, and the
 legacy compact can be deleted without losing a tested capability.
 
+### Looking at the writing surfaces
+
+A pass over the surfaces themselves rather than settings, which had taken every
+previous look. Three defects, all in shared composites, so all of them were
+reaching every host:
+
+- **The indicator said the count twice.** The label carries the description and
+  a badge carries the number, and the core's description already counts — so the
+  launcher read `2 issues  2` in the one control the product expects to be read
+  at a glance. The badge is now only the number the label is missing.
+- **The issue card decided its own measure.** 360px suits a card floating over
+  someone's text, which is what the browser extension needs, and left the card
+  46px narrower than everything stacked with it in the launcher's column. The
+  measure is the host's call now, through a token.
+- **The card's contents were laid out past its own edge** — 14px, every child.
+  A grid track's minimum is its items' min-content, and the meta row is three
+  unbreakable uppercase words plus four buttons demanding 374px inside a 360px
+  card. Letting that row wrap is the fix; navigation and close were siblings, so
+  they had to be grouped or the close button orphaned onto a line of its own.
+
+Two assertions had their premise corrected rather than worked around, both
+encoding the behaviour that produced the first defect: the indicator unit test
+asserted a count badge beside a label that already counted, and the rewrite
+smoke asserted the same badge. Both assert the accessible name now, which is
+where the count has to be true regardless.
+
+The gallery asserts nothing is laid out past the card's edge, at three measures,
+because a track that cannot shrink only shows itself at a narrow one.
+
 ### Spacing, and being able to reach things
 
 The launcher had a void: 165px of nothing between the service list and its two

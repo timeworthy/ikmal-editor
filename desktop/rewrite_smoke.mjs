@@ -286,7 +286,12 @@ try {
     indicatorLabel: document.querySelector('#indicator-anchor').shadowRoot.querySelector('.indicator').getAttribute('aria-label'),
     popover: !document.querySelector('#issue-popover').hidden,
     revision: document.querySelector('#revision').textContent
-  })`, (state) => state.status === 'issues' && state.count === '1' && state.popover && state.revision === 'Revision 1', 'Fresh renderer check failed');
+    // The count is asserted through the accessible name rather than the badge.
+    // The badge is only the number the label is missing, and the core's label
+    // here already counts — asserting the badge encoded the behaviour that put
+    // "1 issue 1" on screen, so the premise was corrected rather than the
+    // assertion worked around.
+  })`, (state) => state.status === 'issues' && /\b1\b/.test(state.indicatorLabel || '') && state.popover && state.revision === 'Revision 1', 'Fresh renderer check failed');
   if (flagged.text !== 'The results is ready.' || flagged.indicatorLabel !== '1 issue') throw new Error(`Fresh renderer accessibility state failed: ${JSON.stringify(flagged)}`);
 
   await editor.command('Accessibility.enable');

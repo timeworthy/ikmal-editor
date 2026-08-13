@@ -47,6 +47,9 @@ body {
   scrollbar-gutter: stable;
 }
 .launcher-stats { color: var(--fg-4); font: 400 11px/1 var(--font-mono); margin-top: var(--space-2); }
+/* The issue card is stacked in this column rather than floating over text, so
+   it takes the column's width like everything else in it. */
+#issue-popover { --issue-measure: 100%; }
 .launcher-foot { display: flex; gap: var(--space-2); }
 .launcher-foot .cnt-btn { flex: 1; }
 

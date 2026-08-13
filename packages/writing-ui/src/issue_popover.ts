@@ -30,9 +30,28 @@ export interface SelectionSummary {
 }
 
 export const ISSUE_POPOVER_CSS = `
-.writing-issue-popover { color: var(--fg-1); display: grid; gap: var(--space-3); min-width: 280px; max-width: 360px; }
-.writing-issue-meta { align-items: center; color: var(--fg-3); display: flex; font: 600 11px/1 var(--font-mono); gap: var(--space-2); text-transform: uppercase; }
-.writing-issue-nav { align-items: center; display: flex; gap: var(--space-2); margin-inline-start: auto; }
+/* Two things this rule gets asked for, and both were wrong.
+   The measure is the host's call: 360px suits a card floating over someone's
+   text, and the browser extension has nothing else to constrain it, but in a
+   column it left the card 46px narrower than everything stacked with it. The
+   host overrides the default rather than fighting this rule's specificity.
+   The overflow that came with it: a grid track's minimum is its items'
+   min-content, and the meta row — three unbreakable uppercase words plus four
+   buttons — demanded 374px, so the track took that width and every child was
+   laid out 14px past the card's own right edge. Letting the meta row wrap is
+   what fixes that; the explicit minmax(0, 1fr) track changes nothing on its own
+   and is here so the next item that cannot break does not do it again. */
+.writing-issue-popover { color: var(--fg-1); display: grid; gap: var(--space-3); grid-template-columns: minmax(0, 1fr); min-width: 280px; max-width: var(--issue-measure, 360px); }
+/* Wraps rather than clips. The source, category and severity are what let a
+   writer judge a finding before acting on it, so none of them is droppable, and
+   a narrow host is a reason to use a second line rather than to hide one. */
+.writing-issue-meta { align-items: center; color: var(--fg-3); display: flex; flex-wrap: wrap; font: 600 11px/1 var(--font-mono); gap: var(--space-2); text-transform: uppercase; }
+/* Navigation and close travel together. They were siblings, so when the meta
+   row started wrapping the close button broke onto a line of its own and sat
+   under the row it belongs to. What may wrap is the description; the controls
+   are one group. */
+.writing-issue-controls { align-items: center; display: flex; gap: var(--space-2); margin-inline-start: auto; }
+.writing-issue-nav { align-items: center; display: flex; gap: var(--space-2); }
 .writing-issue-position { color: var(--fg-4); font: 500 11px/1 var(--font-mono); white-space: nowrap; }
 .writing-issue-message { font: 500 14px/1.45 var(--font-sans); margin: 0; }
 .writing-issue-match { background: var(--accent-soft); border-radius: var(--radius-1); color: var(--fg-1); font: 13px/1.4 var(--font-mono); padding: var(--space-2) var(--space-3); }
@@ -92,7 +111,7 @@ export function renderIssuePopover(issue: IssuePopoverIssue, options: IssuePopov
       + `</span>`
     : '';
 
-  return `<section class="cnt-popover writing-issue-popover" role="dialog" aria-label="Writing issue" data-issue-id="${escapeHTML(issue.id)}"><div class="writing-issue-meta"><span>${escapeHTML(issue.source)}</span><span>${escapeHTML(issue.category)}</span><span>${escapeHTML(issue.severity)}</span>${navigation}<button class="cnt-icon-btn" type="button" data-action="close" aria-label="Close">×</button></div><p class="writing-issue-message">${escapeHTML(issue.message)}</p>${preview}<details><summary>Why?</summary><p>${escapeHTML(issue.message)}</p></details><div class="writing-issue-actions">${primaryButton}${dictionary}<button class="cnt-btn" type="button" data-action="ignore">Ignore</button></div></section>`;
+  return `<section class="cnt-popover writing-issue-popover" role="dialog" aria-label="Writing issue" data-issue-id="${escapeHTML(issue.id)}"><div class="writing-issue-meta"><span>${escapeHTML(issue.source)}</span><span>${escapeHTML(issue.category)}</span><span>${escapeHTML(issue.severity)}</span><div class="writing-issue-controls">${navigation}<button class="cnt-icon-btn" type="button" data-action="close" aria-label="Close">×</button></div></div><p class="writing-issue-message">${escapeHTML(issue.message)}</p>${preview}<details><summary>Why?</summary><p>${escapeHTML(issue.message)}</p></details><div class="writing-issue-actions">${primaryButton}${dictionary}<button class="cnt-btn" type="button" data-action="ignore">Ignore</button></div></section>`;
 }
 
 export function renderSelectionSummary(summary: Partial<SelectionSummary> = {}): string {

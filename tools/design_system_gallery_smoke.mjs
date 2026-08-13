@@ -170,6 +170,31 @@ try {
   }
   if (!modePicker.readable) throw new Error('The duration control does not take its segment\'s foreground, so it is unreadable when selected.');
 
+  // Nothing inside a composite may be laid out past its own edge. The issue
+  // card's grid track took its minimum from the meta row, which is three
+  // unbreakable uppercase words plus four buttons, so every child sat 14px
+  // beyond the card in the editor — where the host constrains it to 360px.
+  // Checked at a narrow measure, because that is where a track that cannot
+  // shrink shows itself.
+  const spills = await page.evaluate(() => {
+    const results = [];
+    for (const measure of ['280px', '320px', '360px']) {
+      for (const card of document.querySelectorAll('.writing-issue-popover')) {
+        card.style.setProperty('--issue-measure', measure);
+        const box = card.getBoundingClientRect();
+        for (const child of card.querySelectorAll('*')) {
+          const rect = child.getBoundingClientRect();
+          if (rect.width > 0 && (rect.right > box.right + 0.5 || rect.left < box.left - 0.5)) {
+            results.push(`${measure}: ${child.className || child.tagName}`);
+          }
+        }
+        card.style.removeProperty('--issue-measure');
+      }
+    }
+    return [...new Set(results)];
+  });
+  if (spills.length) throw new Error(`Content is laid out past the issue card's own edge: ${spills.slice(0, 4).join(', ')}`);
+
   // A full-width control must not overflow its container. This is what caught
   // the missing box-sizing: the gallery's textarea ran past its column, and
   // every settings form built on the primitive would have inherited it.
