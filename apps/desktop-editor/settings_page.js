@@ -132,6 +132,75 @@ function integrationsBody(integrations = {}) {
     + '</div>';
 }
 
+/**
+ * The optional local model.
+ *
+ * Two questions get answered separately here because conflating them is what
+ * made the legacy panel misleading: whether the files are installed, and
+ * whether the model is actually running. A panel that reported only the first
+ * said "all components are installed" while quality suggestions came from the
+ * deterministic checks, and told the reader to "start services with the
+ * transformer enabled" — an instruction with no control behind it, for
+ * something the app already does on its own.
+ */
+function qualityModelBody(quality = {}, serviceState = {}) {
+  const components = Array.isArray(quality.components) ? quality.components : [];
+  if (!components.length) {
+    return '<div class="cnt-empty"><div class="cnt-empty-text">The optional model is not available in this build.</div></div>';
+  }
+  const rows = components.map((component) => '<div class="writing-health-row">'
+    + `<span class="writing-health-name"><span class="cnt-status-dot" data-state="${component.installed ? 'ready' : 'stopped'}"></span>`
+    + `<span class="settings-stack"><span>${escapeHTML(component.name)}</span>`
+    + `<span class="settings-note">${escapeHTML(component.source || '')}</span></span></span>`
+    + `<span class="writing-health-name"><span class="writing-health-endpoint">${escapeHTML(component.license || '')}</span>`
+    // Omitted rather than emptied: a component with no size rendered a bare pill
+    // next to its licence, which reads as a value that failed to load.
+    + (component.size && component.size !== '—' ? `<span class="cnt-tag">${escapeHTML(component.size)}</span>` : '')
+    + `<span class="cnt-tag" data-intent="${component.installed ? 'success' : 'info'}">${component.installed ? 'Installed' : 'Not installed'}</span></span>`
+    + '</div>').join('');
+
+  // Installed and running are different questions. The remedy depends on who
+  // started the services: reopening the app starts the model when the app owns
+  // them, and changes nothing when it is reusing services started elsewhere.
+  const remedy = serviceState.managerRunning
+    ? 'Quit and reopen ikmal editor to start it.'
+    : 'These services were started outside ikmal editor, so reopening the app will reuse them unchanged. Stop them and let ikmal editor start its own.';
+  const runningNote = quality.ready
+    ? (quality.transformerRunning
+      ? '<div class="cnt-alert" data-intent="success"><div class="cnt-alert-text">All components are installed, and the local model is running.</div></div>'
+      : `<div class="cnt-alert" data-intent="warning"><div class="cnt-alert-text">All components are installed, but the local model is not running, so quality suggestions are coming from the deterministic checks only. ${escapeHTML(remedy)}</div></div>`)
+    : '';
+
+  const licence = quality.modelIsDefault
+    ? '<div class="cnt-alert" data-intent="warning"><div>'
+      + '<div class="cnt-alert-title">Non-commercial model</div>'
+      + `<div class="cnt-alert-text">The default model ${escapeHTML(quality.modelId || '')} is licensed `
+      + `${escapeHTML(quality.modelLicense || '')}. ikmal editor's own MIT licence does not cover these weights, and `
+      + 'installing them makes this machine the party bound by that licence. For commercial use, set '
+      + 'IKMAL_TRANSFORMER_MODEL to a permissively licensed model before installing.</div></div></div>'
+    : '';
+
+  const install = quality.ready ? '' : '<div class="settings-stack">'
+    + `<label class="cnt-check"><input type="checkbox" data-setting="quality-notices"${quality.noticesAccepted ? ' checked' : ''}>`
+    + '<span class="cnt-check-box"></span>I have reviewed and accept the third-party licences</label>'
+    + `<button class="cnt-btn" type="button" data-action="install-quality"${quality.noticesAccepted ? '' : ' disabled'}>Install the local model</button>`
+    + '</div>';
+
+  return '<div class="settings-stack">'
+    + `<div class="cnt-panel writing-health">${rows}</div>`
+    + runningNote + licence + install
+    + '</div>';
+}
+
+/** ikmal's own browser extension, which is not LanguageTool's. */
+function browserExtensionBody() {
+  return '<div class="settings-stack">'
+    + '<p class="settings-note">ikmal\'s own extension checks text fields in your browser against this machine. '
+    + 'It is a different product from LanguageTool\'s plugins above; running both underlines everything twice.</p>'
+    + '<button class="cnt-btn" type="button" data-action="reveal-extension">Show extension files</button>'
+    + '</div>';
+}
+
 /** The native macOS spell service. Absent, rather than disabled, off macOS. */
 function spellServerBody(spell = {}) {
   if (!spell.supported) {
@@ -232,6 +301,8 @@ export function renderSettingsPage(state = {}) {
     { id: 'checking', title: 'Checking', description: 'When checks run and what they surface.', badge: 'Control', open: true, body: checkingBody(state.checking) },
     { id: 'appearance', title: 'Appearance', description: 'How findings are marked, and where the app appears.', badge: 'Display', body: appearanceBody(state.annotations, state.presence, state.launchAtLogin) },
     { id: 'rules', title: 'Dictionary and rules', description: 'Imported style guides and the rules they add.', badge: 'Optional', body: rulesBody(state.styleGuides) },
+    { id: 'quality', title: 'Local quality model', description: 'Optional local suggestions beyond LanguageTool.', badge: 'Optional', body: qualityModelBody(state.quality, state.services) },
+    { id: 'extension', title: 'Browser extension', description: 'Check text fields in your browser against this machine.', badge: 'Optional', body: browserExtensionBody() },
     { id: 'integrations', title: 'Integrations', description: 'LanguageTool plugins and editors pointed at this machine.', badge: 'Optional', body: integrationsBody(state.integrations) },
     { id: 'spell', title: 'Native macOS spell service', description: 'ikmal in the system spelling menu.', badge: 'Optional', body: spellServerBody(state.spellServer) },
     { id: 'office', title: 'Microsoft Office', description: 'Task panes served over local HTTPS.', badge: 'Optional', body: officeBody(state.office) },

@@ -176,12 +176,13 @@ async function loadSettings() {
   // A settings page that refuses to open because an optional feature is
   // unavailable would be worse than one that says the feature has nothing to
   // show, so each falls back to an empty state rather than rejecting.
-  const [integrations, spellServer, office] = await Promise.all([
+  const [integrations, spellServer, office, quality] = await Promise.all([
     window.ikmal.getIntegrationStatus().catch(() => ({ targets: [] })),
     window.ikmal.getSpellServerState().catch(() => ({ supported: false })),
     window.ikmal.getOfficeBridgeState().catch(() => ({ supported: false })),
+    window.ikmal.getQualityStatus().catch(() => ({ components: [] })),
   ]);
-  settingsState = { checking, annotations, presence, launchAtLogin, services, recentChecks, styleGuides, integrations, spellServer, office, version: settingsState.version };
+  settingsState = { checking, annotations, presence, launchAtLogin, services, recentChecks, styleGuides, integrations, spellServer, office, quality, version: settingsState.version };
   paintSettings();
 }
 
@@ -225,6 +226,13 @@ settingsView.addEventListener('click', async (event) => {
     await window.ikmal.configureIntegrations(detected);
     await loadSettings();
   }
+  if (action === 'install-quality') {
+    // The licence acknowledgement is passed through explicitly: the CLI would
+    // otherwise prompt, and no window can answer a prompt.
+    await window.ikmal.installQualityStack(true);
+    await loadSettings();
+  }
+  if (action === 'reveal-extension') await window.ikmal.revealExtension();
   if (action === 'install-spell-server') { await window.ikmal.installSpellServer(); await loadSettings(); }
   if (action === 'remove-spell-server') { await window.ikmal.removeSpellServer(); await loadSettings(); }
   if (action === 'generate-office-certificate') { await window.ikmal.generateOfficeCertificate(); await loadSettings(); }
@@ -265,6 +273,13 @@ settingsView.addEventListener('change', async (event) => {
     return;
   }
   if (name === 'launchAtLogin') { await window.ikmal.setLaunchAtLogin(value); return; }
+  // Acknowledgement gates the install button; it is renderer state until the
+  // install is actually requested, so the page is repainted rather than saved.
+  if (name === 'quality-notices') {
+    settingsState.quality = { ...settingsState.quality, noticesAccepted: value };
+    paintSettings();
+    return;
+  }
   if (control.dataset.action === 'select-guide') { await window.ikmal.selectStyleGuide(value); await loadSettings(); }
   if (control.dataset.action === 'enable-guide') { await window.ikmal.setStyleGuideEnabled(value); await loadSettings(); }
 });

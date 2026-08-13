@@ -27,7 +27,7 @@ it. Measured:
 | `packages/writing-adapters` | **7 modules** | Browser field, browser slice, desktop slice, desktop IPC, extension messages, chunked checks, raw matches |
 | `packages/design-system` | **63 tokens, 60 classes** | `cnt-btn`, `cnt-card`, `cnt-field`, `cnt-menu`, `cnt-popover`, `cnt-badge`, `cnt-status-dot`, and variants |
 | `packages/writing-ui` | **12 composites** | indicator, issue popover, selection summary, mode picker, indicator popover, review row, review workspace, undo notice, settings group, service health card, style-guide card |
-| `apps/desktop-editor` | **33 host capabilities** | writing, plus the settings surface — the product's only settings implementation |
+| `apps/desktop-editor` | **36 host capabilities** | writing, plus the settings surface — the product's only settings implementation |
 | `apps/browser-extension` | **1 message type** | `check` |
 | `apps/desktop-compact` | **launcher, 9 capabilities** | quick check, service health, focus modes, route into the editor — no settings |
 | `apps/office`, `apps/vscode` | **do not exist** | |
@@ -36,7 +36,7 @@ Against the legacy surface still shipping:
 
 | Surface | Legacy | On the new architecture |
 | --- | --- | --- |
-| Desktop host capabilities | 55 | 42 |
+| Desktop host capabilities | 55 | 45 |
 | Extension message types | 15 | 1 |
 | Extension HTML surfaces | 3 (popup, options, workspace) | 0 |
 | Desktop settings groups | 10 | 0 |
@@ -262,7 +262,7 @@ Needs groups 1, 2, 4 and part of 3.
 **Exit:** compact runs on the new architecture with no legacy renderer, and the
 legacy compact can be deleted without losing a tested capability.
 
-### Phase D — Settings, once, in the editor — **nine sections built**
+### Phase D — Settings, once, in the editor — **every legacy group covered**
 
 Built in the canonical order and driven end to end: Checking, Appearance,
 Dictionary and rules, Services and diagnostics, Privacy and data, About. Every
@@ -299,10 +299,22 @@ product.
 A status mapping was corrected on sight: "Not detected" was drawing the colour
 reserved for something broken. An absent plugin is an absence, not a fault.
 
-**Remaining for the exit:** the legacy compact window still owns the ten-group
-settings tab, and the flag is still off. Turning it on needs a pass confirming
-every legacy group has an equivalent here, then deleting the legacy renderers —
-which is the deletion test, and the honest end of this phase.
+The reconciliation found two gaps that a read-through would have missed: the
+**Browser extension** group and the **Local quality model** group had no
+equivalent. Both are now built — the quality panel carrying forward the fix it
+needed, which is that installed and running are different questions and the
+remedy depends on whether the app owns the services or reused ones already
+running.
+
+`verify_desktop_rewrite.mjs` now reads the ten group titles out of
+`desktop/index.html` and asserts each maps to a section that exists. That is the
+deletion test made mechanical: the legacy file cannot lose coverage silently,
+and it cannot be deleted while the mapping still reads from it.
+
+**Remaining for the exit:** the flag is still off. Flipping it is now a decision
+rather than a blocker — every legacy settings group has an equivalent, and the
+remaining ten capabilities are compact-window shell concerns (window sizing,
+quick-check invocation) rather than user-facing features.
 
 ### Phase D — original scope
 
@@ -345,10 +357,10 @@ The old gates measured depth. This measures breadth, and both are required.
 
 | Metric | Now | Target |
 | --- | --- | --- |
-| Desktop host capabilities on the new architecture | 42 / 55 | 55 / 55 |
+| Desktop host capabilities on the new architecture | 45 / 55 | 55 / 55 |
 | Extension message types | 1 / 15 | 15 / 15 |
 | Extension HTML surfaces | 0 / 3 | 3 / 3 |
-| Settings groups on shared components | **9 / 10** | 10 / 10 |
+| Settings groups on shared components | **10 / 10 — every legacy group mapped** | 10 / 10 |
 | `design-system` primitives | **33 / ~30 — complete** | ~30 |
 | `writing-ui` composites | **12 / ~10 — complete** | ~10 |
 | Legacy files deleted | 0 | all |
@@ -402,7 +414,7 @@ packages/writing-ui        writing composites, built from primitives
 packages/writing-adapters  host boundaries, contracts, fixtures
         ↑
 apps/desktop-compact   launcher, 9 caps   apps/office    (to build)
-apps/desktop-editor    42 of 55, owns settings
+apps/desktop-editor    45 of 55, owns settings
 apps/browser-extension 1 of 15             apps/vscode    (to build)
 ```
 

@@ -213,6 +213,7 @@ try {
     'getSpellServerState', 'installSpellServer', 'removeSpellServer',
     'getOfficeBridgeState', 'generateOfficeCertificate', 'removeOfficeCertificate',
     'startOfficeBridge', 'stopOfficeBridge', 'revealOfficeManifest',
+    'getQualityStatus', 'installQualityStack', 'revealExtension',
   ];
   const unexpectedPreload = preloadSurface.filter((key) => !allowedPreload.includes(key));
   if (unexpectedPreload.length || !preloadSurface.includes('checkText')) {

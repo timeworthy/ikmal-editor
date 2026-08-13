@@ -50,6 +50,14 @@ contextBridge.exposeInMainWorld('ikmal', {
     return () => ipcRenderer.removeListener('service-state', listener);
   },
 
+  // The optional local model: the one part of this product that installs
+  // third-party code and model weights onto the user's machine.
+  getQualityStatus: () => ipcRenderer.invoke('quality-status'),
+  installQualityStack: (acknowledged) => ipcRenderer.invoke('quality-setup', acknowledged === true),
+
+  // ikmal's own browser extension — a separate product from LanguageTool's.
+  revealExtension: () => ipcRenderer.invoke('reveal-extension'),
+
   // Integrations — ikmal's own adapters, and LanguageTool's plugins pointed at
   // this machine. The distinction matters and the card keeps it.
   getIntegrationStatus: () => ipcRenderer.invoke('integration-status'),
