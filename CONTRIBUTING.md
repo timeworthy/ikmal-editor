@@ -37,12 +37,19 @@ That covers `npm run build`, `npm test`, and `npm run verify`, and it is needed
 before `desktop/`'s own `npm run verify` or `npm run package`, which build
 those packages too. The desktop app keeps a separate `npm ci` for Electron.
 
-For the browser extension harnesses, add the pinned Chromium and run them with
-`npm run smoke:browser`:
+For the end-to-end harnesses, add the pinned Chromium:
 
 ```bash
 npx playwright install chromium
+npm run smoke:browser     # the two MV3 extensions
+npm run smoke:vscode      # a real VS Code window
+npm run smoke:gallery     # primitives and composites across every axis
 ```
+
+If you are changing anything visual, run `smoke:gallery` and **look at what it
+renders**. Both defects it has caught so far — controls overflowing their
+container, and status dots that ignored their state — passed the whole test
+suite first.
 
 ## The writing platform rewrite
 

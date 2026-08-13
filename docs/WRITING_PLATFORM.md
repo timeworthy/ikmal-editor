@@ -113,29 +113,24 @@ into ten groups, and the groups have an order.
 Groups 3 and 4 are the cheapest: the core already models preferences and focus
 state, so these are adapter plumbing, not new semantics.
 
-Groups 6–10 are all *settings surfaces*. They are blocked on the same thing.
+Groups 6–10 are all *settings surfaces*, and 6 is done — 8, 9 and 10 remain.
 
-### The real blocker: settings primitives do not exist
+### The blocker that was, and what replaced it
 
-Every one of groups 6–10 renders as a settings panel. `design-system` currently
-ships 10 primitives — button, card, field, menu, popover, badge, status dot and
-variants. The plan's Continental mapping calls for roughly thirty, and the ones
-settings actually needs are the missing ones:
+Groups 6–10 all render as settings panels, and until Phase A there was nothing
+to build one from: the package shipped ten primitives — button, card, field,
+menu, popover, badge, status dot — against roughly thirty the Continental
+mapping calls for, and the missing ones were exactly what a settings form needs.
 
-```
-needed and absent:  label  input  textarea  select  help  switch  check
-                    segmented  slider  panel  sheet  tag  tabs  accordion
-                    drawer  alert  banner  toast  stat  progress  steps  empty
-```
+That is resolved. `design-system` now ships **33 primitives / 60 classes**, and
+`writing-ui` **12 composites**. A settings section is now assembled from shared
+parts, which is what made Phase D's six sections a day's work rather than a
+rewrite of its own.
 
-This is why "put settings in the editor" could not be answered simply. Built
-today it would be authored in legacy CSS on legacy markup — more surface for the
-rewrite to replace later, which is the bolted-on outcome we are trying to end.
+The remaining blocker is not components. It is **capabilities**: groups 8, 9,
+and 10 need about twenty host capabilities the editor does not yet expose, and
+each is a card whose data comes from the shell.
 
-Same for `writing-ui`: it has 2 of the ~10 composites the product needs
-(indicator, issue popover). Missing: indicator popover, selection popover, mode
-picker, review workspace, settings group, service health card, style-guide card,
-undo notice.
 
 ---
 
@@ -395,9 +390,9 @@ packages/writing-core      semantics — no Electron, Chrome, DOM, fs, or networ
 packages/writing-ui        writing composites, built from primitives
 packages/writing-adapters  host boundaries, contracts, fixtures
         ↑
-apps/desktop-compact   (to build)      apps/office    (to build)
-apps/desktop-editor    (3 of 55)       apps/vscode    (to build)
-apps/browser-extension (1 of 15)
+apps/desktop-compact   launcher, 9 caps   apps/office    (to build)
+apps/desktop-editor    31 of 55, owns settings
+apps/browser-extension 1 of 15             apps/vscode    (to build)
 ```
 
 **Legacy, still shipping, to be replaced:** `desktop/index.html`,
@@ -434,8 +429,12 @@ End-to-end harnesses, all opt-in:
 npx playwright install chromium
 npm run smoke:browser              # 3 MV3 harnesses, incl. chunked-check retention
 npm run smoke:vscode               # launches a real VS Code window
+npm run smoke:gallery              # primitives and composites across every axis
 npm run smoke --prefix desktop     # Electron
-node desktop/rewrite_smoke.mjs     # the rewrite slice
+node desktop/rewrite_smoke.mjs     # the rewrite slices, launcher and editor
+
+# The rewrite slices are behind a flag. To see them:
+IKMAL_DESKTOP_REWRITE_SLICE=1 npx electron .   # from desktop/
 ```
 
 Release process: [RELEASING.md](./RELEASING.md).
@@ -448,16 +447,20 @@ Release process: [RELEASING.md](./RELEASING.md).
   It resolves only by finishing the migration or abandoning it; it does not
   resolve by waiting.
 - **New features are still landing in legacy**, widening the gap each time.
-- **`apps/desktop-editor` has no settings at all**, so the flag cannot be turned
-  on without losing capability. Phase D is what unblocks it.
-- **The design system is a third of the way to the mapping the plan assumes**,
-  and the missing two-thirds are exactly what settings needs.
+- **The flag still cannot be turned on.** Six of the ten settings groups are
+  built; Integrations, native spell server and Office are not, and the legacy
+  compact tab is the only place they exist. Turning the slice on today would
+  lose them.
+- **Nothing consumes the composites outside the desktop.** The browser
+  extension is still on its own surfaces, so the "reaches every host" property
+  is asserted by tests and not yet demonstrated across hosts.
 - **macOS bundles are ad-hoc signed, not notarized.** No Developer ID
   certificate exists; `security find-identity -v -p codesigning` reports none.
 - **Windows Office private keys are unrestricted** — `chmod 0600` is a no-op
   there; an ACL would be required.
-- **`apps/desktop-compact` was planned and never started**, so the compact
-  window has no migration path yet beyond Phase C.
+- **The legacy renderers are still what ship.** `desktop/index.html`,
+  `desktop/editor.html` and their renderers load by default, and every hour they
+  keep receiving features is an hour added to the migration.
 
 ---
 
