@@ -263,6 +263,36 @@ Needs groups 1, 2, 4 and part of 3.
 **Exit:** compact runs on the new architecture with no legacy renderer, and the
 legacy compact can be deleted without losing a tested capability.
 
+### The settings page as something you can read
+
+A design pass on the whole surface rather than section by section, which is a
+different view again: eleven sections at identical weight, each with a category
+label that said **"Optional" on seven of them**. A label identical across most
+of a page is texture rather than information, and this one mixed two axes —
+Control and Display describe what a section is about, Optional describes whether
+you need it.
+
+The slot now holds **what the section is set to**, which every section already
+knows: `Automatic · 700 ms`, `None imported`, `Running`, `0 of 4 pointed here`,
+`Installed`, `Not set up`, `Both running`, `10 checks kept`, `0.9.2-beta`. A
+closed row is only ever asked one question — whether it is worth opening — and
+before this it could not answer. Sections whose state is worth flagging carry an
+intent, so a guide imported but switched off reads as a warning rather than as a
+count.
+
+Four other things the whole-page view exposed:
+
+- **Title and description were 13px and 12px**, in the same face and nearly the
+  same colour. That is a pair, not a hierarchy; the separation is carried by
+  weight and colour now.
+- **A field's own parts sat 8px apart and consecutive fields 12px**, so a help
+  line was nearly as close to the next field's label as to the control it
+  described. Fields stack at three times their internal gap.
+- **An open section had no containment** — its controls sat in the same plane as
+  the closed rows below, so "Findings to show" appeared to belong to whichever
+  section came next.
+- **Four categories wrapped 3 + 1**, orphaning the longest.
+
 ### Focus durations, where they are called upon
 
 The duration a timed mode runs for had no home: the legacy compact panel carried

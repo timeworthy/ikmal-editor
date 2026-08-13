@@ -93,7 +93,7 @@ test('every composite escapes text it did not author', () => {
   const rendered = [
     renderModePicker({ open: 'paused', durations: [{ id: nasty, label: nasty }] }),
     renderIndicatorPopover({ status: 'issues', issues: [{ id: nasty, message: nasty, matchedText: nasty, source: nasty }] }),
-    renderSettingsGroups([{ id: 'g', title: nasty, description: nasty, badge: nasty }]),
+    renderSettingsGroups([{ id: 'g', title: nasty, description: nasty, summary: nasty }]),
     renderServiceHealth([{ name: nasty, state: 'ready', endpoint: nasty }]),
     renderStyleGuideCard({ guides: [{ id: nasty, name: nasty }] }),
     renderReviewWorkspace({ label: nasty, issues: [{ id: 'a', message: nasty, matchedText: nasty, source: nasty }] }),

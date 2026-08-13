@@ -48,6 +48,12 @@ learned from the legacy implementation, which remains the behavioural oracle:
 - **The service card says `managed` or `existing`.** Whether the app started a
   service decides whether restarting the app can fix it.
 - **A refused correction is not presented as an applied one.**
+- **A closed settings section says what it is set to**, not what kind of section
+  it is. The slot held a category — and said "Optional" on seven of the eleven
+  sections the product has, so it was identical across most of the page while
+  mixing two axes: Control and Display describe what a section is about,
+  Optional describes whether you need it. A closed row is only ever asked one
+  question, which is whether it is worth opening.
 - **Duration exists only while a timed mode is running**, and lives in the
   segment that mode occupies. Choosing Pause used to drop a menu below the row,
   so the click that said "pause" was not the one that paused anything, and the

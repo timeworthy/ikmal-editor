@@ -74,7 +74,12 @@ assert.ok(fs.readFileSync(path.join(root, 'desktop', 'main.cjs'), 'utf8').includ
 // product contract: a host may omit a section it cannot support, but it may not
 // reorder the conceptual system.
 const settingsPage = fs.readFileSync(path.join(app, 'settings_page.js'), 'utf8');
-const sectionOrder = [...settingsPage.matchAll(/id: '([a-z]+)', title: '([^']+)'/g)].map((match) => match[1]);
+// Matched in either authoring form — an object literal, or the `section()`
+// helper that builds one. The property is the order the sections appear in, not
+// the syntax that produced them, which is the third time this file has asserted
+// a shape when it meant a property.
+const sectionOrder = [...settingsPage.matchAll(/(?:id: '([a-z]+)', title: ')|(?:\n\s*section\('([a-z]+)', ')/g)]
+  .map((match) => match[1] || match[2]);
 assert.deepEqual(sectionOrder, ['checking', 'appearance', 'rules', 'quality', 'extension', 'integrations', 'spell', 'office', 'services', 'privacy', 'about'],
   'settings sections are out of canonical order');
 // Built from the shared composites, not restyled.
@@ -168,3 +173,18 @@ for (const [key, grain] of Object.entries(grains)) {
   assert.equal(step % grain, 0,
     `the ${key} slider steps by ${step}, but the shell rounds to ${grain} — it would report a value it does not keep`);
 }
+
+// A collapsed row says what the section is set to, not what kind of section it
+// is. The slot used to hold a category — and said "Optional" on seven of the
+// eleven, so it was identical across most of the page and carried nearly
+// nothing, while mixing two axes: Control and Display describe what a section
+// is about, Optional describes whether you need it.
+assert.match(settingsPage, /function sectionSummaries\(state/, 'the settings page does not derive per-section state');
+for (const category of ['Optional', 'Control', 'Display']) {
+  assert.doesNotMatch(settingsPage, new RegExp(`summary: '${category}'|badge: '${category}'`),
+    `a section is labelled with the category "${category}" rather than what it is set to`);
+}
+// Every summary must come from state. A literal is a category by another name.
+const summaries = settingsPage.slice(settingsPage.indexOf('function sectionSummaries'));
+const summaryBody = summaries.slice(0, summaries.indexOf('\n}'));
+assert.match(summaryBody, /state\./, 'section summaries are not read from state');

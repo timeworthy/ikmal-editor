@@ -169,9 +169,9 @@
       { name: 'Local model', state: 'stopped', managed: false },
     ]),
     settings.renderSettingsGroups([
-      { id: 'checking', title: 'Checking', description: 'When checks run and what they surface.', badge: 'Control', open: true, body: '<p class="cnt-help">Body content goes here.</p>' },
-      { id: 'appearance', title: 'Appearance', description: 'Theme, palette, and annotation style.', badge: 'Display' },
-      { id: 'quality', title: 'Quality model', description: 'Optional local suggestions beyond LanguageTool.', badge: 'Optional' },
+      { id: 'checking', title: 'Checking', description: 'When checks run and what they surface.', summary: 'Automatic · 700 ms', open: true, body: '<p class="cnt-help">Body content goes here.</p>' },
+      { id: 'appearance', title: 'Appearance', description: 'Theme, palette, and annotation style.', summary: 'Squiggles' },
+      { id: 'quality', title: 'Quality model', description: 'Suggestions beyond LanguageTool, from a model on this machine.', summary: 'Installed, not running', intent: 'warning' },
     ]),
     settings.renderStyleGuideCard({ guides: [{ id: 'ap', name: 'AP Stylebook', ruleCount: 42 }], selectedId: 'ap', enabled: true }),
     review.renderReviewWorkspace({ label: 'Draft.md', issues, words: 1284, characters: 7310, selectedId: 'i2' }),

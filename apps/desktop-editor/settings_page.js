@@ -17,6 +17,19 @@ export const SETTINGS_PAGE_CSS = `${SETTINGS_CSS}
 .settings-stack { display: grid; gap: var(--space-3); }
 .settings-inline { align-items: center; display: flex; flex-wrap: wrap; gap: var(--space-4); }
 .settings-note { color: var(--fg-4); font: 400 12px/1.45 var(--font-sans); }
+/* An open section sits in the same plane as the closed rows below it, so its
+   controls read as a continuation of the list rather than as its contents —
+   "Findings to show" appeared to belong to whichever section came next. A
+   recessed surface is enough to say inside. */
+.settings-page .cnt-acc-body { background: var(--bg-0); padding-top: var(--space-4); }
+/* A field's own parts sat 8px apart and consecutive fields 12px, so a help line
+   was nearly as close to the next field's label as to the control it described.
+   Fields are stacked at three times their internal gap, which is what makes
+   them read as units. */
+.settings-form { display: grid; gap: var(--space-5); }
+/* Four categories wrapped 3 + 1, orphaning the longest. A pair of columns fits
+   them evenly and collapses to one when there is no room for two. */
+.settings-checks { display: grid; gap: var(--space-3) var(--space-4); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 /* A slider's current value, sitting opposite its label. Tabular figures so the
    number does not shuffle sideways while the handle is being dragged. */
 .settings-value { color: var(--fg-2); font: 500 12px/1.45 var(--font-mono); font-variant-numeric: tabular-nums; }
@@ -107,7 +120,7 @@ function checkingBody(preferences = {}) {
   // manual mode it invites the user to tune something that cannot take effect,
   // and then blames them when nothing changes.
   const manual = preferences.mode === 'manual';
-  return '<div class="settings-stack">'
+  return '<div class="settings-form">'
     + field('When to check', select('mode', preferences.mode || 'automatic', [
       ['automatic', 'Automatically as I write'],
       ['manual', 'Only when I ask'],
@@ -130,7 +143,7 @@ function checkingBody(preferences = {}) {
     // Named for what each category actually catches. "Style" alone does not say
     // that an imported guide's rules arrive under it, and "Repetition" reads as
     // a duplicate-word check rather than the echoes it also finds.
-    + '<div class="settings-stack"><span class="cnt-label">Findings to show</span><div class="settings-inline">'
+    + '<div class="settings-stack"><span class="cnt-label">Findings to show</span><div class="settings-checks">'
     + checkbox('category:grammar', 'Grammar and agreement', categories.grammar !== false)
     + checkbox('category:repetition', 'Repeats and echoes', categories.repetition !== false)
     + checkbox('category:style', 'Style and guide rules', categories.style !== false)
@@ -140,7 +153,7 @@ function checkingBody(preferences = {}) {
 }
 
 function appearanceBody(annotations = {}, presence = {}, launchAtLogin = false) {
-  return '<div class="settings-stack">'
+  return '<div class="settings-form">'
     // Each control says what choosing it changes. A bare "Mark palette" leaves
     // the reader to open the menu to find out what a palette decides.
     + field('Mark style', select('annotationStyle', annotations.style || 'squiggle', [
@@ -401,6 +414,71 @@ function aboutBody(version) {
 }
 
 /**
+ * What each closed section is currently set to.
+ *
+ * Eleven sections rendered at identical weight with a category label that said
+ * "Optional" on seven of them, so the page was a list of doors: the only way to
+ * learn the state of anything was to open all eleven. Every section here has a
+ * state the app already holds, so the closed row can answer the question it is
+ * actually being asked — whether it is worth opening.
+ *
+ * A section whose state has not loaded yet returns nothing rather than a
+ * placeholder, because a row that says "unknown" is a row that has to be opened
+ * anyway, and it would reflow when the real value arrived.
+ */
+function sectionSummaries(state = {}) {
+  const summaries = {};
+  const set = (id, summary, intent) => { if (summary) summaries[id] = { summary, ...(intent ? { intent } : {}) }; };
+
+  if (state.checking?.mode) {
+    set('checking', state.checking.mode === 'manual' ? 'Only when asked' : `Automatic · ${Number(state.checking.delay) || 700} ms`);
+  }
+  if (state.annotations?.style) {
+    set('appearance', { squiggle: 'Squiggles', line: 'Lines', dash: 'Dashes' }[state.annotations.style] || state.annotations.style);
+  }
+  if (state.styleGuides) {
+    const guides = state.styleGuides.guides?.length || 0;
+    // Imported but switched off is the state worth flagging: the rules are
+    // there and are not being applied, which is invisible from anywhere else.
+    set('rules', !guides ? 'None imported' : state.styleGuides.enabled ? `${guides} active` : `${guides} imported, off`,
+      guides && !state.styleGuides.enabled ? 'warning' : undefined);
+  }
+  if (state.quality?.components?.length) {
+    set('quality', !state.quality.ready ? 'Not installed'
+      : state.quality.transformerRunning ? 'Running' : 'Installed, not running',
+      !state.quality.ready ? undefined : state.quality.transformerRunning ? 'success' : 'warning');
+  }
+  if (state.integrations?.targets) {
+    const targets = state.integrations.targets;
+    const configured = targets.filter((target) => target.configured).length;
+    set('integrations', !targets.length ? 'None found' : `${configured} of ${targets.length} pointed here`,
+      configured ? 'success' : undefined);
+  }
+  if (state.spellServer && state.spellServer.supported !== undefined) {
+    set('spell', !state.spellServer.supported ? 'macOS only'
+      : !state.spellServer.available ? 'Not in this build'
+        : state.spellServer.installed ? 'Installed' : 'Not installed',
+      state.spellServer.installed ? 'success' : undefined);
+  }
+  if (state.office && state.office.supported !== undefined) {
+    set('office', !state.office.supported ? 'Not in this build'
+      : state.office.running ? 'Bridge running'
+        : state.office.configured ? 'Bridge stopped' : 'Not set up',
+      state.office.running ? 'success' : undefined);
+  }
+  if (state.services && state.services.languageToolReady !== undefined) {
+    const running = [state.services.languageToolReady, state.services.qualityReady].filter(Boolean).length;
+    set('services', running === 2 ? 'Both running' : running ? '1 of 2 running' : 'Stopped',
+      running === 2 ? 'success' : 'warning');
+  }
+  if (Array.isArray(state.recentChecks)) {
+    set('privacy', state.recentChecks.length === 1 ? '1 check kept' : `${state.recentChecks.length} checks kept`);
+  }
+  set('about', state.version);
+  return summaries;
+}
+
+/**
  * The whole page. Sections are rendered in the canonical order; a section whose
  * data has not arrived yet renders its shell rather than disappearing, so the
  * page does not reflow as state loads.
@@ -410,20 +488,29 @@ export function renderSettingsPage(state = {}) {
   // driven by a service-state push would otherwise snap every open section
   // shut underneath them.
   const open = state.open instanceof Set ? state.open : new Set(['checking']);
+  const summaries = sectionSummaries(state);
+  const section = (id, title, description, body) => ({
+    id, title, description, body, open: open.has(id), ...(summaries[id] || {}),
+  });
   return `<div class="settings-page">${renderSettingsGroups([
-    { id: 'checking', title: 'Checking', description: 'When checks run and what they surface.', badge: 'Control', body: checkingBody(state.checking), open: open.has('checking') },
-    { id: 'appearance', title: 'Appearance', description: 'How findings are marked, and where the app appears.', badge: 'Display', body: appearanceBody(state.annotations, state.presence, state.launchAtLogin), open: open.has('appearance') },
+    section('checking', 'Checking', 'When checks run and what they surface.', checkingBody(state.checking)),
+    section('appearance', 'Appearance', 'How findings are marked, and where the app appears.',
+      appearanceBody(state.annotations, state.presence, state.launchAtLogin)),
     // Named for what it contains. It was "Dictionary and rules" while holding
     // no dictionary — the shell can add a word but cannot list or remove one,
     // so a title promising dictionary management had nothing behind it.
-    { id: 'rules', title: 'Style guides', description: 'Imported guides and the rules they add.', badge: 'Optional', body: rulesBody(state.styleGuides), open: open.has('rules') },
-    { id: 'quality', title: 'Local quality model', description: 'Optional local suggestions beyond LanguageTool.', badge: 'Optional', body: qualityModelBody(state.quality, state.services), open: open.has('quality') },
-    { id: 'extension', title: 'Browser extension', description: 'Check text fields in your browser against this machine.', badge: 'Optional', body: browserExtensionBody(), open: open.has('extension') },
-    { id: 'integrations', title: 'Integrations', description: 'LanguageTool plugins and editors pointed at this machine.', badge: 'Optional', body: integrationsBody(state.integrations), open: open.has('integrations') },
-    { id: 'spell', title: 'Native macOS spell service', description: 'ikmal in the system spelling menu.', badge: 'Optional', body: spellServerBody(state.spellServer), open: open.has('spell') },
-    { id: 'office', title: 'Microsoft Office', description: 'Task panes served over local HTTPS.', badge: 'Optional', body: officeBody(state.office), open: open.has('office') },
-    { id: 'services', title: 'Services and diagnostics', description: 'What is running on this machine.', body: servicesBody(state.services), open: open.has('services') },
-    { id: 'privacy', title: 'Privacy and data', description: 'What is stored locally, and removing it.', body: privacyBody(state.recentChecks), open: open.has('privacy') },
-    { id: 'about', title: 'About', description: 'Version and licences.', body: aboutBody(state.version), open: open.has('about') },
+    section('rules', 'Style guides', 'Imported guides and the rules they add.', rulesBody(state.styleGuides)),
+    section('quality', 'Local quality model', 'Suggestions beyond LanguageTool, from a model on this machine.',
+      qualityModelBody(state.quality, state.services)),
+    // Every other description names what the section covers; this one told the
+    // reader to go and do something. It also now says whose extension it is,
+    // which is the distinction the body goes on to draw.
+    section('extension', 'Browser extension', 'ikmal\'s own extension, for text fields in your browser.', browserExtensionBody()),
+    section('integrations', 'Integrations', 'LanguageTool plugins and editors pointed at this machine.', integrationsBody(state.integrations)),
+    section('spell', 'Native macOS spell service', 'ikmal in the system spelling menu.', spellServerBody(state.spellServer)),
+    section('office', 'Microsoft Office', 'Task panes served over local HTTPS.', officeBody(state.office)),
+    section('services', 'Services and diagnostics', 'What is running on this machine.', servicesBody(state.services)),
+    section('privacy', 'Privacy and data', 'What is kept on this machine, and how to remove it.', privacyBody(state.recentChecks)),
+    section('about', 'About', 'Version and licences.', aboutBody(state.version)),
   ])}</div>`;
 }

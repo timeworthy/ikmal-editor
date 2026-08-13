@@ -10,8 +10,21 @@ export interface SettingsGroupState {
   id: string;
   title: string;
   description: string;
-  /** Short right-hand label: Optional, Control, Display, New. */
-  badge?: string;
+  /**
+   * What this section is currently set to, in the user's terms — "Automatic",
+   * "1 of 4 configured", "Not installed".
+   *
+   * This slot used to hold a category: Optional, Control, Display. Seven of the
+   * product's eleven sections said "Optional", so the label was identical on
+   * most of the page and carried nearly nothing; and it mixed two axes, since
+   * Control and Display describe what a section is about while Optional
+   * describes whether you need it. A collapsed row should answer the only
+   * question being asked of it — whether it is worth opening — and every one of
+   * these sections has a state the app already knows.
+   */
+  summary?: string;
+  /** How the summary reads: neutral by default, or as a live state. */
+  intent?: 'success' | 'warning' | 'danger' | 'info';
   open?: boolean;
   /** Rendered inside the body. Callers pass already-escaped markup. */
   body?: string;
@@ -37,9 +50,17 @@ export interface StyleGuideCardState {
 
 export const SETTINGS_CSS = `
 .writing-settings { display: grid; gap: var(--space-4); }
-.writing-setting-head { display: grid; gap: 2px; text-align: left; }
-.writing-setting-title { color: var(--fg-1); font: 600 13px/1.2 var(--font-sans); }
+.writing-setting-head { display: grid; gap: 3px; text-align: left; }
+/* Title and description were 13px and 12px — a single pixel apart, in the same
+   face and nearly the same colour, which is not a hierarchy so much as a pair.
+   The separation is carried by weight and colour rather than by size, so the
+   row stays compact and the description still reads as subordinate. */
+.writing-setting-title { color: var(--fg-1); font: 600 14px/1.25 var(--font-sans); letter-spacing: -0.005em; }
 .writing-setting-description { color: var(--fg-4); font: 400 12px/1.4 var(--font-sans); }
+/* The state a section is in, so a closed row says whether it is worth opening.
+   Tabular figures because most of these are counts, and a column of counts that
+   shifts as it updates reads as instability. */
+.writing-setting-summary { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .writing-health { display: grid; gap: var(--space-3); }
 .writing-health-row { align-items: center; display: flex; gap: var(--space-3); justify-content: space-between; }
 .writing-health-name { align-items: center; display: flex; gap: var(--space-2); }
@@ -71,13 +92,15 @@ function escapeHTML(value: string): string {
  * row rather than wherever the description happens to end.
  */
 export function renderSettingsGroup(group: SettingsGroupState): string {
-  const badge = group.badge ? `<span class="cnt-tag">${escapeHTML(group.badge)}</span>` : '';
+  const summary = group.summary
+    ? `<span class="cnt-tag writing-setting-summary"${group.intent ? ` data-intent="${escapeHTML(group.intent)}"` : ''}>${escapeHTML(group.summary)}</span>`
+    : '';
   return `<div class="cnt-acc-item" data-group="${escapeHTML(group.id)}">`
     + `<button class="cnt-acc-head" type="button" aria-expanded="${group.open === true}" aria-controls="${escapeHTML(group.id)}-body">`
     + `<span class="writing-setting-head">`
     + `<span class="writing-setting-title">${escapeHTML(group.title)}</span>`
     + `<span class="writing-setting-description">${escapeHTML(group.description)}</span>`
-    + `</span>${badge}</button>`
+    + `</span>${summary}</button>`
     + `<div class="cnt-acc-body" id="${escapeHTML(group.id)}-body"${group.open === true ? '' : ' hidden'}>${group.body || ''}</div>`
     + '</div>';
 }
