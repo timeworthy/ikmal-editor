@@ -171,7 +171,17 @@ async function loadSettings() {
   // open because an optional feature is down would be worse than one that says
   // the feature has nothing to show.
   const styleGuides = await window.ikmal.getStyleGuideState().catch(() => ({ guides: [] }));
-  settingsState = { checking, annotations, presence, launchAtLogin, services, recentChecks, styleGuides, version: settingsState.version };
+  // Each of these can legitimately fail — the integration scan shells out, the
+  // spell service is macOS only, the Office bridge may be absent from a build.
+  // A settings page that refuses to open because an optional feature is
+  // unavailable would be worse than one that says the feature has nothing to
+  // show, so each falls back to an empty state rather than rejecting.
+  const [integrations, spellServer, office] = await Promise.all([
+    window.ikmal.getIntegrationStatus().catch(() => ({ targets: [] })),
+    window.ikmal.getSpellServerState().catch(() => ({ supported: false })),
+    window.ikmal.getOfficeBridgeState().catch(() => ({ supported: false })),
+  ]);
+  settingsState = { checking, annotations, presence, launchAtLogin, services, recentChecks, styleGuides, integrations, spellServer, office, version: settingsState.version };
   paintSettings();
 }
 
@@ -209,6 +219,21 @@ settingsView.addEventListener('click', async (event) => {
   if (action === 'clear-history') { await window.ikmal.clearRecentChecks(); await loadSettings(); }
   if (action === 'open-notices') await window.ikmal.openThirdPartyNotices();
   if (action === 'import-guide') { await window.ikmal.importStyleGuide(); await loadSettings(); }
+  if (action === 'configure-integrations') {
+    // Only the plugins already detected are touched; nothing is installed.
+    const detected = (settingsState.integrations?.targets || []).filter((target) => target.detected).map((target) => target.id);
+    await window.ikmal.configureIntegrations(detected);
+    await loadSettings();
+  }
+  if (action === 'install-spell-server') { await window.ikmal.installSpellServer(); await loadSettings(); }
+  if (action === 'remove-spell-server') { await window.ikmal.removeSpellServer(); await loadSettings(); }
+  if (action === 'generate-office-certificate') { await window.ikmal.generateOfficeCertificate(); await loadSettings(); }
+  if (action === 'remove-office-certificate') { await window.ikmal.removeOfficeCertificate(); await loadSettings(); }
+  if (action === 'start-office-bridge') { await window.ikmal.startOfficeBridge(); await loadSettings(); }
+  if (action === 'stop-office-bridge') { await window.ikmal.stopOfficeBridge(); await loadSettings(); }
+  if (action === 'reveal-manifest') {
+    await window.ikmal.revealOfficeManifest(event.target.closest('[data-host]')?.dataset.host || 'word');
+  }
 });
 
 settingsView.addEventListener('change', async (event) => {

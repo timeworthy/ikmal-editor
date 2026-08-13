@@ -50,6 +50,31 @@ contextBridge.exposeInMainWorld('ikmal', {
     return () => ipcRenderer.removeListener('service-state', listener);
   },
 
+  // Integrations — ikmal's own adapters, and LanguageTool's plugins pointed at
+  // this machine. The distinction matters and the card keeps it.
+  getIntegrationStatus: () => ipcRenderer.invoke('integration-status'),
+  configureIntegrations: (targets) => ipcRenderer.invoke('configure-integrations', targets),
+
+  // Native macOS spell service.
+  getSpellServerState: () => ipcRenderer.invoke('spell-server-state'),
+  installSpellServer: () => ipcRenderer.invoke('install-spell-server'),
+  removeSpellServer: () => ipcRenderer.invoke('remove-spell-server'),
+
+  // Office bridge: certificate, server, and the per-host manifests.
+  getOfficeBridgeState: () => ipcRenderer.invoke('office-bridge-state'),
+  generateOfficeCertificate: () => ipcRenderer.invoke('office-bridge-generate-certificate'),
+  removeOfficeCertificate: () => ipcRenderer.invoke('office-bridge-remove-certificate'),
+  startOfficeBridge: () => ipcRenderer.invoke('office-bridge-start'),
+  stopOfficeBridge: () => ipcRenderer.invoke('office-bridge-stop'),
+  revealOfficeManifest: (host) => ipcRenderer.invoke(({
+    word: 'office-reveal-manifest',
+    excel: 'office-reveal-excel-manifest',
+    powerpoint: 'office-reveal-powerpoint-manifest',
+    outlook: 'office-reveal-outlook-manifest',
+    onenote: 'office-reveal-onenote-manifest',
+    project: 'office-reveal-project-manifest',
+  })[host] || 'office-reveal-manifest'),
+
   // Privacy and data — what is kept on this machine, and removing it.
   getRecentChecks: () => ipcRenderer.invoke('recent-checks'),
   clearRecentChecks: () => ipcRenderer.invoke('clear-recent-checks'),

@@ -27,9 +27,11 @@ assert.match(preload, /onEditorText/);
 // wholesale — the point was a preload shaped by what this window does, not a
 // copy of all 55 capabilities. `configureIntegrations` and `openCompact` stand
 // for that: neither belongs to writing or to settings as built.
-assert.doesNotMatch(preload, /configureIntegrations|openCompact|revealOfficeManifest|installSpellServer/);
+// The editor owns every settings surface now, so the forbidden list is what
+// belongs to the launcher or to no window at all.
+assert.doesNotMatch(preload, /openCompact|setCompactExpanded|setCompactHeight|onQuickCheck/);
 // Settings live here and only here, so these must be present.
-for (const capability of ['getCheckingPreferences', 'getAnnotationPreferences', 'getStyleGuideState', 'getServiceState', 'getRecentChecks']) {
+for (const capability of ['getCheckingPreferences', 'getAnnotationPreferences', 'getStyleGuideState', 'getServiceState', 'getRecentChecks', 'getIntegrationStatus', 'getSpellServerState', 'getOfficeBridgeState']) {
   assert.ok(preload.includes(capability), `the editor owns settings and is missing ${capability}`);
 }
 const packageSource = fs.readFileSync(path.join(root, 'desktop', 'package_desktop.mjs'), 'utf8');
@@ -73,7 +75,7 @@ assert.ok(fs.readFileSync(path.join(root, 'desktop', 'main.cjs'), 'utf8').includ
 // reorder the conceptual system.
 const settingsPage = fs.readFileSync(path.join(app, 'settings_page.js'), 'utf8');
 const sectionOrder = [...settingsPage.matchAll(/id: '([a-z]+)', title: '([^']+)'/g)].map((match) => match[1]);
-assert.deepEqual(sectionOrder, ['checking', 'appearance', 'rules', 'services', 'privacy', 'about'],
+assert.deepEqual(sectionOrder, ['checking', 'appearance', 'rules', 'integrations', 'spell', 'office', 'services', 'privacy', 'about'],
   'settings sections are out of canonical order');
 // Built from the shared composites, not restyled.
 for (const composite of ['renderSettingsGroups', 'renderServiceHealth', 'renderStyleGuideCard']) {

@@ -97,6 +97,94 @@ function rulesBody(styleGuides = {}) {
     + '</div>';
 }
 
+/**
+ * Integrations. ikmal's own adapters and LanguageTool's plugins are different
+ * products, and a card that blurs them leaves the user unable to tell what they
+ * just pointed where. Each row says which it is.
+ */
+function integrationsBody(integrations = {}) {
+  const targets = Array.isArray(integrations.targets) ? integrations.targets : [];
+  if (!targets.length) {
+    return '<div class="cnt-empty"><div class="cnt-empty-title">No integrations detected</div>'
+      + '<div class="cnt-empty-text">LanguageTool plugins and editors are found automatically when installed.</div></div>';
+  }
+  const rows = targets.map((target) => {
+    // Not detected is an absence, not a fault: a plugin nobody installed should
+    // not wear the colour reserved for something broken. Configured is ready,
+    // detected-but-not-configured is available to act on, absent is neutral.
+    const state = target.configured ? 'ready' : target.detected ? 'starting' : 'stopped';
+    const label = target.configured ? 'Points here' : target.detected ? 'Found' : 'Not detected';
+    return '<div class="writing-health-row">'
+      + `<span class="writing-health-name"><span class="cnt-status-dot" data-state="${state}"></span>`
+      + `<span class="settings-stack"><span>${escapeHTML(target.name)}</span>`
+      + `<span class="settings-note">${escapeHTML(target.details || '')}</span></span></span>`
+      + `<span class="writing-health-name">`
+      + (target.configuredEndpoint ? `<span class="writing-health-endpoint">${escapeHTML(target.configuredEndpoint)}</span>` : '')
+      + `<span class="cnt-tag" data-intent="${target.configured ? 'success' : 'info'}">${label}</span></span>`
+      + '</div>';
+  }).join('');
+  return '<div class="settings-stack">'
+    + `<div class="cnt-panel writing-health">${rows}</div>`
+    + '<p class="settings-note">These are LanguageTool\'s own plugins. Configuring one rewrites its server '
+    + 'address so it checks against this machine instead of the cloud. ikmal\'s own extension is a separate '
+    + 'product with its own install.</p>'
+    + '<button class="cnt-btn" type="button" data-action="configure-integrations">Point detected plugins here</button>'
+    + '</div>';
+}
+
+/** The native macOS spell service. Absent, rather than disabled, off macOS. */
+function spellServerBody(spell = {}) {
+  if (!spell.supported) {
+    return '<div class="cnt-empty"><div class="cnt-empty-text">The native spell service is macOS only.</div></div>';
+  }
+  if (!spell.available) {
+    return '<div class="cnt-alert" data-intent="info"><div class="cnt-alert-text">'
+      + 'The spell service is not bundled in this build.</div></div>';
+  }
+  return '<div class="settings-stack">'
+    + `<div class="settings-row"><span class="writing-health-name">`
+    + `<span class="cnt-status-dot" data-state="${spell.installed ? 'ready' : 'stopped'}"></span>`
+    + `${spell.installed ? 'Installed' : 'Not installed'}</span>`
+    + (spell.installed
+      ? '<button class="cnt-btn" type="button" data-action="remove-spell-server">Remove</button>'
+      : '<button class="cnt-btn" type="button" data-action="install-spell-server">Install</button>')
+    + '</div>'
+    + (spell.path ? `<span class="writing-health-endpoint">${escapeHTML(spell.path)}</span>` : '')
+    + '<p class="settings-note">Adds ikmal to the system spelling menu in native macOS apps.</p>'
+    + '</div>';
+}
+
+/**
+ * The Office bridge. The certificate comes first because nothing else works
+ * without it, and its trust state is the thing users get stuck on.
+ */
+function officeBody(office = {}) {
+  if (!office.supported) {
+    return '<div class="cnt-empty"><div class="cnt-empty-text">The Office bridge is not available in this build.</div></div>';
+  }
+  const configured = office.configured === true;
+  const hosts = [['word', 'Word'], ['excel', 'Excel'], ['powerpoint', 'PowerPoint'], ['outlook', 'Outlook'], ['onenote', 'OneNote'], ['project', 'Project']];
+  return '<div class="settings-stack">'
+    + '<div class="settings-row"><span class="writing-health-name">'
+    + `<span class="cnt-status-dot" data-state="${configured ? 'ready' : 'stopped'}"></span>`
+    + `Certificate${office.trust ? ` · ${escapeHTML(office.trust)} trust` : ''}</span>`
+    + (configured
+      ? '<button class="cnt-btn" type="button" data-action="remove-office-certificate">Remove</button>'
+      : '<button class="cnt-btn" type="button" data-action="generate-office-certificate">Generate</button>')
+    + '</div>'
+    + '<div class="settings-row"><span class="writing-health-name">'
+    + `<span class="cnt-status-dot" data-state="${office.running ? 'ready' : 'stopped'}"></span>`
+    + `Bridge${office.url ? ` · <span class="writing-health-endpoint">${escapeHTML(office.url)}</span>` : ''}</span>`
+    + (office.running
+      ? '<button class="cnt-btn" type="button" data-action="stop-office-bridge">Stop</button>'
+      : `<button class="cnt-btn" type="button" data-action="start-office-bridge"${configured ? '' : ' disabled'}>Start</button>`)
+    + '</div>'
+    + (configured ? '' : '<p class="settings-note">Generate the certificate first; the bridge serves the task panes over HTTPS.</p>')
+    + '<div class="settings-stack"><span class="cnt-label">Task pane manifests</span><div class="settings-inline">'
+    + hosts.map(([id, name]) => `<button class="cnt-btn" type="button" data-action="reveal-manifest" data-host="${id}">${name}</button>`).join('')
+    + '</div></div></div>';
+}
+
 function servicesBody(serviceState = {}) {
   const managed = serviceState.managerRunning === true;
   const running = serviceState.languageToolReady && serviceState.qualityReady;
@@ -144,6 +232,9 @@ export function renderSettingsPage(state = {}) {
     { id: 'checking', title: 'Checking', description: 'When checks run and what they surface.', badge: 'Control', open: true, body: checkingBody(state.checking) },
     { id: 'appearance', title: 'Appearance', description: 'How findings are marked, and where the app appears.', badge: 'Display', body: appearanceBody(state.annotations, state.presence, state.launchAtLogin) },
     { id: 'rules', title: 'Dictionary and rules', description: 'Imported style guides and the rules they add.', badge: 'Optional', body: rulesBody(state.styleGuides) },
+    { id: 'integrations', title: 'Integrations', description: 'LanguageTool plugins and editors pointed at this machine.', badge: 'Optional', body: integrationsBody(state.integrations) },
+    { id: 'spell', title: 'Native macOS spell service', description: 'ikmal in the system spelling menu.', badge: 'Optional', body: spellServerBody(state.spellServer) },
+    { id: 'office', title: 'Microsoft Office', description: 'Task panes served over local HTTPS.', badge: 'Optional', body: officeBody(state.office) },
     { id: 'services', title: 'Services and diagnostics', description: 'What is running on this machine.', body: servicesBody(state.services) },
     { id: 'privacy', title: 'Privacy and data', description: 'What is stored locally, and removing it.', body: privacyBody(state.recentChecks) },
     { id: 'about', title: 'About', description: 'Version and licences.', body: aboutBody(state.version) },

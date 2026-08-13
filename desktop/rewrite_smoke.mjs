@@ -209,6 +209,10 @@ try {
     'getStyleGuideState', 'importStyleGuide', 'selectStyleGuide', 'setStyleGuideEnabled',
     'getServiceState', 'startServices', 'stopServices', 'onServiceState',
     'getRecentChecks', 'clearRecentChecks', 'openThirdPartyNotices',
+    'getIntegrationStatus', 'configureIntegrations',
+    'getSpellServerState', 'installSpellServer', 'removeSpellServer',
+    'getOfficeBridgeState', 'generateOfficeCertificate', 'removeOfficeCertificate',
+    'startOfficeBridge', 'stopOfficeBridge', 'revealOfficeManifest',
   ];
   const unexpectedPreload = preloadSurface.filter((key) => !allowedPreload.includes(key));
   if (unexpectedPreload.length || !preloadSurface.includes('checkText')) {
