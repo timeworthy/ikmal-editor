@@ -31,7 +31,7 @@ assert.match(preload, /onEditorText/);
 // belongs to the launcher or to no window at all.
 assert.doesNotMatch(preload, /openCompact|setCompactExpanded|setCompactHeight|onQuickCheck/);
 // Settings live here and only here, so these must be present.
-for (const capability of ['getCheckingPreferences', 'getAnnotationPreferences', 'getStyleGuideState', 'getServiceState', 'getRecentChecks', 'getIntegrationStatus', 'getSpellServerState', 'getOfficeBridgeState', 'getQualityStatus', 'revealExtension']) {
+for (const capability of ['getCheckingPreferences', 'getAnnotationPreferences', 'getStyleGuideState', 'getServiceState', 'getRecentChecks', 'getIntegrationStatus', 'getSpellServerState', 'getOfficeBridgeState', 'revealExtension']) {
   assert.ok(preload.includes(capability), `the editor owns settings and is missing ${capability}`);
 }
 const packageSource = fs.readFileSync(path.join(root, 'desktop', 'package_desktop.mjs'), 'utf8');
@@ -60,7 +60,7 @@ const compactPreload = fs.readFileSync(path.join(compact, 'preload.cjs'), 'utf8'
 for (const capability of ['checkText', 'getServiceState', 'getFocusMode', 'setFocusMode', 'openEditor']) {
   assert.ok(compactPreload.includes(capability), `launcher preload is missing ${capability}`);
 }
-for (const forbidden of ['getQualityStatus', 'getStyleGuideState', 'getOfficeBridgeState', 'getSpellServerState', 'getIntegrationStatus', 'setAnnotationPreferences']) {
+for (const forbidden of ['getStyleGuideState', 'getOfficeBridgeState', 'getSpellServerState', 'getIntegrationStatus', 'setAnnotationPreferences']) {
   assert.ok(!compactPreload.includes(forbidden), `launcher preload exposes a settings capability: ${forbidden}`);
 }
 // Layout only: a colour here is a second visual system starting.
@@ -83,14 +83,15 @@ const sectionOrder = [...settingsPage.matchAll(/(?:id: '([a-z]+)', title: ')|(?:
 // The order is still a product contract; the contract changed on purpose.
 // General leads because whether the product is present at all is a different
 // question from how it marks a draft, and it sat under three controls about the
-// colour of underlines. The quality model is gone as a section: it is a service
-// on this machine, and it now sits with the others rather than claiming a peer
-// of Checking. Nothing was dropped — `qualityModelBody` is asserted below to
-// still be rendered.
+// colour of underlines. The quality model is gone entirely: the optional
+// transformer and its non-commercial weights were deleted, and the deterministic
+// checks it sat beside are what Services reports.
 assert.deepEqual(sectionOrder, ['general', 'checking', 'appearance', 'rules', 'extension', 'integrations', 'spell', 'office', 'services', 'privacy', 'about'],
   'settings sections are out of canonical order');
-// Consolidating a section must not quietly delete what was in it.
-for (const body of ['generalBody', 'qualityModelBody', 'servicesBody']) {
+// Consolidating a section must not quietly delete what was in it. This caught a
+// real over-reach: a regex meant for one function's doc comment matched from an
+// earlier one and took ten functions with it.
+for (const body of ['generalBody', 'checkingBody', 'appearanceBody', 'rulesBody', 'servicesBody', 'privacyBody', 'aboutBody']) {
   assert.match(settingsPage, new RegExp(`\\b${body}\\(`), `${body} is defined but never rendered`);
 }
 // Bands group the page without merging what they group: each section under one
@@ -125,7 +126,9 @@ const covers = {
   'LanguageTool plugins': 'integrations',
   'Browser extension': 'extension',
   'Microsoft Office': 'office',
-  // The quality model is a service on this machine, and shares that section now.
+  // The optional transformer and its non-commercial weights were deleted, so
+  // the legacy group maps to the services section that remains: the
+  // deterministic quality checks it described are still there and still run.
   'Quality model': 'services',
   'Style guide': 'rules',
   'Checking behavior': 'checking',
@@ -284,3 +287,17 @@ for (const [name, source, renderer] of [['launcher', compactPreload, compactRend
 // list of recent checks by any reading.
 assert.match(settingsPage, /settings-history-item/, 'Privacy counts recent checks but cannot show them');
 assert.match(editorRenderer, /onShowHistory/, 'nothing routes the tray history request anywhere');
+
+// The optional transformer and its non-commercial model weights were deleted.
+// Nothing this app installs may carry a non-commercial restriction, and no
+// capability for installing one may reappear in a preload.
+for (const source of [preload, compactPreload, editorRenderer, settingsPage]) {
+  assert.doesNotMatch(source, /installQualityStack|getQualityStatus|IKMAL_TRANSFORMER/,
+    'a transformer or model-install capability came back');
+}
+// The property is that no component is described as non-commercial — not that
+// the words never appear. About says plainly that nothing installed carries
+// such a restriction, which is the reassurance this deletion earns.
+assert.doesNotMatch(settingsPage, /CC BY-NC/i, 'a non-commercial licence is named again');
+assert.doesNotMatch(settingsPage, /modelLicense|modelIsDefault|install-quality|quality-notices/,
+  'the model install flow came back');

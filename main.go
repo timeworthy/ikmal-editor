@@ -49,16 +49,6 @@ func main() {
 		return
 	}
 
-	if len(os.Args) > 1 && (os.Args[1] == "-quality-setup" || os.Args[1] == "--quality-setup" || os.Args[1] == "quality-setup") {
-		runQualitySetup()
-		return
-	}
-
-	if len(os.Args) > 1 && (os.Args[1] == "-quality-status" || os.Args[1] == "--quality-status" || os.Args[1] == "quality-status") {
-		printQualityStatus()
-		return
-	}
-
 	if len(os.Args) > 1 && (os.Args[1] == "-style-guide-import" || os.Args[1] == "--style-guide-import" || os.Args[1] == "style-guide-import") {
 		if len(os.Args) < 3 {
 			fmt.Println("Usage: ikmal-editor --style-guide-import <file.pdf|file.html|file.md|file.txt>")

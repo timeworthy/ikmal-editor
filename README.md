@@ -186,23 +186,6 @@ The same disclosure gates the implicit path: starting the sidecar with
 `--quality-transformer` when the adapter is missing asks before installing, and
 declining leaves the deterministic quality checks running rather than failing.
 
-> **Model license — read before commercial use.** The MIT license above covers
-> `ikmal-editor` itself. It does not and cannot cover the model weights, which
-> are not ours to license. The default quality model derives from
-> [`vennify/t5-base-grammar-correction`](https://huggingface.co/vennify/t5-base-grammar-correction),
-> released under **CC BY-NC-SA 4.0** — a *non-commercial* license. Running
-> `--quality-setup` downloads those weights to your machine, which makes you,
-> not us, the party bound by their terms. If your use is primarily directed
-> toward commercial advantage, point the adapter at a permissively licensed
-> model instead:
->
-> ```bash
-> IKMAL_TRANSFORMER_MODEL=Unbabel/gec-t5_small ./ikmal-editor --quality-setup
-> ```
->
-> Every other part of `ikmal-editor` — the launcher, the LanguageTool
-> supervisor, the rule packs, the proxy, and the editor — is unencumbered.
-
 Transformer analysis is chunked locally instead of sending whole pages to the
 model. It groups sentences up to 80 words by default and preserves document
 offsets. Adjust with `IKMAL_TRANSFORMER_MAX_CHUNK_WORDS` if needed.

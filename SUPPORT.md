@@ -81,7 +81,7 @@ use, ikmal is a reasonable thing to fund. It runs entirely on your own
 infrastructure, so your drafts never leave your network — which is usually a
 procurement argument on its own.
 
-One thing to check first: the optional local quality model ships with a default
-that is licensed for **non-commercial use only**. Commercial deployments should
-set `IKMAL_TRANSFORMER_MODEL` to a permissively licensed model before running
-`--quality-setup`. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+Nothing ikmal installs carries a non-commercial restriction. It once shipped an
+optional local model whose weights were CC BY-NC-SA 4.0; that model has been
+removed, because a product meant for people who are not lawyers should not ask
+them to judge a licence. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

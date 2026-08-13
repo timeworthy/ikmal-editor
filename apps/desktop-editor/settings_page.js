@@ -347,89 +347,6 @@ function integrationsBody(integrations = {}) {
     + '</div>';
 }
 
-/**
- * The optional local model.
- *
- * Two questions get answered separately here because conflating them is what
- * made the legacy panel misleading: whether the files are installed, and
- * whether the model is actually running. A panel that reported only the first
- * said "all components are installed" while quality suggestions came from the
- * deterministic checks, and told the reader to "start services with the
- * transformer enabled" — an instruction with no control behind it, for
- * something the app already does on its own.
- */
-function qualityModelBody(quality = {}, serviceState = {}) {
-  const components = Array.isArray(quality.components) ? quality.components : [];
-  if (!components.length) {
-    return '<div class="cnt-empty"><div class="cnt-empty-text">The optional model is not available in this build.</div></div>';
-  }
-  const rows = components.map((component) => '<div class="writing-health-row">'
-    + `<span class="writing-health-name"><span class="cnt-status-dot" data-state="${component.installed ? 'ready' : 'stopped'}"></span>`
-    + `<span class="settings-stack"><span>${escapeHTML(component.name)}</span>`
-    + `<span class="settings-note">${escapeHTML(component.source || '')}</span></span></span>`
-    + `<span class="writing-health-name"><span class="writing-health-endpoint">${escapeHTML(component.license || '')}</span>`
-    // Omitted rather than emptied: a component with no size rendered a bare pill
-    // next to its licence, which reads as a value that failed to load.
-    + (component.size && component.size !== '—' ? `<span class="cnt-tag">${escapeHTML(component.size)}</span>` : '')
-    + `<span class="cnt-tag" data-intent="${component.installed ? 'success' : 'info'}">${component.installed ? 'Installed' : 'Not installed'}</span></span>`
-    + '</div>').join('');
-
-  // Installed and running are different questions. The remedy depends on who
-  // started the services: reopening the app starts the model when the app owns
-  // them, and changes nothing when it is reusing services started elsewhere.
-  const remedy = serviceState.managerRunning
-    ? 'Quit and reopen ikmal editor to start it.'
-    : 'These services were started outside ikmal editor, so reopening the app will reuse them unchanged. Stop them and let ikmal editor start its own.';
-  const runningNote = quality.ready
-    ? (quality.transformerRunning
-      ? '<div class="cnt-alert" data-intent="success"><div class="cnt-alert-text">All components are installed, and the local model is running.</div></div>'
-      : `<div class="cnt-alert" data-intent="warning"><div class="cnt-alert-text">All components are installed, but the local model is not running, so quality suggestions are coming from the deterministic checks only. ${escapeHTML(remedy)}</div></div>`)
-    : '';
-
-  // "Non-commercial" is the most misread word on this page, and the common
-  // misreading is that it forbids writing you are paid for. What the licence
-  // actually restricts is stated in its own words, and what we cannot answer is
-  // said rather than guessed at: Creative Commons makes the test turn on the
-  // use rather than the user, and declines to draw a line. Telling someone
-  // their case is fine would be legal advice this product is in no position to
-  // give — so it says what is certain, and where to read the rest.
-  const licence = quality.modelIsDefault
-    ? '<div class="cnt-alert" data-intent="warning"><div>'
-      + '<div class="cnt-alert-title">Non-commercial model</div>'
-      + `<div class="cnt-alert-text">The default model ${escapeHTML(quality.modelId || '')} is licensed `
-      + `${escapeHTML(quality.modelLicense || '')}. ikmal editor's own MIT licence does not cover these weights, and `
-      + 'installing them makes this machine the party bound by that licence.</div></div></div>'
-      + explain('What does non-commercial mean here?', [
-        ['It applies to these model weights and nothing else',
-          'Every other part of ikmal editor is MIT licensed. Choosing a '
-          + 'permissively licensed model leaves nothing non-commercial installed.'],
-        ['The licence\'s own words',
-          'CC BY-NC-SA 4.0 defines NonCommercial as ' + sample('not primarily intended for or '
-          + 'directed towards commercial advantage or monetary compensation') + '.'],
-        ['Whether your use qualifies is not something this app can tell you',
-          'Creative Commons treats it as depending on the use rather than on who '
-          + 'you are, and does not draw a line. Writing that earns you money is '
-          + 'not obviously inside or outside it, and this is not legal advice — '
-          + 'if it matters, read the licence or ask someone qualified.'],
-        ['The way to avoid the question',
-          'Set ' + literal('IKMAL_TRANSFORMER_MODEL') + ' to a permissively licensed '
-          + 'model before installing — ' + literal('Unbabel/gec-t5_small') + ' is Apache-2.0. '
-          + 'Third-party notices below has the full terms and the links.'],
-      ])
-    : '';
-
-  const install = quality.ready ? '' : '<div class="settings-stack">'
-    + `<label class="cnt-check"><input type="checkbox" data-setting="quality-notices"${quality.noticesAccepted ? ' checked' : ''}>`
-    + '<span class="cnt-check-box"></span>I have reviewed and accept the third-party licences</label>'
-    + `<button class="cnt-btn" type="button" data-action="install-quality"${quality.noticesAccepted ? '' : ' disabled'}>Install the local model</button>`
-    + '</div>';
-
-  return '<div class="settings-stack">'
-    + `<div class="cnt-panel writing-health">${rows}</div>`
-    + runningNote + licence + install
-    + '</div>';
-}
-
 /** ikmal's own browser extension, which is not LanguageTool's. */
 function browserExtensionBody() {
   // Revealing the files is the first move of three, not the whole job. Showing
@@ -589,14 +506,11 @@ function aboutBody(version) {
     // this and the page never said any of it, so the only way to learn what you
     // were bound by was to open a markdown file and read a table.
     + explain('What is this licensed under?', [
-      ['ikmal editor itself', 'MIT. Use it for anything, including work you are paid for.'],
+      ['ikmal editor itself', 'MIT. Use it for anything, including work you are paid for. '
+        + 'Nothing this app installs carries a non-commercial restriction.'],
       ['The services it runs',
         'LanguageTool is LGPL-2.1 and runs as a separate process this app talks to '
         + 'over loopback. The quality adapter is MIT.'],
-      ['The optional local model',
-        'The only part with a restriction. The default weights are CC BY-NC-SA 4.0 '
-        + '(non-commercial); Services and model explains what that covers and how to '
-        + 'install a permissively licensed model instead.'],
       ['Everything, in full', 'Third-party notices lists every dependency, its version and its licence.'],
     ])
     + '<div class="settings-inline">'
@@ -652,16 +566,9 @@ function sectionSummaries(state = {}) {
         : state.office.configured ? 'Bridge stopped' : 'Not set up',
       state.office.running ? 'success' : undefined);
   }
-  // Both halves of the merged section in one line. Saying "Both running" while
-  // the optional model is missing would answer a question nobody asked and hide
-  // the one they did.
   if (state.services && state.services.languageToolReady !== undefined) {
     const running = [state.services.languageToolReady, state.services.qualityReady].filter(Boolean).length;
-    const services = running === 2 ? 'Both running' : running ? '1 of 2 running' : 'Stopped';
-    const model = state.quality?.components?.length
-      ? state.quality.ready ? (state.quality.transformerRunning ? 'model running' : 'model idle') : 'no model'
-      : '';
-    set('services', model ? `${services} · ${model}` : services,
+    set('services', running === 2 ? 'Both running' : running ? '1 of 2 running' : 'Stopped',
       running === 2 ? 'success' : 'warning');
   }
   if (Array.isArray(state.recentChecks)) {
@@ -694,8 +601,7 @@ export function renderSettingsPage(state = {}) {
   // scannable. They group without consolidating: four ways of reaching other
   // apps read as one concern, while each keeps the summary that says whether it
   // is worth opening — which merging them into a single section would have
-  // thrown away. The one real consolidation is the quality model, which is a
-  // service on this machine and now sits with the others.
+  // thrown away.
   return `<div class="settings-page">${renderSettingsGroups([
     { heading: 'Writing', description: 'What the product does while you write.' },
     section('general', 'General', 'Where ikmal appears, and whether it starts with your session.',
@@ -717,9 +623,7 @@ export function renderSettingsPage(state = {}) {
     section('office', 'Microsoft Office', 'Task panes served over local HTTPS.', officeBody(state.office)),
 
     { heading: 'On this machine', description: 'What runs here, what is kept, and what it is built on.' },
-    section('services', 'Services and model', 'What is running here, and the optional local model.',
-      `<div class="settings-stack">${servicesBody(state.services)}`
-      + `<hr class="settings-divider">${qualityModelBody(state.quality, state.services)}</div>`),
+    section('services', 'Services and diagnostics', 'What is running on this machine.', servicesBody(state.services)),
     section('privacy', 'Privacy and data', 'What is kept on this machine, and how to remove it.', privacyBody(state.recentChecks)),
     section('about', 'About', 'Version and licences.', aboutBody(state.version)),
   ])}</div>`;

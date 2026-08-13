@@ -33,14 +33,6 @@ const dismissSwitchButton = document.querySelector('#dismiss-switch');
 // installed from their own cards rather than by swapping an extension.
 const BROWSER_LANGUAGETOOL_TARGETS = new Set(['firefox', 'chrome']);
 const refreshIntegrationsButton = document.querySelector('#refresh-integrations');
-const qualityComponentList = document.querySelector('#quality-component-list');
-const qualityLicenseNotice = document.querySelector('#quality-license-notice');
-const qualityLicenseBody = document.querySelector('#quality-license-body');
-const qualityInstall = document.querySelector('#quality-install');
-const qualityAck = document.querySelector('#quality-ack');
-const qualityInstallStatus = document.querySelector('#quality-install-status');
-const installQualityButton = document.querySelector('#install-quality');
-const refreshQualityButton = document.querySelector('#refresh-quality');
 const openNoticesButton = document.querySelector('#open-notices');
 const revealExtensionButton = document.querySelector('#reveal-extension');
 const extensionStatus = document.querySelector('#extension-status');
@@ -378,98 +370,6 @@ async function loadIntegrationStatus() {
   } catch (error) {
     integrationList.innerHTML = `<small class="is-error">Could not inspect integrations: ${escapeHTML(error.message || 'unknown error')}.</small>`;
     configureIntegrationsButton.disabled = true;
-  }
-}
-
-async function loadQualityStatus() {
-  qualityComponentList.innerHTML = '<small>Checking installed components…</small>';
-  try {
-    renderQualityStatus(await window.ikmal.getQualityStatus());
-  } catch (error) {
-    qualityComponentList.innerHTML = `<small class="is-error">Could not inspect quality components: ${escapeHTML(error.message || 'unknown error')}.</small>`;
-    qualityInstall.classList.add('is-hidden');
-  }
-}
-
-function renderQualityStatus(status) {
-  const components = Array.isArray(status.components) ? status.components : [];
-  qualityComponentList.innerHTML = components.map((component) => `
-    <div class="component-row">
-      <span class="mini-status-dot ${component.installed ? 'is-ready' : 'is-idle'}"></span>
-      <span class="component-body">
-        <strong>${escapeHTML(component.name)}</strong>
-        <small>${component.installed ? 'Installed' : 'Not installed'} · ${escapeHTML(component.license)}${component.size && component.size !== '—' ? ` · ${escapeHTML(component.size)}` : ''}</small>
-        <small class="component-source">${escapeHTML(component.source)}</small>
-      </span>
-    </div>
-  `).join('');
-
-  if (status.modelIsDefault) {
-    qualityLicenseBody.textContent = `The default model ${status.modelId} is licensed ${status.modelLicense}. ikmal editor's own MIT license does not cover these weights. Installing them here makes this machine the party bound by that license. For commercial use, set IKMAL_TRANSFORMER_MODEL to a permissively licensed model before installing.`;
-    qualityLicenseNotice.classList.remove('is-hidden');
-  } else {
-    qualityLicenseNotice.classList.add('is-hidden');
-  }
-
-  const missing = components.filter((component) => !component.installed);
-  const runtimeMissing = missing.some((component) => component.id === 'node');
-
-  if (status.ready) {
-    qualityInstall.classList.add('is-hidden');
-    qualityInstallStatus.textContent = '';
-    // Installed and running are different questions, and this panel used to
-    // answer only the first — then tell the user to "start services with the
-    // transformer enabled", which named no control because there is none: the
-    // desktop app always starts its services with the transformer requested.
-    // A reader could only conclude the feature was on, whether or not it was.
-    // The remedy depends on who started the services. When ikmal editor manages
-    // them, reopening it starts the model. When it is reusing services that were
-    // already running, reopening changes nothing — it will find and reuse the
-    // same ones again — so saying "restart the app" there would send the reader
-    // in a circle.
-    const remedy = serviceState.managerRunning
-      ? 'Quit and reopen ikmal editor to start it.'
-      : 'These services were started outside ikmal editor, so reopening the app will reuse them unchanged. Stop them and let ikmal editor start its own.';
-    const runningNote = status.transformerRunning
-      ? 'All components are installed, and the local model is running.'
-      : `All components are installed, but the local model is not running, so quality suggestions are coming from the deterministic checks only. ${remedy}`;
-    qualityComponentList.insertAdjacentHTML('beforeend', `<small class="is-ready-note">${escapeHTML(runningNote)}</small>`);
-    return;
-  }
-
-  qualityInstall.classList.remove('is-hidden');
-  if (runtimeMissing) {
-    qualityAck.disabled = true;
-    installQualityButton.disabled = true;
-    qualityInstallStatus.textContent = 'Node.js and npm are required and were not found on your PATH. Install them, then refresh. ikmal editor will not install them for you.';
-    return;
-  }
-
-  qualityAck.disabled = false;
-  const alreadyAccepted = status.noticesAccepted === true;
-  qualityAck.checked = alreadyAccepted;
-  installQualityButton.disabled = !alreadyAccepted;
-  const size = missing.map((component) => component.size).filter((value) => value && value !== '—').join(' + ');
-  qualityInstallStatus.textContent = size ? `Downloads about ${size}.` : '';
-}
-
-async function installQualityStack() {
-  if (!qualityAck.checked) return;
-  installQualityButton.disabled = true;
-  qualityAck.disabled = true;
-  refreshQualityButton.disabled = true;
-  qualityInstallStatus.textContent = 'Installing. This downloads several hundred megabytes and can take a few minutes…';
-  try {
-    const result = await window.ikmal.installQualityStack(true);
-    qualityInstallStatus.textContent = 'Quality components installed.';
-    if (result && result.status) renderQualityStatus(result.status);
-    else await loadQualityStatus();
-  } catch (error) {
-    qualityInstallStatus.textContent = `Install failed: ${error.message || 'unknown error'}. Nothing was left running.`;
-    qualityAck.disabled = false;
-    installQualityButton.disabled = !qualityAck.checked;
-  } finally {
-    refreshQualityButton.disabled = false;
   }
 }
 
@@ -1127,14 +1027,12 @@ dismissSwitchButton.addEventListener('click', () => {
   switchOfferDismissed = true;
   integrationSwitch.classList.add('is-hidden');
 });
-refreshQualityButton.addEventListener('click', loadQualityStatus);
-qualityAck.addEventListener('change', () => { installQualityButton.disabled = !qualityAck.checked; });
-installQualityButton.addEventListener('click', installQualityStack);
 openNoticesButton.addEventListener('click', async () => {
   try {
     await window.ikmal.openThirdPartyNotices();
   } catch (error) {
-    qualityInstallStatus.textContent = `Could not open the notices: ${error.message || 'unknown error'}.`;
+    // The status line this used belonged to the model installer, which is gone.
+    showFailureNotice(`Could not open the notices: ${error.message || 'unknown error'}.`);
   }
 });
 revealExtensionButton.addEventListener('click', async () => {
@@ -1249,7 +1147,6 @@ window.ikmal.onFocusMode(renderFocusState);
 
 loadStyleGuideState();
 loadIntegrationStatus();
-loadQualityStatus();
 loadRecentChecks();
 updateWordCount();
 resizeCompactWindow();

@@ -1,18 +1,13 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 	"unicode"
 	"unicode/utf8"
 )
@@ -70,18 +65,6 @@ type qualityToken struct {
 	End       int
 	Sentence  int
 	Paragraph int
-}
-
-// qualityTransformerBackend keeps the gateway independent from the inference
-// runtime. The current implementation is HTTP; a future ONNX backend can
-// implement this interface without changing the response-merging logic.
-type qualityTransformerBackend interface {
-	Analyze(text string) (qualityResponse, error)
-}
-
-type qualityHTTPTransformer struct {
-	URL    string
-	Client *http.Client
 }
 
 var qualityStopWords = map[string]bool{
@@ -281,17 +264,6 @@ var qualityPassiveAdjectiveForms = map[string]bool{
 func runQualityServer() {
 	port := qualityServerPort()
 
-	var transformerProcess *exec.Cmd
-	if qualityTransformerRequested() && strings.TrimSpace(os.Getenv("IKMAL_TRANSFORMER_URL")) == "" {
-		transformerProcess = startManagedQualityTransformer()
-		if transformerProcess != nil {
-			os.Setenv("IKMAL_TRANSFORMER_URL", "http://127.0.0.1:"+qualityTransformerPort()+"/v1/analyze")
-		}
-	}
-	if transformerProcess != nil {
-		defer stopManagedQualityTransformer(transformerProcess)
-	}
-
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", qualityHealthHandler)
 	mux.HandleFunc("/v1/analyze", qualityAnalyzeHandler)
@@ -306,88 +278,6 @@ func runQualityServer() {
 	if err := http.ListenAndServe(addr, qualityCORS(mux)); err != nil {
 		fmt.Printf("Quality sidecar stopped: %v\n", err)
 	}
-}
-
-func qualityTransformerRequested() bool {
-	if value := strings.TrimSpace(os.Getenv("IKMAL_QUALITY_TRANSFORMER")); value != "" && value != "0" && value != "false" {
-		return true
-	}
-	for _, argument := range os.Args[2:] {
-		if argument == "--quality-transformer" || argument == "--with-transformer" || argument == "quality-transformer" {
-			return true
-		}
-	}
-	return false
-}
-
-func qualityTransformerPort() string {
-	if port := strings.TrimSpace(os.Getenv("IKMAL_TRANSFORMER_PORT")); port != "" {
-		return port
-	}
-	return "8099"
-}
-
-func startManagedQualityTransformer() *exec.Cmd {
-	qualityDir, adapterPath := qualityRuntimePaths()
-	transformerPackage := filepath.Join(qualityDir, "node_modules", "@huggingface", "transformers")
-	if _, err := os.Stat(adapterPath); os.IsNotExist(err) || os.Getenv("IKMAL_QUALITY_FORCE_SETUP") == "1" {
-		// Setup installs third-party code and model weights, so it asks first
-		// even on this implicit path. Declining leaves the deterministic
-		// checks running rather than failing the server.
-		fmt.Println("Managed transformer runtime is not set up.")
-		runQualitySetup()
-	}
-	if _, err := os.Stat(adapterPath); err != nil {
-		fmt.Println("Continuing with deterministic quality checks only.")
-		return nil
-	}
-	if _, err := os.Stat(transformerPackage); err != nil {
-		fmt.Println("Managed transformer dependencies are unavailable; run --quality-setup first.")
-		return nil
-	}
-	nodePath := findQualityExecutable("node")
-	if nodePath == "" {
-		fmt.Println("Node.js was not found; continuing with deterministic quality checks.")
-		return nil
-	}
-
-	command := exec.Command(nodePath, adapterPath)
-	command.Stdout = os.Stdout
-	command.Stderr = os.Stderr
-	if os.Getenv("IKMAL_TRANSFORMER_CACHE_DIR") == "" {
-		cacheDir := filepath.Join(filepath.Dir(qualityDir), "models")
-		command.Env = append(os.Environ(), "IKMAL_TRANSFORMER_CACHE_DIR="+cacheDir)
-	}
-	if err := command.Start(); err != nil {
-		fmt.Printf("Could not start managed transformer: %v\n", err)
-		return nil
-	}
-
-	endpoint := "http://127.0.0.1:" + qualityTransformerPort() + "/health"
-	client := &http.Client{Timeout: 300 * time.Millisecond}
-	for attempt := 0; attempt < 40; attempt++ {
-		response, err := client.Get(endpoint)
-		if err == nil {
-			response.Body.Close()
-			if response.StatusCode == http.StatusOK {
-				fmt.Println("Managed Transformers.js/ONNX adapter is ready on port " + qualityTransformerPort())
-				return command
-			}
-		}
-		time.Sleep(250 * time.Millisecond)
-	}
-	fmt.Println("Managed transformer did not become ready; continuing with deterministic quality checks.")
-	_ = command.Process.Kill()
-	_ = command.Wait()
-	return nil
-}
-
-func stopManagedQualityTransformer(command *exec.Cmd) {
-	if command == nil || command.Process == nil {
-		return
-	}
-	_ = command.Process.Kill()
-	_ = command.Wait()
 }
 
 func qualityCORS(next http.Handler) http.Handler {
@@ -437,7 +327,7 @@ func qualityAnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := analyzeQualityTextWithTransformer(request.Text)
+	response := analyzeQualityText(request.Text)
 	writeQualityJSON(w, http.StatusOK, response)
 }
 
@@ -943,102 +833,6 @@ func qualityStyleGuideBoundary(text string, offset int, start bool) bool {
 	}
 	next, _ := utf8.DecodeRuneInString(text[offset:])
 	return !unicode.IsLetter(next) && !unicode.IsDigit(next)
-}
-
-func analyzeQualityTextWithTransformer(text string) qualityResponse {
-	local := analyzeQualityText(text)
-	backend := configuredQualityTransformer()
-	if backend == nil {
-		return local
-	}
-
-	remote, err := backend.Analyze(text)
-	if err != nil {
-		return local
-	}
-	for i := range remote.Suggestions {
-		if remote.Suggestions[i].Source == "" {
-			remote.Suggestions[i].Source = "transformer"
-		}
-	}
-	local.Suggestions = mergeQualitySuggestions(local.Suggestions, remote.Suggestions)
-	local.Antecedents = mergeQualityAntecedents(local.Antecedents, remote.Antecedents)
-	local.Backend = "deterministic+transformer"
-	return local
-}
-
-func configuredQualityTransformer() qualityTransformerBackend {
-	transformerURL := strings.TrimSpace(os.Getenv("IKMAL_TRANSFORMER_URL"))
-	if transformerURL == "" {
-		return nil
-	}
-	return qualityHTTPTransformer{
-		URL:    transformerURL,
-		Client: &http.Client{Timeout: 3 * time.Second},
-	}
-}
-
-func (backend qualityHTTPTransformer) Analyze(text string) (qualityResponse, error) {
-	payload, err := json.Marshal(qualityRequest{Text: text, Language: "en-US", Mode: "check"})
-	if err != nil {
-		return qualityResponse{}, err
-	}
-	client := backend.Client
-	if client == nil {
-		client = &http.Client{Timeout: 3 * time.Second}
-	}
-	response, err := client.Post(backend.URL, "application/json", bytes.NewReader(payload))
-	if err != nil {
-		return qualityResponse{}, err
-	}
-	defer response.Body.Close()
-	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-		return qualityResponse{}, fmt.Errorf("transformer returned HTTP %s", response.Status)
-	}
-
-	body, err := io.ReadAll(io.LimitReader(response.Body, 1<<20))
-	if err != nil {
-		return qualityResponse{}, err
-	}
-	var remote qualityResponse
-	if err := json.Unmarshal(body, &remote); err != nil {
-		return qualityResponse{}, err
-	}
-	return remote, nil
-}
-
-func mergeQualitySuggestions(local, remote []qualitySuggestion) []qualitySuggestion {
-	merged := append([]qualitySuggestion{}, local...)
-	for _, candidate := range remote {
-		overlaps := false
-		for _, existing := range local {
-			if existing.Category == candidate.Category && qualityRangesOverlap(existing.Start, existing.End, candidate.Start, candidate.End) {
-				overlaps = true
-				break
-			}
-		}
-		if !overlaps {
-			merged = append(merged, candidate)
-		}
-	}
-	return merged
-}
-
-func mergeQualityAntecedents(local, remote []qualityAntecedent) []qualityAntecedent {
-	merged := append([]qualityAntecedent{}, local...)
-	for _, candidate := range remote {
-		duplicate := false
-		for _, existing := range local {
-			if existing.Start == candidate.Start && existing.End == candidate.End {
-				duplicate = true
-				break
-			}
-		}
-		if !duplicate {
-			merged = append(merged, candidate)
-		}
-	}
-	return merged
 }
 
 func qualityRangesOverlap(startA, endA, startB, endB int) bool {

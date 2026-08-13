@@ -1,73 +1,67 @@
 # ikmal writing quality layer
 
-This document describes the planned machine-learning layer that will sit beside
-LanguageTool. It is deliberately separate from the XML rule pack: XML rules
-are deterministic and fast, while a model is useful for context-sensitive
-edits and broader writing-quality judgments.
+How ikmal produces the findings that are not LanguageTool's.
 
 ## Current state
 
-- LanguageTool performs the base spelling, grammar, and POS analysis.
-- `rules/style_conciseness.xml` contains the embedded ikmal rules.
-- Agreement rules now cover the sentence-initial pattern in which a short
-  parenthetical separates a subject from its verb.
-- The pronoun rule reports the detected pronoun and antecedent when that
-  relationship is locally unambiguous.
-- The repetition category detects nearby non-noun content-word repeats and
-  includes a first word-family echo rule for `different` / `difference`.
-- The passive-voice category tracks high-confidence passive constructions,
-  including agent-marked, perfect, and modal forms. It reports the passage for
-  review but does not generate an automatic rewrite because changing voice can
-  change emphasis or meaning.
-- An opt-in Go sidecar is available with `--quality-server`; it currently
-  returns deterministic suggestions and antecedent links on port `8098`.
-- An optional Transformers.js/ONNX adapter is included. It loads a local
-  grammatical-error-correction model and the Go sidecar merges its suggestions
-  when `IKMAL_TRANSFORMER_URL` is set.
-- The earlier `quality_transformer.py` adapter remains as a Python/PyTorch
-  fallback, but is no longer the preferred managed path.
+Everything ikmal contributes beyond LanguageTool is deterministic Go, served by
+`--quality-server` and merged by the proxy: repetition and word-family echoes,
+pronoun-antecedent tracking, passive voice with an explicit by-agent, homophone
+confusions, missing words, sentence structure, and the rules an imported style
+guide adds.
 
-FastText, which the launcher downloads, is a language-identification model. It
-is not a writing-quality or grammatical-error-correction transformer.
+There is no model. There was one — an optional Transformers.js/ONNX adapter
+running `Xenova/t5-base-grammar-correction` behind `--quality-setup` — and it
+was deleted. Three things decided that:
 
-## Packaging the model runtime
+- **It only ever added a second opinion on grammar.** It emitted a single
+  category with a single generic message, contributed no antecedents, and
+  explicitly discarded the sentence rewrites the small T5 model sometimes
+  produced. None of the product's distinctive findings came from it.
+- **Its weights were non-commercial**, and the only way to change the model was
+  an environment variable. A product for people who are not lawyers cannot ask
+  them to evaluate CC BY-NC-SA 4.0, and cannot answer for them whether their use
+  qualifies.
+- **No permissive drop-in exists.** Checked against the Hugging Face API rather
+  than assumed: the popular ONNX grammar models are non-commercial
+  (`vennify/t5-base-grammar-correction`, `grammarly/coedit-*`) or ambiguously
+  dual-licensed (`pszemraj/grammar-synthesis-small`), and the clean Apache-2.0
+  option, `Unbabel/gec-t5_small`, has no ONNX build at all — so the swap this
+  repo used to recommend could never have worked. Several ONNX conversions of
+  CoEdIT claim Apache-2.0 while their base model is CC BY-NC; adopting one would
+  have looked like a fix and been worse.
 
-The preferred adapter follows the JavaScript runtime path used by ikmal editor:
-Transformers.js provides the model API and uses ONNX Runtime underneath. This
-keeps the ikmal release statically buildable while making Node.js/npm and the
-model explicit, managed downloads rather than hidden Go build dependencies.
+## If a model comes back
 
-There are three realistic packaging choices:
+The core already carries the design for what a model should have been doing —
+`RewordRequest` with a `scope` and an `intent`, `RewordCandidate` with a
+`meaningRisk`, and a safety gate that demands confirmation for high-risk edits.
+Nothing has ever produced one. That is the rewriting feature, and it was never
+what the grammar-correction adapter did.
 
-| Approach | Result | Tradeoff |
-| --- | --- | --- |
-| Transformers.js + ONNX | Separate local Node process | Reuses ikmal editor’s runtime pattern; easy quantized model downloads |
-| ONNX + native runtime | Go gateway with a native inference backend | Requires CGO/native libraries and per-OS/architecture packaging |
-| Pure-Go inference runtime | One statically linked binary | Requires adopting or building a sufficiently capable Go transformer runtime |
+Two routes, in order of preference:
 
-The immediate recommended path is Transformers.js plus quantized ONNX, not a
-second native runtime. Transformers.js uses ONNX Runtime and supports the
-`text2text-generation` pipeline needed by T5-style correction models. A direct
-ONNX Runtime C API backend remains a later optimization if Node/WASM profiling
-shows it is necessary.
+1. **Deterministic first.** Passive voice with an explicit by-agent is a
+   well-defined transform — "the results were reviewed by the team" becomes "the
+   team reviewed the results" — and the server already detects the agent. It
+   fires only where the answer is recoverable, which is exactly where a model
+   would also be guessing least.
+2. **A permissively licensed model, converted by us.** `Unbabel/gec-t5_small` is
+   Apache-2.0, which permits redistribution of a conversion. Publishing a
+   transformers.js-layout ONNX build is real work and needs somewhere to publish
+   it, but it is the only route to a default model with no licence question.
 
-That still leaves two assets to package or provision: the exported model and
-its tokenizer data. Embedding those assets in the executable is possible, but
-it produces a much larger binary and requires a separate build artifact for
-each supported platform. The current release pipeline intentionally remains
-pure Go and static; the ONNX backend should therefore be introduced as a
-separate native build target rather than silently changing every release.
+An instruction-tuned editor (CoEdIT-class) is what `intent` was designed for and
+is the obvious fit for rewriting — and every such model found so far is
+non-commercial, so that route walks back into the wall this deletion removed.
 
-The Go gateway already keeps inference behind a backend interface. Once the
-correction corpus and latency target justify native packaging, the HTTP call
-can be replaced by an `ONNXTransformerBackend` without changing the client
-contract.
+## Everything below describes the removed adapter
 
-In the meantime, `./ikmal-editor --quality-setup` provides the managed path:
-it installs the JavaScript adapter into `~/.ikmal-editor/quality`, caches the
-quantized model into `~/.ikmal-editor/models`, and preloads it when Node.js and
-npm are available. The download is opt-in; normal LanguageTool startup does
-not incur it.
+Kept as the record of a design that shipped and was withdrawn, not as a
+description of the product. `--quality-setup`, `IKMAL_TRANSFORMER_URL` and the
+Transformers.js adapter no longer exist; read the two sections above for what
+runs today. Anything here is a starting point for the second route in "If a
+model comes back", not a description of anything installed.
 
 ## Target architecture
 

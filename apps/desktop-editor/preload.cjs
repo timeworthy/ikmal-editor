@@ -68,8 +68,6 @@ contextBridge.exposeInMainWorld('ikmal', {
 
   // The optional local model: the one part of this product that installs
   // third-party code and model weights onto the user's machine.
-  getQualityStatus: () => ipcRenderer.invoke('quality-status'),
-  installQualityStack: (acknowledged) => ipcRenderer.invoke('quality-setup', acknowledged === true),
 
   // ikmal's own browser extension — a separate product from LanguageTool's.
   revealExtension: () => ipcRenderer.invoke('reveal-extension'),

@@ -258,7 +258,7 @@ try {
     'getSpellServerState', 'installSpellServer', 'removeSpellServer',
     'getOfficeBridgeState', 'generateOfficeCertificate', 'removeOfficeCertificate',
     'startOfficeBridge', 'stopOfficeBridge', 'revealOfficeManifest',
-    'getQualityStatus', 'installQualityStack', 'revealExtension',
+    'revealExtension',
     'getAppVersion',
     // Listening to what the shell already broadcasts. Not new powers — every
     // channel was already in the contract and already being sent — this is the

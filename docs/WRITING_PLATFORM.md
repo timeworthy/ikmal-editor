@@ -486,6 +486,56 @@ never checked against what the legacy renderers do. Auditing that produced
 [Phase E](#phase-e--what-the-legacy-renderers-still-do), which is real work and
 includes one feature the rewrite ships settings for and cannot perform.
 
+## The optional model, removed
+
+The product shipped an optional Transformers.js/ONNX adapter behind
+`--quality-setup`, running `Xenova/t5-base-grammar-correction`. It is gone.
+
+What it did, precisely: chunked the draft to 80 words, asked the model to
+rewrite each chunk, diffed the result, and emitted token-level replacements
+under a single category with a single generic message. It contributed no
+antecedents, and it explicitly discarded the sentence rewrites the model
+sometimes produced. Every finding the product is distinctive for — repetition,
+word-family echoes, pronoun links, passive voice, homophones, missing words,
+style-guide rules — is deterministic Go and was never touched by it.
+
+Its weights were CC BY-NC-SA 4.0, and the only way to change the model was an
+environment variable. That is not a remedy a consumer can use, and it asked
+someone who is not a lawyer to decide whether their use was "primarily directed
+towards commercial advantage" — a question Creative Commons declines to answer
+in the abstract and this product is in no position to answer for them.
+
+The obvious fix, swapping the model, turned out not to exist. Checked against
+the Hugging Face API rather than assumed:
+
+| Model | Licence | transformers.js-ready |
+| --- | --- | --- |
+| `Xenova/t5-base-grammar-correction` (the default) | inherits CC BY-NC-SA 4.0 | yes |
+| `grammarly/coedit-large` | CC BY-NC 4.0 | base only |
+| `imrahamed/coedit-*-onnx`, `Meyssa/coedit-large` | **claim Apache-2.0** | yes |
+| `pszemraj/grammar-synthesis-small` | declares CC BY-NC-SA **and** Apache-2.0 | yes |
+| `Unbabel/gec-t5_small` | Apache-2.0 | **no ONNX at all** |
+| `juancavallotti/t5-base-gec` | Apache-2.0 | ONNX, wrong layout |
+
+Two findings there mattered. The CoEdIT conversions are mislabelled — a
+downstream repo cannot relicense a non-commercial base — so adopting one would
+have looked like a fix and been worse than the honest state. And this repo's own
+notices told users to switch to `Unbabel/gec-t5_small`, which has no ONNX build,
+so the advice it had been giving could never have worked.
+
+**What rewriting was, and was not.** The core has carried a full design for
+"rewrite this" since `9f9e89a` — `RewordRequest` with a `scope` and an `intent`,
+`RewordCandidate` with a `meaningRisk`, and a safety gate that demands
+confirmation for high-risk edits. Nothing has ever produced one. The transformer
+was never that feature; it was a second opinion on grammar that suppressed
+rewrite-shaped output on purpose. The two had been conflated under "the
+transformer is running".
+
+The route back, if a model is wanted, is in `QUALITY.md`. The nearer one is
+deterministic: passive voice with an explicit by-agent is a well-defined
+transform, the server already detects the agent, and it fires only where the
+answer is recoverable rather than invented.
+
 ## Phase E — what the legacy renderers still do
 
 The capability diff is 14, but five of those are the per-host Office manifest

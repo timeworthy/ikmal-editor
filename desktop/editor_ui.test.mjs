@@ -80,7 +80,11 @@ test('compact shell offers the expanded editor entry point', () => {
   const renderer = read('renderer.js');
   const styles = read('styles.css');
   assert.match(html, /id="enhancer-settings"/);
-  assert.match(html, /id="quality-settings"/);
+  // The quality-model group was deleted with the optional transformer and its
+  // non-commercial weights. Nothing replaced it: the deterministic checks it
+  // sat beside are reported under services, and are what this shell still
+  // shows.
+  assert.doesNotMatch(html, /id="quality-settings"/);
   assert.match(html, /id="advanced-settings"/);
   assert.match(html, /id="style-guide-settings"/);
   assert.match(html, /id="presence-settings"/);
@@ -223,4 +227,17 @@ test('the expanded editor checks around the caret and keeps the rest of the draf
   assert.match(main, /event\.sender\.id/);
   // A build without the compiled core still checks whole documents.
   assert.match(main, /Chunked checking is off/);
+});
+
+test('every control the compact renderer binds to exists in its markup', () => {
+  // A querySelector that misses returns null, and the addEventListener on the
+  // next line throws — at load, in a classic script, so everything after it
+  // never runs. Deleting the quality-model group took the third-party notices
+  // button with it and the whole renderer stopped initialising: the window sat
+  // on "Checking…" forever with no error anyone would see.
+  const html = read('index.html');
+  const renderer = read('renderer.js');
+  const bound = [...renderer.matchAll(/document\.querySelector\('#([a-zA-Z0-9-]+)'\)/g)].map((match) => match[1]);
+  const missing = [...new Set(bound)].filter((id) => !html.includes(`id="${id}"`));
+  assert.deepEqual(missing, [], `the renderer binds controls the markup does not define: ${missing.join(', ')}`);
 });

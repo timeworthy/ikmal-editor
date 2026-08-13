@@ -56,7 +56,7 @@ func runQualityProxy() {
 		qualityProcess = startManagedQualityServer()
 	}
 	if qualityProcess != nil {
-		defer stopManagedQualityTransformer(qualityProcess)
+		defer stopManagedQualityServer(qualityProcess)
 	}
 
 	proxy := qualityProxy{
@@ -741,11 +741,18 @@ func qualityEndpointReady() bool {
 	return response.StatusCode == http.StatusOK
 }
 
-func startManagedQualityServer() *exec.Cmd {
-	return startManagedQualityServerWithTransformer(qualityTransformerRequested())
+// stopManagedQualityServer ends a quality engine this process started. Only a
+// child we spawned is killed; an engine that was already answering was never
+// ours to stop.
+func stopManagedQualityServer(command *exec.Cmd) {
+	if command == nil || command.Process == nil {
+		return
+	}
+	_ = command.Process.Kill()
+	_ = command.Wait()
 }
 
-func startManagedQualityServerWithTransformer(withTransformer bool) *exec.Cmd {
+func startManagedQualityServer() *exec.Cmd {
 	// Decline when the endpoint is already served, the way startIntegratedProxy
 	// does. Without this the readiness loop below sees another process's answer
 	// and reports success for a child that lost the port race and exited at
@@ -754,11 +761,7 @@ func startManagedQualityServerWithTransformer(withTransformer bool) *exec.Cmd {
 		fmt.Println("Using the existing ikmal quality engine on port " + qualityServerPort() + ".")
 		return nil
 	}
-	args := []string{"--quality-server"}
-	if withTransformer {
-		args = append(args, "--quality-transformer")
-	}
-	command := exec.Command(os.Args[0], args...)
+	command := exec.Command(os.Args[0], "--quality-server")
 	if os.Getenv("IKMAL_QUALITY_PORT") == "" {
 		command.Env = append(os.Environ(), "IKMAL_QUALITY_PORT=8098")
 	}

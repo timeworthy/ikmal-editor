@@ -78,35 +78,6 @@ Language identification model by Meta AI Research (FAIR), downloaded from
 `~/.ikmal-editor/models/`. Trained on Wikipedia, Tatoeba, and SETimes.
 ShareAlike obligations attach to the model file if you redistribute or modify it.
 
-### Quality model (optional, `--quality-setup` only) — see warning
-
-Not downloaded during normal operation. Only fetched if you explicitly run
-`--quality-setup`.
-
-| Model | License |
-|---|---|
-| [`Xenova/t5-base-grammar-correction`](https://huggingface.co/Xenova/t5-base-grammar-correction) (ONNX conversion) | No license stated; treated as inheriting its base model |
-| [`vennify/t5-base-grammar-correction`](https://huggingface.co/vennify/t5-base-grammar-correction) (base model) | **CC BY-NC-SA 4.0** |
-
-> **⚠️ The default quality model is licensed for non-commercial use only.**
-> `ikmal-editor`'s MIT license does not extend to these weights. Because the
-> download happens on your machine, you are the party bound by CC BY-NC-SA 4.0.
-> If your use is primarily directed toward commercial advantage or monetary
-> compensation, set `IKMAL_TRANSFORMER_MODEL` to a permissively licensed model
-> before running setup — for example `Unbabel/gec-t5_small` (Apache-2.0).
->
-> This constraint is scoped to the optional quality model alone. Every other
-> part of `ikmal-editor` is free of non-commercial restrictions.
-
-### Quality runtime (optional, `--quality-setup` only)
-
-Installed via `npm` into `~/.ikmal-editor/quality/`:
-
-| Package | Version | License |
-|---|---|---|
-| [`@huggingface/transformers`](https://github.com/huggingface/transformers.js) | 3.3.0 | Apache-2.0 |
-| `onnxruntime-node` and transitive dependencies | — | MIT, Apache-2.0 |
-
 ### User-supplied runtimes
 
 Not downloaded or bundled by `ikmal-editor`; detected on your system, or

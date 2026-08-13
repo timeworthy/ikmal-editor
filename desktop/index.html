@@ -209,37 +209,6 @@
           <small id="office-bridge-status" aria-live="polite">Checking Office bridge availability…</small>
         </div>
       </details>
-      <details class="settings-group" id="quality-settings">
-        <summary><span><strong>Quality model</strong><small>Add optional local suggestions beyond LanguageTool.</small></span><em>Optional</em></summary>
-        <div class="setting-card quality-card">
-          <div class="style-guide-heading">
-            <div>
-              <strong>Local quality model</strong>
-              <p>Install third-party model files only after you review and accept their licenses.</p>
-            </div>
-            <div class="setting-actions">
-              <button class="button button-quiet" id="refresh-quality" type="button">Refresh</button>
-            </div>
-          </div>
-          <div class="component-list" id="quality-component-list" aria-live="polite">
-            <small>Checking installed components…</small>
-          </div>
-          <div class="quality-notice is-hidden" id="quality-license-notice">
-            <strong id="quality-license-title">Non-commercial model</strong>
-            <p id="quality-license-body"></p>
-          </div>
-          <div class="quality-install" id="quality-install">
-            <label class="quality-ack-row" for="quality-ack">
-              <input type="checkbox" id="quality-ack">
-              <span>I have read the <button class="link-button" id="open-notices" type="button">third-party notices</button> and accept the listed licenses.</span>
-            </label>
-            <div class="setting-actions">
-              <button class="button button-primary" id="install-quality" type="button" disabled>Install</button>
-            </div>
-            <small id="quality-install-status"></small>
-          </div>
-        </div>
-      </details>
       <details class="settings-group" id="style-guide-settings">
         <summary><span><strong>Style guide</strong><small>Optional rules from an imported guide.</small></span><em>Optional</em></summary>
         <div class="setting-card style-guide-card">
@@ -382,6 +351,13 @@
           </span>
           <input type="checkbox" id="launch-toggle">
         </label>
+        <div class="setting-actions">
+          <!-- Licences belong to the app, not to the optional model that used to
+               carry the only restricted one. This button lived in that group and
+               went out with it, which left the renderer binding a listener to a
+               control that no longer existed. -->
+          <button class="link-button" id="open-notices" type="button">Third-party notices</button>
+        </div>
         <div class="endpoint-card">
           <span class="section-kicker">EXTENSION CONNECTION</span>
           <code id="proxy-endpoint">http://127.0.0.1:8096/v2</code>

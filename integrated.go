@@ -35,7 +35,7 @@ func runIntegrated() {
 		fmt.Println("Using the existing ikmal quality proxy on port 8096.")
 		if !qualityEndpointReady() {
 			fmt.Println("Existing quality proxy is ready, but the quality engine is unavailable. Starting the managed quality engine.")
-			qualityProcess = startManagedQualityServerWithTransformer(true)
+			qualityProcess = startManagedQualityServer()
 		}
 	} else {
 		proxyProcess = startIntegratedProxy()
@@ -64,7 +64,7 @@ func startIntegratedProxy() *exec.Cmd {
 		fmt.Println("Using the existing ikmal quality proxy on port 8096.")
 		return nil
 	}
-	command := exec.Command(os.Args[0], "--quality-proxy", "--quality-transformer")
+	command := exec.Command(os.Args[0], "--quality-proxy")
 	command.Stdout = os.Stdout
 	command.Stderr = os.Stderr
 	if err := command.Start(); err != nil {
@@ -81,10 +81,10 @@ func startIntegratedProxy() *exec.Cmd {
 }
 
 // readinessGrace is how long a freshly started service may stay unhealthy
-// before the supervisor treats it as failed. The quality engine loads a
-// transformer model on first request, which takes far longer than a health
-// tick; without this the supervisor would kill it while it was still starting
-// and never let it finish.
+// before the supervisor treats it as failed. LanguageTool loads its rule sets
+// and language models on start, which takes far longer than a health tick;
+// without this the supervisor would kill it while it was still starting and
+// never let it finish.
 const readinessGrace = 90 * time.Second
 
 // maxRestartFailures bounds how many times the supervisor will respawn a
@@ -237,7 +237,7 @@ func monitorIntegratedServices(proxyProcess **exec.Cmd, qualityProcess **exec.Cm
 		return httpReady("http://127.0.0.1:8096/health")
 	})
 	quality := newManagedService("quality engine", *qualityProcess, func() *exec.Cmd {
-		return startManagedQualityServerWithTransformer(true)
+		return startManagedQualityServer()
 	}, qualityEndpointReady)
 
 	ticker := time.NewTicker(2 * time.Second)

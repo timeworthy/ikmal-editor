@@ -554,10 +554,9 @@ function runManagerCommand(args, extraEnv = {}, options = {}) {
       cwd: path.dirname(binary),
       env: { ...process.env, ...extraEnv },
       timeout: options.timeout ?? 10000,
-      // The quality-stack install pipes an npm install and a model download
-      // through stdout. At the 1MB default execFile kills the child partway
-      // through with ERR_CHILD_PROCESS_STDIO_MAXBUFFER, which surfaces as a
-      // failed install after the user has already waited for the download.
+      // A long-running command can print more than execFile's default allows,
+      // and it kills the child partway through with
+      // ERR_CHILD_PROCESS_STDIO_MAXBUFFER rather than reporting what happened.
       maxBuffer: options.maxBuffer ?? 1024 * 1024,
     }, (error, stdout, stderr) => {
       if (error) {
@@ -922,22 +921,6 @@ function registerIPC() {
       IKMAL_EDITOR_CONFIGURE_APPS: targets.join(','),
     });
     return { targets, output };
-  });
-  ipcMain.handle('quality-status', async () => {
-    const output = await runManagerCommand(['--quality-status']);
-    return JSON.parse(output);
-  });
-  ipcMain.handle('quality-setup', async (_, acknowledged) => {
-    // The renderer gates this button on an explicit acknowledgement, so the
-    // consent the CLI would prompt for is passed through rather than the app
-    // hanging on a prompt no window can answer. Refuse without it.
-    if (acknowledged !== true) {
-      throw new Error('The third-party notices must be acknowledged before the quality stack can be installed.');
-    }
-    const output = await runManagerCommand(['--quality-setup'], {
-      IKMAL_ACCEPT_QUALITY_NOTICES: '1',
-    }, { timeout: 30 * 60 * 1000, maxBuffer: 64 * 1024 * 1024 });
-    return { output, status: JSON.parse(await runManagerCommand(['--quality-status'])) };
   });
   ipcMain.handle('reveal-extension', async () => {
     const candidates = [
