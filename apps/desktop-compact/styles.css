@@ -3,15 +3,28 @@
    more. A declaration here that names a colour is a second visual system
    starting, which is the thing the rewrite exists to stop. */
 
+/* The app's own reset. The design system scopes box-sizing to its primitives
+   rather than imposing it globally, which is right for a package — but this
+   body sets both a height and a padding, and without border-box the padding is
+   added outside the height. It was 32px taller than the window it lives in, in
+   every state, so the footer hung below the bottom edge and the page always
+   scrolled a little even when empty. */
+* { box-sizing: border-box; }
+
 body {
   background: var(--bg-0);
   color: var(--fg-1);
   display: grid;
   font: 400 13px/1.5 var(--font-sans);
   gap: var(--space-4);
-  grid-template-rows: auto 1fr auto;
+  /* Fixed to the window, not merely at least as tall as it: the middle row is
+     what scrolls, so the footer stays on screen no matter how much the body
+     holds. `min-height` let the whole page grow instead, which pushed the only
+     two ways out of this window past the bottom edge. */
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100vh;
   margin: 0;
-  min-height: 100vh;
+  overflow: hidden;
   padding: var(--space-4);
 }
 
@@ -21,7 +34,18 @@ body {
 .launcher-title { color: var(--fg-1); font: 600 15px/1.2 var(--font-sans); margin: 0; }
 #indicator-anchor { -webkit-app-region: no-drag; }
 
-.launcher-body { display: grid; gap: var(--space-4); align-content: start; }
+/* The only scrolling region. Everything that can grow — the issue card, the
+   service list — lives here, so the header and the footer stay put and nothing
+   can be pushed out of reach. `scrollbar-gutter` keeps the content from
+   shifting sideways when the scrollbar appears mid-check. */
+.launcher-body {
+  align-content: start;
+  display: grid;
+  gap: var(--space-4);
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
 .launcher-stats { color: var(--fg-4); font: 400 11px/1 var(--font-mono); margin-top: var(--space-2); }
 .launcher-foot { display: flex; gap: var(--space-2); }
 .launcher-foot .cnt-btn { flex: 1; }

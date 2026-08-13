@@ -626,10 +626,18 @@ function setCompactExpanded(expanded, activate = true) {
   return true;
 }
 
+// The launcher's height bounds, named once because they were stated twice and
+// disagreed: the clamp allowed 360 while the window itself refused to go below
+// 440, so the window won and the clamp was decorative. The floor is what the
+// launcher needs with nothing to report — a quick-check field, the modes, and
+// the two ways out of the window.
+const COMPACT_MIN_HEIGHT = 360;
+const COMPACT_MAX_HEIGHT = 820;
+
 function setCompactHeight(height) {
   if (!mainWindow) return false;
   const bounds = mainWindow.getBounds();
-  const nextHeight = Math.max(440, Math.min(820, Math.round(Number(height) || bounds.height)));
+  const nextHeight = Math.max(COMPACT_MIN_HEIGHT, Math.min(COMPACT_MAX_HEIGHT, Math.round(Number(height) || bounds.height)));
   if (bounds.height === nextHeight) return true;
   mainWindow.setSize(bounds.width, nextHeight, true);
   constrainWindowToDisplay();
@@ -819,7 +827,7 @@ function createWindow() {
     width: 430,
     height: 520,
     minWidth: 380,
-    minHeight: 440,
+    minHeight: COMPACT_MIN_HEIGHT,
     show: false,
     resizable: true,
     title: 'ikmal editor',

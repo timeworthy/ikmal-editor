@@ -65,12 +65,13 @@ function showIssue(index = issueIndex) {
   // card, and wrapping would move the writer somewhere they did not ask to go.
   issueIndex = Math.min(Math.max(0, requested), Math.max(0, issues.length - 1));
   const issue = issues[issueIndex];
-  if (!issue) { issuePopover.hidden = true; issuePopover.innerHTML = ''; return; }
+  if (!issue) { issuePopover.hidden = true; issuePopover.innerHTML = ''; fitWindow(); return; }
   issuePopover.innerHTML = `<style>${ISSUE_POPOVER_CSS}</style>${renderIssuePopover(issue, {
     index: issueIndex,
     total: issues.length,
   })}`;
   issuePopover.hidden = false;
+  fitWindow();
 }
 
 function paintModes() {
@@ -79,6 +80,7 @@ function paintModes() {
     ...(focusState.duration ? { duration: focusState.duration } : {}),
     ...(focusState.label ? { until: focusState.label } : {}),
   });
+  fitWindow();
 }
 
 function paintServices(state) {
@@ -92,6 +94,7 @@ function paintServices(state) {
   ]) + (state?.languageToolReady && state?.qualityReady
     ? ''
     : '<button class="cnt-btn" type="button" data-action="start-services">Start services</button>');
+  fitWindow();
 }
 
 async function check() {
@@ -126,7 +129,7 @@ issuePopover.addEventListener('click', (event) => {
     issuePopover.hidden = true;
     void check();
   }
-  if (action === 'ignore' || action === 'close') issuePopover.hidden = true;
+  if (action === 'ignore' || action === 'close') { issuePopover.hidden = true; fitWindow(); }
   if (action === 'previous') showIssue(issueIndex - 1);
   if (action === 'next') showIssue(issueIndex + 1);
 });
@@ -156,6 +159,54 @@ function applyFocus(mode, duration) {
   });
 }
 
+// The window fits what it is showing.
+//
+// It was a fixed 520px whatever was in it, and the middle row took up the
+// slack — so with no issues to report there was 165px of nothing between the
+// service list and the buttons, which reads as something failing to load
+// rather than as space. The shell clamps the request, and beyond the clamp the
+// body scrolls, so this only ever removes emptiness; it cannot hide anything.
+/**
+ * What a container's contents need, rather than what its box currently is.
+ *
+ * Measuring the box is what a first attempt did, and it does not converge: the
+ * scrolling middle is a `1fr` row, so its height already includes the empty
+ * space being measured away, and asking for that back grew the window on every
+ * repaint.
+ */
+function contentHeight(container) {
+  const children = [...container.children].filter((child) => !child.hidden);
+  const style = getComputedStyle(container);
+  const gap = parseFloat(style.rowGap) || 0;
+  return children.reduce((total, child) => total + child.offsetHeight, 0)
+    + gap * Math.max(0, children.length - 1)
+    + (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
+}
+
+// Measured synchronously, not from a frame callback. This window spends most of
+// its life hidden — it is a menubar popover and hides on blur — and a hidden
+// page never runs requestAnimationFrame, so a resize scheduled that way is
+// simply dropped and the window reopens at whatever size it last had. Reading
+// offsetHeight forces the layout this needs anyway, and every caller has
+// already written its markup.
+let lastRequested = 0;
+function fitWindow() {
+  const visible = [...document.body.children].filter((child) => !child.hidden);
+  const wanted = visible.reduce((total, child) =>
+    total + (child.classList.contains('launcher-body') ? contentHeight(child) : child.offsetHeight), 0);
+  const style = getComputedStyle(document.body);
+  const chrome = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0)
+    + (parseFloat(style.rowGap) || 0) * Math.max(0, visible.length - 1);
+  const height = Math.ceil(wanted + chrome);
+  // Only when what is being shown changes size. This saves an IPC round trip on
+  // the several paints that land together on one check, and it is also what
+  // keeps the window from fighting a resize the user made themselves: their
+  // drag does not change the content, so nothing here asks for anything back.
+  if (height === lastRequested) return;
+  lastRequested = height;
+  void window.ikmal.setCompactHeight?.(height);
+}
+
 services.addEventListener('click', (event) => {
   if (event.target.closest?.('[data-action="start-services"]')) void window.ikmal.startServices();
 });
@@ -178,4 +229,5 @@ void (async () => {
   paintServices(await window.ikmal.getServiceState());
   focusState = (await window.ikmal.getFocusMode()) || focusState;
   paintModes();
+  fitWindow();
 })();

@@ -35,5 +35,9 @@ contextBridge.exposeInMainWorld('ikmal', {
 
   // The route into the editor, carrying whatever is in the quick-check field.
   // Settings live there; this is how the launcher's gear reaches them.
+  // The launcher sizes its own window to what it is showing. This is a
+  // launcher-shell concern and belongs here: it is on the editor's forbidden
+  // list precisely because that window is not the one it describes.
+  setCompactHeight: (height) => ipcRenderer.invoke('set-compact-height', Number(height) || 0),
   openEditor: (text) => ipcRenderer.invoke('open-editor', String(text ?? '')),
 });

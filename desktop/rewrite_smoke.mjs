@@ -161,9 +161,20 @@ try {
   // With the rewrite slice on, the compact window is the launcher in
   // apps/desktop-compact; with it off it is the legacy renderer. Both are
   // accepted so this smoke describes whichever one is under test.
-  compact = await connect(await waitForTarget((entry) => entry.url.endsWith('/desktop/index.html')
+  const compactTarget = await waitForTarget((entry) => entry.url.endsWith('/desktop/index.html')
     || entry.url.includes('/desktop-compact/index.html')
-    || (packagedSmoke && entry.url.includes('/app.asar/index.html')), 'compact target'));
+    || (packagedSmoke && entry.url.includes('/app.asar/index.html')), 'compact target');
+  compact = await connect(compactTarget);
+  // Whether this is the launcher is decided by which page loaded, not by
+  // whether its DOM has appeared yet. Deriving it from a selector meant every
+  // check below was skipped whenever the evaluate landed before the page was
+  // ready — which it did, silently, so none of them were running at all.
+  const isLauncher = compactTarget.url.includes('/desktop-compact/index.html')
+    || (packagedSmoke && compactTarget.url.includes('/app.asar/index.html'));
+  if (isLauncher) {
+    await waitForState(compact, "Boolean(document.querySelector('#quick-input') && document.querySelector('#modes') && document.querySelector('.launcher-foot'))",
+      Boolean, 'Launcher did not mount');
+  }
 
   // The launcher is a launcher. It carries quick check, service status, focus
   // modes and a route into the editor — and no settings, because settings live
@@ -175,7 +186,7 @@ try {
     hasModes: Boolean(document.querySelector('#modes')),
     hasServices: Boolean(document.querySelector('#services')),
   }))()`);
-  if (launcher.hasQuickCheck) {
+  if (isLauncher) {
     if (launcher.settingsGroups !== 0) {
       throw new Error(`The launcher grew ${launcher.settingsGroups} settings groups; settings belong in the editor.`);
     }
@@ -186,6 +197,40 @@ try {
     // this phase exists to prevent, so the surface is asserted, not assumed.
     const forbidden = launcher.surface.filter((name) => /Quality|StyleGuide|Office|SpellServer|Integration|Annotation/i.test(name));
     if (forbidden.length) throw new Error(`Launcher preload exposes settings capabilities: ${forbidden.join(', ')}`);
+
+    // The two ways out of this window must be on screen, whatever it is
+    // showing. They were not: the body set a height and a padding without
+    // border-box, so it stood 32px taller than the window in every state and
+    // the footer hung below the bottom edge — in the empty state as much as the
+    // full one. The middle row is the only thing allowed to scroll.
+    const layout = await compact.evaluate(`(() => {
+      const foot = document.querySelector('.launcher-foot');
+      const body = document.querySelector('.launcher-body');
+      const footBox = foot.getBoundingClientRect();
+      const lastVisible = [...body.children].filter((child) => !child.hidden).pop();
+      return {
+        footBottom: Math.round(footBox.bottom),
+        viewport: innerHeight,
+        documentOverflow: Math.round(document.documentElement.scrollHeight - innerHeight),
+        middleIsScroller: getComputedStyle(body).overflowY === 'auto',
+        borderBox: getComputedStyle(document.body).boxSizing,
+        // Space between the last thing shown and the buttons. A window sized to
+        // its content holds this at the layout gap; a fixed one grows a void.
+        gapBeforeFoot: lastVisible ? Math.round(footBox.top - lastVisible.getBoundingClientRect().bottom) : 0,
+      };
+    })()`);
+    if (layout.borderBox !== 'border-box') throw new Error(`The launcher body is ${layout.borderBox}, so its padding is added outside its height.`);
+    if (layout.footBottom > layout.viewport + 1) {
+      throw new Error(`The launcher footer ends ${layout.footBottom - layout.viewport}px below the window, so the ways out are cut off.`);
+    }
+    if (layout.documentOverflow > 1) throw new Error(`The launcher page scrolls by ${layout.documentOverflow}px; only the middle row may scroll.`);
+    if (!layout.middleIsScroller) throw new Error('The launcher middle row is not the scrolling region, so tall content pushes the footer out of reach.');
+    // Generous, because it is catching a void rather than policing spacing: the
+    // fixed-height window left 165px here with nothing to report.
+    if (layout.gapBeforeFoot > 96) {
+      throw new Error(`The launcher leaves ${layout.gapBeforeFoot}px of empty space above its buttons, which reads as something failing to load.`);
+    }
+
   }
 
   await compact.evaluate("window.ikmal.openEditor('The results is ready.')");

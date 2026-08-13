@@ -263,6 +263,44 @@ Needs groups 1, 2, 4 and part of 3.
 **Exit:** compact runs on the new architecture with no legacy renderer, and the
 legacy compact can be deleted without losing a tested capability.
 
+### Spacing, and being able to reach things
+
+The launcher had a void: 165px of nothing between the service list and its two
+buttons whenever there was nothing to report, which reads as something failing
+to load rather than as space. The window was a fixed 520px whatever it held, and
+the middle row took up the slack.
+
+It sizes to its content now — 403px with nothing to say, 615px with an issue
+card open — and the gap above the buttons is the layout gap in both.
+
+Behind the void was a worse defect. The launcher body set a height **and** a
+padding without `border-box`, so it stood 32px taller than the window it lives
+in, **in every state**. Both ways out of that window — Open editor, Settings —
+hung below the bottom edge from the moment it opened. The design system scopes
+`box-sizing` to its own primitives rather than imposing a global reset, which is
+right for a package and leaves each app to declare its own; the editor had one
+and the launcher did not.
+
+The middle row is now the only scrolling region, so the header and the footer
+stay put and tall content cannot push anything out of reach.
+
+Three more things this turned up:
+
+- **Two floors disagreed.** `setCompactHeight` clamped to 440 while the window's
+  own `minHeight` was 440 — and when the clamp was lowered, the window silently
+  won. They are one constant now.
+- **A resize scheduled in `requestAnimationFrame` never runs**, because this
+  window is a menubar popover that spends most of its life hidden, and a hidden
+  page does not get frames. Measuring synchronously is both simpler and correct.
+- **The smoke's launcher assertions were not running at all.** They were gated on
+  a selector — `if (launcher.hasQuickCheck)` — evaluated before the page had
+  mounted, so every one of them silently skipped. They are gated on which page
+  loaded now, with an explicit wait for the mount.
+
+The editor was checked the same way and needed nothing: at 900px, 500px and
+360px tall, the page scrolls, the last section is reachable, nothing overflows
+sideways, and all 40 controls are tabbable.
+
 ### The settings page as something you can read
 
 A design pass on the whole surface rather than section by section, which is a
