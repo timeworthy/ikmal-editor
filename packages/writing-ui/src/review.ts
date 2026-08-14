@@ -40,6 +40,13 @@ export function normalizeReviewLayout(value: unknown): ReviewLayout {
 /** A row in the sidebar, with what the selected one needs to be acted on. */
 export interface ReviewSidebarIssue extends ReviewRow {
   replacements?: Array<{ value: string }>;
+  /**
+   * Alternative wordings — a rewrite rather than a correction. Kept apart from
+   * `replacements` because they are not the same offer: a replacement fixes
+   * something wrong, and a candidate proposes a different way of saying
+   * something that is not.
+   */
+  rewordCandidates?: Array<{ id?: string; replacementText: string; rationale?: string }>;
   /** Offered only where the host has somewhere to keep a personal dictionary. */
   canAddToDictionary?: boolean;
 }
@@ -87,6 +94,10 @@ export const REVIEW_CSS = `
 .writing-review-change { align-items: center; color: var(--fg-2); display: flex; flex-wrap: wrap; font: 400 12px/1.4 var(--font-mono); gap: var(--space-2); }
 .writing-review-change ins { background: var(--accent-soft); border-radius: var(--radius-1); color: var(--fg-1); padding: 0 var(--space-1); text-decoration: none; }
 .writing-review-change del { color: var(--fg-4); }
+/* An alternative wording, shown in full before it is offered. */
+.writing-review-rewrite { display: grid; gap: var(--space-2); justify-items: start; margin-top: var(--space-2); }
+.writing-review-rationale { color: var(--fg-3); font: 500 11px/1.3 var(--font-sans); }
+.writing-review-proposed { line-height: 1.45; white-space: normal; }
 .writing-undo { align-items: center; display: flex; gap: var(--space-3); justify-content: space-between; }
 .writing-undo-change { color: var(--fg-2); font: 400 13px/1.3 var(--font-sans); }
 .writing-undo-change b { color: var(--fg-1); font-weight: 600; }
@@ -169,6 +180,18 @@ export function renderReviewSidebar(state: Partial<ReviewSidebarState> = {}): st
     const change = selected && replacement
       ? `<div class="writing-review-change"><del>${escapeHTML(issue.matchedText)}</del><span>&rarr;</span><ins>${escapeHTML(replacement)}</ins></div>`
       : '';
+    // A rewrite is shown in full and applied by its own button, because it
+    // replaces a clause rather than a word: "Apply" with no visible text would
+    // be asking someone to accept a sentence they have not read. The card in the
+    // other layout puts these behind a disclosure; here the row is already the
+    // reader's focus, so it says what it would write.
+    const rewrites = selected
+      ? (issue.rewordCandidates || []).map((candidate) => '<div class="writing-review-rewrite">'
+        + `<span class="writing-review-rationale">${escapeHTML(candidate.rationale || 'Another way to say this')}</span>`
+        + `<span class="settings-sample writing-review-proposed">${escapeHTML(candidate.replacementText)}</span>`
+        + `<button class="cnt-btn" data-size="sm" type="button" data-action="reword" data-value="${escapeHTML(candidate.replacementText)}">Use this</button>`
+        + '</div>').join('')
+      : '';
     const actions = selected
       ? '<div class="writing-review-actions">'
         + (replacement ? '<button class="cnt-btn" type="button" data-action="apply">Apply</button>' : '')
@@ -194,7 +217,7 @@ export function renderReviewSidebar(state: Partial<ReviewSidebarState> = {}): st
       + `${selected ? ' aria-current="true"' : ''}>`
       + `<div class="writing-review-meta"><span class="cnt-tag">${escapeHTML(categoryLabel(issue.category))}</span>${guide}</div>`
       + `<p class="writing-review-message">${escapeHTML(issue.message)}</p>`
-      + match + change + actions + '</li>';
+      + match + change + rewrites + actions + '</li>';
   }).join('');
 
   const body = issues.length

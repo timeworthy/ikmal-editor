@@ -255,3 +255,86 @@ func TestAnalyzeQualityTextTracksContractedPassiveVoice(t *testing.T) {
 		t.Fatalf("expected contracted passive constructions to be tracked, got %+v", response.Suggestions)
 	}
 }
+
+// The active-voice rewrite exists only where the actor is in the sentence.
+// Without a by-agent no rewrite can recover who acted, and a checker must not
+// put a subject into someone's prose.
+func TestPassiveVoiceOffersAnActiveRewriteWhenTheActorIsNamed(t *testing.T) {
+	cases := []struct {
+		text string
+		want string
+	}{
+		{"The results were reviewed by the team.", "The team reviewed the results"},
+		{"Mistakes were made by the committee.", "The committee made mistakes"},
+		// Irregular participles are converted, not swapped in raw: "Ian written
+		// the report" would be ungrammatical, which is worse than saying nothing.
+		{"The report was written by Ian.", "Ian wrote the report"},
+		{"The plan was chosen by Ian.", "Ian chose the plan"},
+	}
+	for _, testCase := range cases {
+		tokens := tokenizeQualityText(testCase.text)
+		got := ""
+		for _, suggestion := range analyzeQualityPassiveVoice(testCase.text, tokens) {
+			if len(suggestion.RewordCandidates) > 0 {
+				got = suggestion.RewordCandidates[0].ReplacementText
+			}
+		}
+		if got != testCase.want {
+			t.Fatalf("%q\n got  %q\n want %q", testCase.text, got, testCase.want)
+		}
+	}
+}
+
+func TestPassiveVoiceInventsNoActor(t *testing.T) {
+	// These must be flagged as passive and still offer no rewrite. An earlier
+	// version of this test used "The results were reviewed", which is not
+	// flagged at all without a by-agent — so it asserted nothing, and passed
+	// happily with the agent requirement removed.
+	for _, text := range []string{
+		"Mistakes were made.",
+		"The decision was given.",
+	} {
+		flagged := false
+		for _, suggestion := range analyzeQualityPassiveVoice(text, tokenizeQualityText(text)) {
+			flagged = true
+			if len(suggestion.RewordCandidates) > 0 {
+				t.Fatalf("%q invented an actor: %q", text, suggestion.RewordCandidates[0].ReplacementText)
+			}
+		}
+		if !flagged {
+			t.Fatalf("%q is not flagged as passive, so this case proves nothing", text)
+		}
+	}
+}
+
+// Every participle the analyzer can flag must have a past tense this code knows.
+// The refusal in pastTenseOf is unreachable today because the two lists happen
+// to agree; it stops being unreachable the moment someone adds an irregular to
+// the participle list without adding its past form, and the symptom would be a
+// rewrite reading "Ian written the report".
+func TestEveryFlaggedParticipleHasAPastTense(t *testing.T) {
+	for participle := range qualityPassiveParticiples {
+		if _, ok := pastTenseOf(participle); !ok {
+			t.Fatalf("%q can be flagged as passive but has no past tense; add it to qualityPastTense", participle)
+		}
+	}
+}
+
+// The rewrite spans the whole clause while the finding stays on the verb, so
+// the mark underlines what is wrong and the candidate replaces what must change.
+func TestPassiveRewriteSpansTheClauseNotTheFinding(t *testing.T) {
+	text := "The results were reviewed by the team."
+	for _, suggestion := range analyzeQualityPassiveVoice(text, tokenizeQualityText(text)) {
+		if len(suggestion.RewordCandidates) == 0 {
+			continue
+		}
+		edit := suggestion.RewordCandidates[0].Edits[0]
+		if edit.Start >= suggestion.Start || edit.End <= suggestion.End {
+			t.Fatalf("the rewrite does not span wider than the finding: finding %d-%d, edit %d-%d",
+				suggestion.Start, suggestion.End, edit.Start, edit.End)
+		}
+		if got := text[edit.Start:edit.End]; got != "The results were reviewed by the team" {
+			t.Fatalf("the rewrite replaces the wrong span: %q", got)
+		}
+	}
+}

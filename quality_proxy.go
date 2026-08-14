@@ -542,6 +542,12 @@ func qualitySuggestionLanguageToolMatch(text string, suggestion qualitySuggestio
 	if len(suggestion.RelatedOccurrences) > 0 {
 		match["ikmalRelatedOccurrences"] = suggestion.RelatedOccurrences
 	}
+	// The core reads rewordCandidates straight off the match, and each edit
+	// carries its own range, so a rewrite wider than the underlined words
+	// survives the trip without widening the finding.
+	if len(suggestion.RewordCandidates) > 0 {
+		match["rewordCandidates"] = suggestion.RewordCandidates
+	}
 	if suggestion.Antecedent != nil {
 		match["ikmalAntecedent"] = suggestion.Antecedent
 	}

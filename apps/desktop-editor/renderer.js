@@ -126,6 +126,7 @@ function paintSidebar() {
       // and can switch off, so it is named and the rest are not.
       ...(styleGuideName && isStyleGuideFinding(issue.source) ? { guide: styleGuideName } : {}),
       replacements: issue.replacements,
+      rewordCandidates: issue.rewordCandidates,
       canAddToDictionary: Boolean(window.ikmal.addDictionaryWord),
     })),
     selectedId: issues[issueIndex]?.id,
@@ -354,6 +355,24 @@ function handleIssueAction(event) {
     }
     hideCard();
     void checkDraft();
+  }
+  // A rewrite replaces a clause, so it is applied through the candidate's own
+  // edit range rather than the finding's — the finding is on the verb and the
+  // rewrite spans the sentence.
+  if (action === 'reword' && issue) {
+    const candidate = (issue.rewordCandidates || []).find((option) => option.replacementText === control?.dataset.value)
+      || issue.rewordCandidates?.[0];
+    const edit = candidate?.edits?.[0];
+    if (edit) {
+      const before = input.value;
+      input.value = before.slice(0, edit.range.offset)
+        + edit.replacementText
+        + before.slice(edit.range.offset + edit.range.length);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      hideCard();
+      void checkDraft();
+    }
+    return;
   }
   if (action === 'dictionary' && issue) void addToDictionary(String(issue.matchedText || '').trim());
   // Ignoring takes the mark away too. A finding the writer has dismissed that

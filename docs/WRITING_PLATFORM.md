@@ -486,6 +486,46 @@ never checked against what the legacy renderers do. Auditing that produced
 [Phase E](#phase-e--what-the-legacy-renderers-still-do), which is real work and
 includes one feature the rewrite ships settings for and cannot perform.
 
+## Active voice, without a model
+
+The passive-voice rule now offers the active rewrite: "The results were reviewed
+by the team" becomes "The team reviewed the results". It is deterministic Go,
+and it was the better route even when a transformer was still on the table.
+
+It fires only where the sentence names the actor. That is the design, not a
+limitation — without a by-agent the actor is not in the sentence, so no rewrite
+can recover it and anything offered would be invented. A checker may say a
+clause is passive without knowing who acted; it must not put a subject into
+someone's prose. This is also precisely where a model would be guessing hardest,
+which is why the deterministic route is not a lesser version of the model one.
+
+Two things it refuses rather than approximates. An irregular participle is
+converted through a closed map — "written" to "wrote" — and a participle with no
+known past tense declines outright, because "Ian written the report" is not
+stiff, it is ungrammatical, and worse than saying nothing. Subject agreement is
+still unresolved, so the rewrite is offered as a candidate with a medium meaning
+risk rather than applied as a correction.
+
+It fills the `rewordCandidates` pathway, which the core has carried since
+`9f9e89a` and nothing had ever produced. The candidate carries its own edit
+range, so the finding stays on the verb — which is what the mark underlines —
+while the rewrite replaces the whole clause.
+
+Three things this turned up:
+
+- **The sidebar did not render candidates.** The issue card had, since before
+  anything produced one; the sidebar had not. Shipping without noticing would
+  have made the feature invisible in the default layout.
+- **A test that asserted nothing.** "The results were reviewed" is not flagged
+  as passive at all without a by-agent, so a test using it to prove no rewrite
+  is offered passed just as happily with the agent requirement removed. It uses
+  a clause that is actually flagged now.
+- **An unreachable refusal.** Every participle the analyzer can flag either ends
+  in -ed or is in the past-tense map, so the refusal branch cannot be reached
+  today. A behavioural test cannot cover it; an invariant can, and now does —
+  every flaggable participle must have a known past tense, which fails the
+  moment someone adds an irregular without one.
+
 ## The optional model, removed
 
 The product shipped an optional Transformers.js/ONNX adapter behind

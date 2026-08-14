@@ -39,6 +39,27 @@ type qualitySuggestion struct {
 	Source             string              `json:"source"`
 	RelatedOccurrences []qualityOccurrence `json:"relatedOccurrences,omitempty"`
 	Antecedent         *qualityAntecedent  `json:"antecedent,omitempty"`
+	// An alternative wording, offered rather than applied. A candidate carries
+	// its own edit range because a rewrite usually spans more than the words the
+	// finding underlines: the passive is flagged on "was reviewed" and rewritten
+	// across the whole clause.
+	RewordCandidates []qualityRewordCandidate `json:"rewordCandidates,omitempty"`
+}
+
+type qualityRewordEdit struct {
+	Start           int    `json:"start"`
+	End             int    `json:"end"`
+	ReplacementText string `json:"replacementText"`
+}
+
+type qualityRewordCandidate struct {
+	ReplacementText string              `json:"replacementText"`
+	Edits           []qualityRewordEdit `json:"edits"`
+	Rationale       string              `json:"rationale"`
+	Source          string              `json:"source"`
+	Confidence      float64             `json:"confidence"`
+	MeaningRisk     string              `json:"meaningRisk"`
+	Scope           string              `json:"scope"`
 }
 
 type qualityOccurrence struct {
@@ -510,16 +531,159 @@ func analyzeQualityPassiveVoice(text string, tokens []qualityToken) []qualitySug
 			confidence = 0.96
 			message = "This clause uses passive voice. Consider naming the actor first if the actor matters."
 		}
-		suggestions = append(suggestions, qualitySuggestion{
+		suggestion := qualitySuggestion{
 			Start:      qualityUTF16Offset(text, start),
 			End:        qualityUTF16Offset(text, participle.End),
 			Category:   "passive-voice",
 			Message:    message,
 			Confidence: confidence,
 			Source:     "quality-sidecar",
-		})
+		}
+		// The rewrite is offered only where the actor is in the sentence, which
+		// is also the only place it can be derived rather than invented.
+		if rewriteStart, rewriteEnd, replacement, ok := passiveActiveRewrite(text, tokens, startIndex, participleIndex); ok {
+			suggestion.RewordCandidates = []qualityRewordCandidate{{
+				ReplacementText: replacement,
+				Edits: []qualityRewordEdit{{
+					Start:           qualityUTF16Offset(text, rewriteStart),
+					End:             qualityUTF16Offset(text, rewriteEnd),
+					ReplacementText: replacement,
+				}},
+				Rationale:  "Names the actor first.",
+				Source:     "quality-sidecar",
+				Confidence: 0.8,
+				// The clause is restructured and the verb is left as the
+				// participle, so this wants reading before it is taken.
+				MeaningRisk: "medium",
+				Scope:       "sentence",
+			}}
+		}
+		suggestions = append(suggestions, suggestion)
 	}
 	return suggestions
+}
+
+// passiveActiveRewrite turns an agentive passive clause into its active form:
+// "The results were reviewed by the team" becomes "The team reviewed the
+// results". It returns the span it rewrites and the replacement, or ok=false.
+//
+// This only ever fires with an explicit by-agent, and that is the whole design
+// rather than a limitation. Without one — "The results were reviewed" — the
+// actor is not in the sentence, so no rewrite can recover it and anything
+// offered would be invented. A checker may say a clause is passive without
+// knowing who acted; it must not put a subject into someone's prose.
+//
+// The participle is converted to a past tense, and the clause is declined
+// outright when that conversion is not known — see qualityPastTense. Subject
+// agreement is still not resolved, which is why the candidate carries a medium
+// meaning risk and is offered as an alternative rather than applied as a
+// correction.
+func passiveActiveRewrite(text string, tokens []qualityToken, auxIndex, participleIndex int) (start, end int, replacement string, ok bool) {
+	sentence := tokens[participleIndex].Sentence
+	byIndex := -1
+	for index := participleIndex + 1; index < len(tokens) && index <= participleIndex+8; index++ {
+		token := tokens[index]
+		if token.Sentence != sentence || token.Text == "." || token.Text == "!" || token.Text == "?" {
+			break
+		}
+		if token.Lower == "by" {
+			byIndex = index
+			break
+		}
+	}
+	if byIndex < 0 || byIndex+1 >= len(tokens) {
+		return 0, 0, "", false
+	}
+
+	// The agent runs from "by" to the end of its noun phrase: the clause ends,
+	// or punctuation closes it.
+	agentEnd := byIndex
+	for index := byIndex + 1; index < len(tokens); index++ {
+		token := tokens[index]
+		if token.Sentence != sentence || !isQualityWord(token) {
+			break
+		}
+		agentEnd = index
+	}
+	if agentEnd == byIndex {
+		return 0, 0, "", false
+	}
+
+	// The subject is everything from the start of the sentence to the auxiliary.
+	// Anything earlier in the sentence means this is a subordinate clause whose
+	// boundaries this rule cannot see, so it declines rather than guessing.
+	subjectStart := -1
+	for index := auxIndex - 1; index >= 0; index-- {
+		if tokens[index].Sentence != sentence {
+			break
+		}
+		subjectStart = index
+	}
+	if subjectStart < 0 || subjectStart >= auxIndex {
+		return 0, 0, "", false
+	}
+	subject := strings.TrimSpace(text[tokens[subjectStart].Start:tokens[auxIndex-1].End])
+	agent := strings.TrimSpace(text[tokens[byIndex+1].Start:tokens[agentEnd].End])
+	verb, known := pastTenseOf(tokens[participleIndex].Text)
+	if subject == "" || agent == "" || !known {
+		return 0, 0, "", false
+	}
+
+	// The sentence's first word carries its capital. Moving the agent to the
+	// front moves the capital with it, and the old subject goes back to
+	// lower case unless it is a proper noun — which "I" and an already
+	// capitalised interior word both stand for here.
+	leading := subjectStart == 0 || tokens[subjectStart].Sentence != tokens[max(0, subjectStart-1)].Sentence
+	if leading {
+		agent = upperFirst(agent)
+		if !startsWithUppercase(subject[1:]) && subject != "I" {
+			subject = lowerFirst(subject)
+		}
+	}
+	return tokens[subjectStart].Start, tokens[agentEnd].End, agent + " " + verb + " " + subject, true
+}
+
+// The past tense of the participles that do not simply end in -ed.
+//
+// A regular verb's past tense and past participle are the same word, so
+// "reviewed by the team" becomes "the team reviewed" with no conversion at all.
+// Irregulars are where a naive swap produces "Ian written the report" — which is
+// not stiff, it is ungrammatical, and worse than offering nothing. Only the ones
+// listed here can be rewritten; anything else without an -ed ending declines.
+//
+// The list is closed on purpose. It covers the irregulars the participle list
+// admits, and an unknown irregular refuses rather than guessing at a form.
+var qualityPastTense = map[string]string{
+	"built": "built", "chosen": "chose", "found": "found", "given": "gave",
+	"known": "knew", "made": "made", "read": "read", "sent": "sent",
+	"shown": "showed", "written": "wrote",
+}
+
+// pastTenseOf returns the past tense for a participle, and whether one is known.
+func pastTenseOf(participle string) (string, bool) {
+	if past, ok := qualityPastTense[strings.ToLower(participle)]; ok {
+		return past, true
+	}
+	if strings.HasSuffix(strings.ToLower(participle), "ed") {
+		return participle, true
+	}
+	return "", false
+}
+
+func upperFirst(value string) string {
+	runes := []rune(value)
+	if len(runes) == 0 {
+		return value
+	}
+	return string(unicode.ToUpper(runes[0])) + string(runes[1:])
+}
+
+func lowerFirst(value string) string {
+	runes := []rune(value)
+	if len(runes) == 0 {
+		return value
+	}
+	return string(unicode.ToLower(runes[0])) + string(runes[1:])
 }
 
 func passiveHasByAgent(tokens []qualityToken, participleIndex int) bool {

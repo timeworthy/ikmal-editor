@@ -53,6 +53,36 @@ const fakeServices = await new Promise((resolve, reject) => {
         response.end(JSON.stringify({ error: 'temporary test failure' }));
         return;
       }
+      // A passive clause with a named actor, carrying the rewrite the quality
+      // sidecar produces for one. The transform itself is a Go concern and is
+      // tested there; what this stands in for is the shape that reaches the
+      // renderer, so the smoke can check that a candidate is offered and that
+      // taking it rewrites the clause rather than the underlined verb.
+      const passive = text.indexOf('were reviewed');
+      if (passive >= 0) {
+        const clause = text.indexOf('The results were reviewed by the team');
+        response.writeHead(200, { 'content-type': 'application/json' });
+        response.end(JSON.stringify({
+          matches: [{
+            message: 'This clause uses passive voice. Consider naming the actor first if the actor matters.',
+            replacements: [],
+            offset: passive,
+            length: 'were reviewed'.length,
+            rule: { id: 'IKMAL_PASSIVE_VOICE', category: { id: 'STYLE' } },
+            ikmalSource: 'quality-sidecar',
+            rewordCandidates: [{
+              replacementText: 'The team reviewed the results',
+              edits: [{ start: clause, end: clause + 'The results were reviewed by the team'.length, replacementText: 'The team reviewed the results' }],
+              rationale: 'Names the actor first.',
+              source: 'quality-sidecar',
+              confidence: 0.8,
+              meaningRisk: 'medium',
+              scope: 'sentence',
+            }],
+          }],
+        }));
+        return;
+      }
       const offset = text.indexOf('is');
       response.writeHead(200, { 'content-type': 'application/json' });
       response.end(JSON.stringify({
@@ -419,6 +449,43 @@ try {
   await editor.evaluate(`(async () => {
     const { applyAnnotationPreferences } = await import('./marks.js');
     applyAnnotationPreferences(document.documentElement, await window.ikmal.setAnnotationPreferences({ ...(await window.ikmal.getAnnotationPreferences()), layout: 'sidebar' }));
+  })()`);
+
+  // A passive clause with a named actor offers the active rewrite, and taking it
+  // rewrites the clause rather than the underlined verb. It is checked in the
+  // sidebar because that is the default layout: the issue card has rendered
+  // reword candidates since before anything produced one, and the sidebar had
+  // not, so shipping this without the sidebar would have made the feature
+  // invisible to almost everyone.
+  const rewrite = await editor.evaluate(`(async () => {
+    const { applyAnnotationPreferences } = await import('./marks.js');
+    applyAnnotationPreferences(document.documentElement, await window.ikmal.setAnnotationPreferences({ ...(await window.ikmal.getAnnotationPreferences()), layout: 'sidebar' }));
+    const field = document.querySelector('#editor-input');
+    field.value = 'The results were reviewed by the team.';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    const row = [...document.querySelectorAll('.writing-review-row')].find((candidate) => candidate.textContent.includes('passive'));
+    if (row) row.click();
+    const proposed = document.querySelector('.writing-review-proposed')?.textContent || '';
+    const button = document.querySelector('[data-action="reword"]');
+    if (button) button.click();
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    return JSON.stringify({ proposed, draft: document.querySelector('#editor-input').value });
+  })()`);
+  const rewriteState = JSON.parse(rewrite);
+  if (rewriteState.proposed !== 'The team reviewed the results') {
+    throw new Error(`The sidebar did not offer the active rewrite: ${rewrite}`);
+  }
+  if (rewriteState.draft !== 'The team reviewed the results.') {
+    throw new Error(`Taking the rewrite did not rewrite the clause: ${rewrite}`);
+  }
+  // Back to the draft the rest of this run describes. Taking a rewrite changes
+  // the text, and every assertion after this one counts findings in it.
+  await editor.evaluate(`(async () => {
+    const field = document.querySelector('#editor-input');
+    field.value = 'The results is ready.';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
   })()`);
 
   // The mark follows the interface it sits in. The shipped tray and app icons
