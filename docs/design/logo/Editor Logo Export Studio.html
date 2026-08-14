@@ -72,7 +72,7 @@ a{color:var(--violet-300)}a:hover{color:var(--violet-200)}
       <div class="row"><label>Squiggle width</label><output id="o-fullSqW"></output><input type="range" id="r-fullSqW" min="1.6" max="5" step="0.1"></div>
       <div class="row"><label>Amplitude</label><output id="o-fullSqAmp"></output><input type="range" id="r-fullSqAmp" min="1" max="4" step="0.1"></div>
       <div class="row"><label>Period</label><output id="o-fullSqPeriod"></output><input type="range" id="r-fullSqPeriod" min="5" max="14" step="0.2"></div>
-      <div class="row"><label>Inset</label><output id="o-fullSqInset"></output><input type="range" id="r-fullSqInset" min="14" max="30" step="0.5"></div>
+      <div class="row"><label>Overhang</label><output id="o-fullSqOverhang"></output><input type="range" id="r-fullSqOverhang" min="0" max="8" step="0.25"></div>
     </div>
     <div class="grp"><b>Min tier — line + break</b>
       <div class="row"><label>Line Y</label><output id="o-lineY"></output><input type="range" id="r-lineY" min="30" max="48" step="0.5"></div>
@@ -148,7 +148,7 @@ const el = (h) => { const d = document.createElement("div"); d.innerHTML = h.tri
 const box = (h, w) => `<div style="width:${w}px;height:${w}px;flex:0 0 auto">${h}</div>`;
 let P = E.loadMaster(), theme = TH.sage;
 
-const KEYS = ["switchPx","ringR","ringW","ringOp","wordSize","wordY","fullSqY","fullSqW","fullSqAmp","fullSqPeriod","fullSqInset","lineY","lineW","lineH","lineOp","minSqY","minSqW","minSqAmp","minSqPeriod","brA","brB"];
+const KEYS = ["switchPx","ringR","ringW","ringOp","wordSize","wordY","fullSqY","fullSqW","fullSqAmp","fullSqPeriod","fullSqOverhang","lineY","lineW","lineH","lineOp","minSqY","minSqW","minSqAmp","minSqPeriod","brA","brB"];
 
 // accent buttons
 const segTheme = document.getElementById("seg-theme");

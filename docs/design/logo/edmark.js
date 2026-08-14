@@ -50,7 +50,13 @@
     ringR: 33, ringW: 7, ringOp: 0.3, dy: 0,
     // full tier — the word and its underline
     wordSize: 21, wordY: 52.5, wordTrack: -1,
-    fullSqY: 62.5, fullSqW: 3.2, fullSqAmp: 2.1, fullSqPeriod: 8.4, fullSqInset: 20.5,
+    // Overhang, not inset: how far the underline runs past the word at each
+    // end. It was a fixed inset from the frame, which made the rule 59 units
+    // wide under a 48.6-unit word — 5.2 units proud at each end, reading as a
+    // rule the word sits on rather than as the word's own underline. Measured
+    // from the word, it also follows wordSize instead of needing a second
+    // adjustment every time the word changes.
+    fullSqY: 62.5, fullSqW: 3.2, fullSqAmp: 2.1, fullSqPeriod: 8.4, fullSqOverhang: 2,
     // min tier — one line of prose, broken squiggle
     lineY: 39.5, lineW: 40, lineH: 6, lineOp: 0.58,
     minSqY: 55.5, minSqW: 3.4, minSqAmp: 2.4, minSqPeriod: 9.2, brA: 0.64, brB: 0.78,
@@ -92,7 +98,10 @@
     const s = c.s || 1, dy = p.dy || 0;
     return ringMarkup(p, c) +
       wordCentered("ikmal", p.wordSize, 50, p.wordY + dy, c.fg) +
-      squiggle(p.fullSqInset, 100 - p.fullSqInset, p.fullSqY + dy, c.ac, p.fullSqW * s, p.fullSqAmp, p.fullSqPeriod);
+      (() => {
+        const half = inkW("ikmal", p.wordSize) / 2 + (p.fullSqOverhang != null ? p.fullSqOverhang : 2);
+        return squiggle(50 - half, 50 + half, p.fullSqY + dy, c.ac, p.fullSqW * s, p.fullSqAmp, p.fullSqPeriod);
+      })();
   }
   function innerMin(p, c) {
     const s = c.s || 1, dy = p.dy || 0, w = p.lineW, x = 50 - w / 2, sy = p.minSqY + dy;
