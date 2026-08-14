@@ -322,6 +322,28 @@ try {
   }
   if (markGeometry.roles.length < 5) throw new Error(`The gallery shows only ${markGeometry.roles.length} mark roles: ${markGeometry.roles.join(', ')}`);
 
+  // Buttons follow density with everything else. min-height was a hard 36px, so
+  // at compact density an input shrank to 30 and the button beside it stayed —
+  // which is the misalignment --control-h exists to prevent, and which nothing
+  // here noticed because the axis check measured inputs only.
+  const controlAlignment = await page.evaluate(() => {
+    const rows = {};
+    for (const density of ['comfortable', 'compact', 'spacious']) {
+      document.documentElement.dataset.density = density;
+      const input = document.querySelector('.cnt-input').getBoundingClientRect().height;
+      const button = document.querySelector('.cnt-btn').getBoundingClientRect().height;
+      const icon = document.querySelector('.cnt-icon-btn, .cnt-icon-button')?.getBoundingClientRect().height ?? button;
+      rows[density] = { input: Math.round(input), button: Math.round(button), icon: Math.round(icon) };
+    }
+    document.documentElement.dataset.density = 'comfortable';
+    return rows;
+  });
+  for (const [density, sizes] of Object.entries(controlAlignment)) {
+    if (Math.abs(sizes.input - sizes.button) > 1 || Math.abs(sizes.input - sizes.icon) > 1) {
+      throw new Error(`Controls do not line up at ${density} density: ${JSON.stringify(sizes)}`);
+    }
+  }
+
   // Keyboard focus must be visible on a control, not only on a button.
   const focusRing = await page.evaluate(() => {
     const input = document.querySelector('.cnt-input');
@@ -341,7 +363,7 @@ try {
   if (shadow.background === 'rgba(0, 0, 0, 0)') throw new Error('Shadow DOM primitives did not receive their tokens.');
 
   if (errors.length) throw new Error(`Gallery raised page errors: ${errors.join('; ')}`);
-  console.log(`Design-system gallery passed: ${required.length} primitives, theme/density/palette axes reach computed styles, intents distinct, focus visible, Shadow DOM isolated and styled, mark palettes legible and separated (${JSON.stringify({ browser: browserSource, accent: { slateAccent, bathymetricAccent }, controlHeights: { comfortable, compact, spacious }, marks: { worstContrast: `${worstMarkContrast.ratio.toFixed(2)}:1`, worstPair: `dE ${worstMarkPair.distance.toFixed(1)}`, roles: markGeometry.roles.length } })}).`);
+  console.log(`Design-system gallery passed: ${required.length} primitives, theme/density/palette axes reach computed styles, intents distinct, focus visible, Shadow DOM isolated and styled, mark palettes legible and separated (${JSON.stringify({ browser: browserSource, accent: { slateAccent, bathymetricAccent }, controlHeights: { comfortable, compact, spacious }, controlAlignment, marks: { worstContrast: `${worstMarkContrast.ratio.toFixed(2)}:1`, worstPair: `dE ${worstMarkPair.distance.toFixed(1)}`, roles: markGeometry.roles.length } })}).`);
 } finally {
   await context?.close();
   await new Promise((resolve) => server.close(resolve));

@@ -66,7 +66,9 @@ export const ISSUE_POPOVER_CSS = `
 .writing-issue-message { font: 500 14px/1.45 var(--font-sans); margin: 0; }
 .writing-issue-match { background: var(--accent-soft); border-radius: var(--radius-1); color: var(--fg-1); font: 13px/1.4 var(--font-mono); padding: var(--space-2) var(--space-3); }
 .writing-issue-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.writing-issue-actions .cnt-btn { min-height: 32px; }
+/* The actions keep the system's control height. They were pinned to 32px while
+   the close and navigation beside them sat at 36 — the incidental controls
+   outweighing the ones that change the writer's text. */
 .writing-issue-alternatives { display: grid; gap: var(--space-2); }
 .writing-issue-alternatives summary { color: var(--fg-2); cursor: pointer; font: 500 13px/1.4 var(--font-sans); }
 .writing-issue-alternatives .cnt-btn { min-height: 32px; width: 100%; }
@@ -115,13 +117,13 @@ export function renderIssuePopover(issue: IssuePopoverIssue, options: IssuePopov
   const index = Number.isFinite(options.index) ? Math.max(0, Math.floor(options.index as number)) : 0;
   const navigation = total > 1
     ? `<span class="writing-issue-nav">`
-      + `<button class="cnt-icon-btn" type="button" data-action="previous" aria-label="Previous issue"${index === 0 ? ' disabled' : ''}>‹</button>`
+      + `<button class="cnt-icon-btn" data-size="sm" type="button" data-action="previous" aria-label="Previous issue"${index === 0 ? ' disabled' : ''}>‹</button>`
       + `<span class="writing-issue-position">${index + 1} of ${total}</span>`
-      + `<button class="cnt-icon-btn" type="button" data-action="next" aria-label="Next issue"${index >= total - 1 ? ' disabled' : ''}>›</button>`
+      + `<button class="cnt-icon-btn" data-size="sm" type="button" data-action="next" aria-label="Next issue"${index >= total - 1 ? ' disabled' : ''}>›</button>`
       + `</span>`
     : '';
 
-  return `<section class="cnt-popover writing-issue-popover" role="dialog" aria-label="Writing issue" data-issue-id="${escapeHTML(issue.id)}"><div class="writing-issue-meta"><span>${escapeHTML(categoryLabel(issue.category))}</span>${issue.guide ? `<span>${escapeHTML(issue.guide)}</span>` : ''}<span>${escapeHTML(issue.severity)}</span><div class="writing-issue-controls">${navigation}<button class="cnt-icon-btn" type="button" data-action="close" aria-label="Close">×</button></div></div><p class="writing-issue-message">${escapeHTML(issue.message)}</p>${preview}<details><summary>Why?</summary><p>${escapeHTML(issue.message)}</p></details><div class="writing-issue-actions">${primaryButton}${dictionary}<button class="cnt-btn" type="button" data-action="ignore">Ignore</button></div></section>`;
+  return `<section class="cnt-popover writing-issue-popover" role="dialog" aria-label="Writing issue" data-issue-id="${escapeHTML(issue.id)}"><div class="writing-issue-meta"><span>${escapeHTML(categoryLabel(issue.category))}</span>${issue.guide ? `<span>${escapeHTML(issue.guide)}</span>` : ''}<span>${escapeHTML(issue.severity)}</span><div class="writing-issue-controls">${navigation}<button class="cnt-icon-btn" data-size="sm" type="button" data-action="close" aria-label="Close">×</button></div></div><p class="writing-issue-message">${escapeHTML(issue.message)}</p>${preview}<details><summary>Why?</summary><p>${escapeHTML(issue.message)}</p></details><div class="writing-issue-actions">${primaryButton}${dictionary}<button class="cnt-btn" type="button" data-action="ignore">Ignore</button></div></section>`;
 }
 
 export function renderSelectionSummary(summary: Partial<SelectionSummary> = {}): string {

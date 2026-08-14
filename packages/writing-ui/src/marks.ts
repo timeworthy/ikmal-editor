@@ -357,7 +357,7 @@ export function renderRelationshipCard(card: RelationshipCard): string {
     : '';
   return `<section class="cnt-popover writing-relationship-card" role="dialog" aria-label="Pronoun link">`
     + `<div class="writing-relationship-meta"><span>Pronoun link</span>`
-    + `<button class="cnt-icon-btn" type="button" data-action="close" aria-label="Close">&times;</button></div>`
+    + `<button class="cnt-icon-btn" data-size="sm" type="button" data-action="close" aria-label="Close">&times;</button></div>`
     + `<p class="writing-relationship-link">&ldquo;${escapeHTML(card.pronoun)}&rdquo; refers to &ldquo;${escapeHTML(card.antecedent)}&rdquo;</p>`
     + `${note}</section>`;
 }

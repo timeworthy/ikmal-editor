@@ -450,13 +450,28 @@ function servicesBody(serviceState = {}) {
       { name: 'LanguageTool', state: serviceState.languageToolReady ? 'ready' : 'stopped', endpoint: serviceState.proxyUrl, managed },
       { name: 'Quality checks', state: serviceState.qualityReady ? 'ready' : 'stopped', managed },
     ])
+    // Only the action that is available.
+    //
+    // Both buttons were always rendered and disabled when they did not apply,
+    // which in the ordinary case — services running, started by something other
+    // than this app — meant two dead controls side by side. Disabled is honest
+    // but it is not legible: two identically grey buttons say "broken" more
+    // loudly than they say "not applicable", and the reader cannot tell whether
+    // the services are running or the app is.
+    //
+    // So the state is stated in words and the one action that changes it is
+    // offered. The comment on the old code already said a button that silently
+    // does nothing is worse than an absent one; this applies that to a button
+    // that visibly does nothing too.
     + '<div class="settings-inline">'
-    + `<button class="cnt-btn" type="button" data-action="start-services"${running ? ' disabled' : ''}>Start services</button>`
-    // Stopping is only offered when this app owns the services. It cannot stop
-    // something it did not start, and a button that silently does nothing is
-    // worse than an absent one.
-    + `<button class="cnt-btn" type="button" data-action="stop-services"${managed ? '' : ' disabled'}>Stop services</button>`
-    + (managed ? '' : '<span class="settings-note">These services were started outside ikmal editor, so this app cannot stop them.</span>')
+    + (running
+      ? (managed
+        ? '<button class="cnt-btn" type="button" data-action="stop-services">Stop services</button>'
+          + '<span class="settings-note">Started by ikmal editor, so it can stop them again.</span>'
+        : '<span class="settings-note">Running, and started outside ikmal editor — so this app can use them '
+          + 'but cannot stop them.</span>')
+      : '<button class="cnt-btn" type="button" data-action="start-services">Start services</button>'
+        + '<span class="settings-note">Nothing is being checked until these are running.</span>')
     + '</div></div>';
 }
 

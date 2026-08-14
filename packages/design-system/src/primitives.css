@@ -19,7 +19,10 @@
   font: 600 13px/1 var(--font-sans);
   gap: var(--space-2);
   justify-content: center;
-  min-height: 36px;
+  /* Follows density, like every other control. This was a hard 36px, so at
+     compact density an input shrank to 30px and the button beside it did not —
+     the one thing --control-h exists to prevent, said in its own comment. */
+  min-height: var(--control-h);
   padding: 0 var(--space-3);
   transition: background var(--dur-fast) var(--ease-default), border-color var(--dur-fast) var(--ease-default), transform var(--dur-fast) var(--ease-spring);
 }
@@ -37,7 +40,22 @@
 .cnt-icon-btn:focus-visible,
 .cnt-icon-button:focus-visible { box-shadow: var(--shadow-focus); outline: 2px solid transparent; }
 .cnt-icon-btn,
-.cnt-icon-button { min-width: 36px; padding: 0; }
+.cnt-icon-button { min-width: var(--control-h); padding: 0; }
+
+/* A denser control, for a row of small type where a full-height button is the
+   heaviest thing on the line. The issue card's close and navigation sat at 36px
+   beside 11px labels — larger than the Apply they shared a card with — and read
+   as boxes drawn on their own rather than as part of the row. */
+.cnt-btn[data-size="sm"],
+.cnt-button[data-size="sm"],
+.cnt-icon-btn[data-size="sm"],
+.cnt-icon-button[data-size="sm"] {
+  border-radius: var(--radius-1);
+  font-size: 12px;
+  min-height: calc(var(--control-h) - 8px);
+  min-width: calc(var(--control-h) - 8px);
+  padding: 0 var(--space-2);
+}
 /* A disabled button had no appearance of its own, so it looked exactly like one
    that works and answered a click with nothing. Hover is cancelled too — a
    control that lights up under the pointer promises an action it will refuse. */

@@ -115,6 +115,29 @@ try {
     throw new Error(`The indicator is not anchored to its field: ${JSON.stringify(anchored)}`);
   }
 
+  // The card belongs beside its badge, for the same reason the badge belongs on
+  // its field: pinned to the viewport it is a card about a sentence, floating
+  // over whatever else the page has down there.
+  await page.locator('#ikmal-rewrite-indicator').click();
+  await page.locator('#ikmal-rewrite-popover').waitFor({ state: 'attached', timeout: 3000 });
+  const cardAnchored = await page.evaluate(() => {
+    const card = document.querySelector('#ikmal-rewrite-popover').getBoundingClientRect();
+    const badge = document.querySelector('#ikmal-rewrite-indicator').getBoundingClientRect();
+    return {
+      card: { right: Math.round(card.right), bottom: Math.round(card.bottom), w: Math.round(card.width), h: Math.round(card.height) },
+      badge: { right: Math.round(badge.right), top: Math.round(badge.top) },
+      // Adjacent to the badge on whichever side has room — above by preference,
+      // below when the field sits near the top of the page. Demanding "above"
+      // would have failed the correct behaviour.
+      nearBadge: Math.abs(card.right - badge.right) < 40
+        && Math.min(Math.abs(badge.top - card.bottom), Math.abs(card.top - badge.bottom)) <= 16,
+      insideWindow: card.left >= 0 && card.top >= 0 && card.right <= innerWidth + 1 && card.bottom <= innerHeight + 1,
+    };
+  });
+  if (!cardAnchored.nearBadge || !cardAnchored.insideWindow) {
+    throw new Error(`The suggestion card is not anchored to its badge: ${JSON.stringify(cardAnchored)}`);
+  }
+
   const issueState = await indicator.evaluate((host) => ({ shadow: Boolean(host.shadowRoot), label: host.shadowRoot?.querySelector('.indicator')?.getAttribute('aria-label') || '', theme: host.dataset.theme }));
   const issueCount = Number(issueState.label.match(/^(\d+) issue/)?.[1] || 0);
   if (!issueState.shadow || issueCount < 1 || issueState.theme !== 'light') throw new Error(`Injected indicator state failed: ${JSON.stringify(issueState)}`);

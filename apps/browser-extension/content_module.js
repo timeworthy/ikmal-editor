@@ -59,6 +59,24 @@ function ensureIndicator() {
  * trusted, so the coordinates are computed from the field's viewport rect
  * instead and refreshed when the page moves under it.
  */
+/**
+ * The card sits above its badge, anchored to the same field, and is nudged back
+ * inside the window rather than allowed to hang off an edge.
+ */
+function positionPopover() {
+  const host = state.popover;
+  const badge = state.indicator;
+  if (!host?.isConnected || !badge?.isConnected) return;
+  const anchor = badge.getBoundingClientRect();
+  const size = host.getBoundingClientRect();
+  const inset = 8;
+  const left = Math.max(inset, Math.min(anchor.right - size.width, window.innerWidth - size.width - inset));
+  const above = anchor.top - size.height - inset;
+  const top = above >= inset ? above : Math.min(anchor.bottom + inset, window.innerHeight - size.height - inset);
+  host.style.left = `${Math.round(left)}px`;
+  host.style.top = `${Math.round(Math.max(inset, top))}px`;
+}
+
 function positionIndicator() {
   const host = state.indicator;
   const field = state.active;
@@ -68,13 +86,14 @@ function positionIndicator() {
   // at nothing.
   const offscreen = box.bottom < 0 || box.top > window.innerHeight || box.right < 0 || box.left > window.innerWidth;
   host.style.display = offscreen ? 'none' : '';
-  if (offscreen) return;
+  if (offscreen) { closePopover(); return; }
   const size = host.getBoundingClientRect();
   const inset = 8;
   const left = Math.max(inset, Math.min(box.right - size.width - inset, window.innerWidth - size.width - inset));
   const top = Math.max(inset, Math.min(box.bottom - size.height - inset, window.innerHeight - size.height - inset));
   host.style.left = `${Math.round(left)}px`;
   host.style.top = `${Math.round(top)}px`;
+  positionPopover();
 }
 
 function updateIndicator(view) {
@@ -107,10 +126,18 @@ function openPopover(index = state.issueIndex || 0) {
   const host = document.createElement('div');
   host.id = 'ikmal-rewrite-popover';
   syncDesignAttributes(host);
-  host.style.cssText = 'position:fixed;right:16px;bottom:56px;z-index:2147483647;';
+  // Beside the badge that opened it, not in the corner of the window. Pinned to
+  // the viewport it was a card about a sentence, floating over whatever else the
+  // page happened to have down there — and once the field scrolled away, about
+  // nothing at all.
+  host.style.cssText = 'position:fixed;z-index:2147483647;';
   document.documentElement.append(host);
   const shadow = host.attachShadow({ mode: 'open' });
   shadow.innerHTML = `<style>${state.tokenCSS}${state.primitiveCSS}${ISSUE_POPOVER_CSS}</style>${renderIssuePopover(issue, { index: position, total: issues.length })}`;
+  state.popover = host;
+  // Placed after it is drawn: it is anchored by its own size, which is not
+  // known until there is something in it.
+  positionPopover();
   shadow.addEventListener('click', (event) => {
     // The chooser renders one button per candidate, so the clicked control
     // carries the replacement rather than the popover assuming the first one.
@@ -137,7 +164,6 @@ function openPopover(index = state.issueIndex || 0) {
     if (action === 'previous') openPopover(position - 1);
     if (action === 'next') openPopover(position + 1);
   });
-  state.popover = host;
 }
 
 // Findings that span sentences cannot come from a chunk around the caret, so a
