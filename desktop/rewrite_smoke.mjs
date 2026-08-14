@@ -421,6 +421,29 @@ try {
     applyAnnotationPreferences(document.documentElement, await window.ikmal.setAnnotationPreferences({ ...(await window.ikmal.getAnnotationPreferences()), layout: 'sidebar' }));
   })()`);
 
+  // The mark follows the interface it sits in. The shipped tray and app icons
+  // cannot — a menubar template is tinted by the OS and an app icon is baked at
+  // package time — so those keep the design source's locked accent, and this one
+  // takes var(--accent) instead of carrying a second palette beside the UI.
+  const brand = await editor.evaluate(`(() => {
+    const host = document.querySelector('#slice-mark');
+    const squiggle = host.querySelector('path');
+    const read = () => getComputedStyle(squiggle).stroke;
+    const before = read();
+    document.documentElement.dataset.palette = 'bathymetric';
+    const after = read();
+    document.documentElement.dataset.palette = 'slate';
+    return JSON.stringify({
+      rendered: Boolean(host.querySelector('svg')),
+      hidden: host.getAttribute('aria-hidden'),
+      followsAccent: before !== after,
+    });
+  })()`);
+  const brandState = JSON.parse(brand);
+  if (!brandState.rendered) throw new Error(`The editor shows no mark: ${brand}`);
+  if (brandState.hidden !== 'true') throw new Error(`The mark is announced; it is decoration beside a title that already names the app: ${brand}`);
+  if (!brandState.followsAccent) throw new Error(`The mark does not follow the accent: ${brand}`);
+
   // The editor uses the window it was given. The page stopped 160px short of the
   // bottom, which on a writing surface reads as unfinished — and that space is
   // the most useful thing this window has, because it is room to write in. The

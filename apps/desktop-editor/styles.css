@@ -31,6 +31,8 @@ body { background: var(--bg-0); color: var(--fg-1); font: 14px/1.5 var(--font-sa
   .desktop-slice { min-height: 0; }
 }
 .slice-header { align-items: end; display: flex; justify-content: space-between; gap: var(--space-4); }
+.slice-brand { align-items: center; display: flex; gap: var(--space-3); }
+.slice-mark { color: var(--fg-2); display: inline-flex; flex: none; }
 .slice-kicker { color: var(--accent); font: 600 11px/1 var(--font-mono); letter-spacing: .08em; margin: 0 0 var(--space-2); }
 h1 { font: 500 28px/1.1 var(--font-serif); margin: 0; }
 .slice-actions { align-items: center; display: flex; gap: var(--space-3); }

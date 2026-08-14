@@ -4,6 +4,7 @@ import { INDICATOR_CSS, mountIndicator, renderIndicator } from './indicator.js';
 import { ISSUE_POPOVER_CSS, renderIssuePopover } from './issue_popover.js';
 import { applyAnnotationPreferences, attachMarkSurface, MARKS_CSS, renderRelationshipCard } from './marks.js';
 import { isStyleGuideFinding } from './categories.js';
+import { renderMark } from './mark.js';
 import { normalizeReviewLayout, renderReviewSidebar, REVIEW_CSS } from './review.js';
 import { renderSettingsPage, SETTINGS_PAGE_CSS } from './settings_page.js';
 
@@ -16,6 +17,9 @@ const indicatorAnchor = document.querySelector('#indicator-anchor');
 const issuePopover = document.querySelector('#issue-popover');
 const surface = document.querySelector('#editor-surface');
 const marksLayer = document.querySelector('#editor-marks');
+// Inline rather than an <img>: the mark takes currentColor and var(--accent),
+// and an external SVG cannot read either.
+document.querySelector('#slice-mark').innerHTML = renderMark(30);
 const workspace = document.querySelector('#workspace');
 const reviewSidebar = document.querySelector('#review-sidebar');
 const marksStyle = document.createElement('style');

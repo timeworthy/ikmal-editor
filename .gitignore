@@ -34,6 +34,7 @@ apps/desktop-editor/indicator.js
 apps/desktop-editor/issue_popover.js
 apps/desktop-editor/marks.js
 apps/desktop-editor/categories.js
+apps/desktop-editor/mark.js
 apps/desktop-editor/review.js
 apps/desktop-editor/indicator_popover.js
 apps/desktop-editor/mode_picker.js
@@ -49,6 +50,7 @@ apps/desktop-compact/browser_slice.js
 apps/desktop-compact/indicator.js
 apps/desktop-compact/issue_popover.js
 apps/desktop-compact/categories.js
+apps/desktop-compact/mark.js
 apps/desktop-compact/marks.js
 apps/desktop-compact/mode_picker.js
 apps/desktop-compact/settings.js

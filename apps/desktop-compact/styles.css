@@ -46,6 +46,9 @@ body {
   overflow-y: auto;
   scrollbar-gutter: stable;
 }
+/* The mark sits with the title, at the size the min tier was drawn for. */
+.launcher-head-row { align-items: center; }
+.launcher-mark { color: var(--fg-2); display: inline-flex; flex: none; }
 .launcher-stats { color: var(--fg-4); font: 400 11px/1 var(--font-mono); margin-top: var(--space-2); }
 /* The issue card is stacked in this column rather than floating over text, so
    it takes the column's width like everything else in it. */

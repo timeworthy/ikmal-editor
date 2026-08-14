@@ -3,6 +3,7 @@ import { createDesktopSliceController } from './desktop_slice.js';
 import { mountIndicator, renderIndicator, INDICATOR_CSS } from './indicator.js';
 import { renderIssuePopover, ISSUE_POPOVER_CSS } from './issue_popover.js';
 import { renderModePicker, MODE_PICKER_CSS } from './mode_picker.js';
+import { renderMark } from './mark.js';
 import { attachMarkSurface, MARKS_CSS } from './marks.js';
 import { SETTINGS_CSS } from './settings.js';
 
@@ -20,6 +21,9 @@ const issuePopover = document.querySelector('#issue-popover');
 const modes = document.querySelector('#modes');
 const services = document.querySelector('#services');
 const quickMarks = document.querySelector('#quick-marks');
+// Inline rather than an <img>: the mark takes currentColor and var(--accent),
+// and an external SVG cannot read either.
+document.querySelector('#launcher-mark').innerHTML = renderMark(22);
 
 const indicatorShadow = mountIndicator(indicatorAnchor, { status: 'clean', label: 'No issues' });
 const composedCSS = `${MODE_PICKER_CSS}${SETTINGS_CSS}${MARKS_CSS}`;
