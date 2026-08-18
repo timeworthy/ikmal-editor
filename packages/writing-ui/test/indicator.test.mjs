@@ -100,7 +100,26 @@ test('a finding to review offers its candidates instead of an unhandled action',
     rewordCandidates: [{ id: 'r1', replacementText: 'two shorter sentences', rationale: 'clarity' }],
   });
   assert.match(reword, /<summary>Consider rewording<\/summary>/);
-  assert.match(reword, /data-value="two shorter sentences"/);
+  // A rewrite is not a replacement: it replaces the clause it carries a range
+  // for, while the finding underlines a word inside that clause. Rendering it as
+  // "apply" put the whole sentence through the finding's range, which spliced
+  // the sentence into the middle of itself.
+  assert.match(reword, /data-action="reword" data-value="two shorter sentences"/);
+  assert.doesNotMatch(reword, /data-action="apply"/);
+
+  // The same wording can arrive as both a replacement and a rewrite, and they
+  // are still two offers: one stands in for the underlined words, the other
+  // replaces the clause through its own range. Deduplicating on the wording
+  // alone dropped the rewrite and left it unreachable.
+  const both = renderIssuePopover({
+    id: 'issue-5', category: 'clarity', source: 'quality', severity: 'low',
+    message: 'This clause uses passive voice.', matchedText: 'were reviewed',
+    actionability: 'review-first',
+    replacements: [{ value: 'the team reviewed the report' }],
+    rewordCandidates: [{ id: 'r2', replacementText: 'the team reviewed the report', rationale: 'clarity' }],
+  });
+  assert.match(both, /data-action="apply" data-value="the team reviewed the report"/);
+  assert.match(both, /data-action="reword" data-value="the team reviewed the report"/);
 
   // Every control the popover renders names an action a host implements, and
   // an action that carries a replacement carries the value with it.
@@ -109,9 +128,9 @@ test('a finding to review offers its candidates instead of an unhandled action',
     assert.ok(actions.length > 0);
     // Adding an action here is a commitment: a host that renders this card must
     // implement every one, or it ships a control that does nothing when clicked.
-    const implemented = ['apply', 'ignore', 'dictionary', 'previous', 'next', 'close'];
+    const implemented = ['apply', 'reword', 'ignore', 'dictionary', 'previous', 'next', 'close'];
     for (const action of actions) assert.ok(implemented.includes(action), `unhandled action: ${action}`);
-    for (const button of html.match(/<button[^>]*data-action="apply"[^>]*>/g) || []) {
+    for (const button of html.match(/<button[^>]*data-action="(?:apply|reword)"[^>]*>/g) || []) {
       assert.match(button, /data-value="[^"]+"/, 'an apply control must name the replacement it applies');
     }
   }

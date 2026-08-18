@@ -358,20 +358,15 @@ function handleIssueAction(event) {
   }
   // A rewrite replaces a clause, so it is applied through the candidate's own
   // edit range rather than the finding's — the finding is on the verb and the
-  // rewrite spans the sentence.
-  if (action === 'reword' && issue) {
-    const candidate = (issue.rewordCandidates || []).find((option) => option.replacementText === control?.dataset.value)
-      || issue.rewordCandidates?.[0];
-    const edit = candidate?.edits?.[0];
-    if (edit) {
-      const before = input.value;
-      input.value = before.slice(0, edit.range.offset)
-        + edit.replacementText
-        + before.slice(edit.range.offset + edit.range.length);
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      hideCard();
+  // rewrite spans the sentence. The controller owns that, and with it the same
+  // refusal Apply gets when the draft has moved on since the check.
+  if (action === 'reword' && issue && value) {
+    if (!controller.applyReword(issue.id, value)?.applied) {
       void checkDraft();
+      return;
     }
+    hideCard();
+    void checkDraft();
     return;
   }
   if (action === 'dictionary' && issue) void addToDictionary(String(issue.matchedText || '').trim());

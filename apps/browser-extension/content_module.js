@@ -157,6 +157,18 @@ function openPopover(index = state.issueIndex || 0) {
       closePopover();
       void runCheck();
     }
+    // A rewrite carries its own range — the finding is on the verb, the rewrite
+    // spans the clause — so it goes through the controller's reword path rather
+    // than through the finding's. Applying it as a correction would have put the
+    // whole sentence where the verb was.
+    if (action === 'reword' && value) {
+      if (!state.controller.applyReword(issue.id, value)?.applied) {
+        void runCheck().then(openPopover);
+        return;
+      }
+      closePopover();
+      void runCheck();
+    }
     if (action === 'ignore') closePopover();
     if (action === 'close') closePopover();
     // The card is reopened at the neighbouring finding rather than mutated in

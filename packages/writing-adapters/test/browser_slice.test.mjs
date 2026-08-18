@@ -38,6 +38,110 @@ test('browser slice applies only a current normalized issue through the field ca
   assert.equal(controller.applyIssue(issue.id, 'other').applied, false);
 });
 
+// The finding sits on the verb and the rewrite spans the clause around it, so a
+// rewrite applied through the finding's range writes the sentence into the
+// middle of itself: "The results The team reviewed the results by the team."
+test('browser slice applies a rewrite over the candidate range, not the finding range', async () => {
+  const text = 'The results were reviewed by the team.';
+  const rewrite = 'The team reviewed the results';
+  const field = { tagName: 'TEXTAREA', value: text, selectionStart: 0, selectionEnd: 0, setSelectionRange(start, end) { this.selectionStart = start; this.selectionEnd = end; } };
+  const controller = createBrowserSliceController({
+    core,
+    field: createBrowserFieldCapability(field),
+    check: async () => ({ matches: [{
+      offset: 12, length: 13, message: 'This clause uses passive voice.', rule: { id: 'PASSIVE' }, ikmalSource: 'quality-sidecar',
+      rewordCandidates: [{
+        replacementText: rewrite, rationale: 'Names the actor first.', source: 'quality-sidecar',
+        confidence: 0.8, meaningRisk: 'medium', scope: 'sentence',
+        edits: [{ start: 0, end: 37, replacementText: rewrite }],
+      }],
+    }] }),
+  });
+  await controller.check();
+  const issue = controller.state().result.matches[0];
+  assert.equal(issue.matchedText, 'were reviewed', 'the finding stays on the verb');
+  const applied = controller.applyReword(issue.id, rewrite);
+  assert.equal(applied.applied, true);
+  assert.equal(field.value, 'The team reviewed the results.');
+  assert.equal(applied.record.kind, 'rewording');
+  assert.equal(controller.state().result, null);
+});
+
+// A rewrite derived from a check the field has moved past cannot be applied at
+// the offsets it was given: they describe text that is no longer there, and the
+// splice lands mid-word. Checks are debounced, so this is the writer typing
+// while the card is open, not a rare race.
+test('browser slice refuses a rewrite once the field has moved on', async () => {
+  const text = 'The results were reviewed by the team.';
+  const rewrite = 'The team reviewed the results';
+  const field = { tagName: 'TEXTAREA', value: text, selectionStart: 0, selectionEnd: 0, setSelectionRange(start, end) { this.selectionStart = start; this.selectionEnd = end; } };
+  const controller = createBrowserSliceController({
+    core,
+    field: createBrowserFieldCapability(field),
+    check: async () => ({ matches: [{
+      offset: 12, length: 13, message: 'This clause uses passive voice.', rule: { id: 'PASSIVE' }, ikmalSource: 'quality-sidecar',
+      rewordCandidates: [{
+        replacementText: rewrite, rationale: 'Names the actor first.', source: 'quality-sidecar',
+        confidence: 0.8, meaningRisk: 'medium', scope: 'sentence',
+        edits: [{ start: 0, end: 37, replacementText: rewrite }],
+      }],
+    }] }),
+  });
+  await controller.check();
+  const issue = controller.state().result.matches[0];
+  field.value = `Yesterday, ${text}`;
+  assert.equal(controller.applyReword(issue.id, rewrite).applied, false);
+  assert.equal(field.value, `Yesterday, ${text}`, 'the draft is left as the writer typed it');
+  assert.equal(controller.applyReword('issue-missing', rewrite).applied, false);
+});
+
+// A candidate carries a list of edits, and half of them is neither the sentence
+// the writer wrote nor the one they chose. They span one range and apply as one
+// thing.
+test('browser slice applies every edit a rewrite carries', async () => {
+  const field = { tagName: 'TEXTAREA', value: 'Write teh draft', selectionStart: 0, selectionEnd: 0, setSelectionRange(start, end) { this.selectionStart = start; this.selectionEnd = end; } };
+  const controller = createBrowserSliceController({
+    core,
+    field: createBrowserFieldCapability(field),
+    check: async () => ({ matches: [{
+      offset: 6, length: 3, message: 'Consider rewording.', rule: { id: 'REWORD' }, ikmalSource: 'quality-sidecar',
+      rewordCandidates: [{
+        replacementText: 'Draft the', rationale: 'Names the actor first.', source: 'quality-sidecar',
+        confidence: 0.8, meaningRisk: 'medium', scope: 'sentence',
+        edits: [{ start: 0, end: 5, replacementText: 'Draft' }, { start: 6, end: 9, replacementText: 'the' }],
+      }],
+    }] }),
+  });
+  await controller.check();
+  const issue = controller.state().result.matches[0];
+  assert.equal(controller.applyReword(issue.id, 'Draft the').applied, true);
+  assert.equal(field.value, 'Draft the draft');
+});
+
+// The chooser sends back the wording that was clicked. A wording that matches
+// nothing on offer means the card and the result have come apart, and standing
+// in the first candidate would splice a rewrite the writer never read — a wrong
+// edit where a refusal costs nothing.
+test('browser slice refuses a rewrite whose wording it was not offering', async () => {
+  const field = { tagName: 'TEXTAREA', value: 'Write teh draft', selectionStart: 0, selectionEnd: 0, setSelectionRange(start, end) { this.selectionStart = start; this.selectionEnd = end; } };
+  const controller = createBrowserSliceController({
+    core,
+    field: createBrowserFieldCapability(field),
+    check: async () => ({ matches: [{
+      offset: 6, length: 3, message: 'Consider rewording.', rule: { id: 'REWORD' }, ikmalSource: 'quality-sidecar',
+      rewordCandidates: [{
+        replacementText: 'Draft the', rationale: 'Names the actor first.', source: 'quality-sidecar',
+        confidence: 0.8, meaningRisk: 'medium', scope: 'sentence',
+        edits: [{ start: 0, end: 5, replacementText: 'Draft' }, { start: 6, end: 9, replacementText: 'the' }],
+      }],
+    }] }),
+  });
+  await controller.check();
+  const issue = controller.state().result.matches[0];
+  assert.equal(controller.applyReword(issue.id, 'Compose the').applied, false);
+  assert.equal(field.value, 'Write teh draft', 'the draft is left as the writer typed it');
+});
+
 test('browser slice rebases selected-check offsets before applying a correction', async () => {
   const field = { tagName: 'TEXTAREA', value: 'Write teh draft', selectionStart: 6, selectionEnd: 9, setSelectionRange(start, end) { this.selectionStart = start; this.selectionEnd = end; } };
   const controller = createBrowserSliceController({

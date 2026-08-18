@@ -29,6 +29,26 @@ export interface BrowserAppliedCorrection {
   record: { id: string; issueId?: string; revisionBefore: number; revisionAfter: number; [key: string]: unknown };
 }
 
+// An alternative wording, carrying the range it replaces rather than borrowing
+// the finding's: the mark sits on the verb and the rewrite spans the clause.
+export interface BrowserRewordCandidate {
+  replacementText: string;
+  edits: Array<{ range: { offset: number; length: number }; replacementText: string }>;
+  rationale: string;
+  scope: 'phrase' | 'sentence' | 'selection';
+  [key: string]: unknown;
+}
+
+export interface BrowserRewordRequest {
+  documentId: string;
+  revision: number;
+  text: string;
+  language: unknown;
+  scope: 'phrase' | 'sentence' | 'selection';
+  range: { offset: number; length: number };
+  reason: string;
+}
+
 export interface BrowserCoreBridge {
   createTextDocument(input: { id: string; text: string; revision: number; language: string; source: 'browser-field' }): BrowserCoreDocument;
   createCheckRequest(document: BrowserCoreDocument, selection?: { offset: number; length: number }): BrowserCoreRequest;
@@ -40,6 +60,7 @@ export interface BrowserCoreBridge {
   textEditBetween(before: string, after: string): { range: { offset: number; length: number }; replacementLength: number } | null;
   resultIsCurrent(document: BrowserCoreDocument, result: Pick<BrowserCoreResult, 'documentId' | 'revision'>): boolean;
   applyCorrection(document: BrowserCoreDocument, range: { offset: number; length: number }, replacement: string, metadata: { issueId: string; source: string; kind: 'correction' }): BrowserAppliedCorrection;
+  applyRewordCandidate(document: BrowserCoreDocument, request: BrowserRewordRequest, candidate: BrowserRewordCandidate, options: { confirmed: boolean }): BrowserAppliedCorrection;
   resolveIndicatorState(input: { checking?: boolean; issueCount?: number; available?: boolean; focus?: { mode: 'active' | 'paused' | 'zen'; until: number | null }}): { status: string; issueCount: number; mode: string; label: string };
 }
 
@@ -65,6 +86,7 @@ export interface BrowserSliceController {
   state(): BrowserSliceState;
   check(focus?: { mode: 'active' | 'paused' | 'zen'; until: number | null }, options?: CheckOptions): Promise<BrowserSliceState & { stale?: boolean }>;
   applyIssue(issueID: string, replacement: string): { applied: boolean; record?: BrowserAppliedCorrection['record'] };
+  applyReword(issueID: string, replacementText: string): { applied: boolean; record?: BrowserAppliedCorrection['record'] };
 }
 
 export function createBrowserSliceController({
@@ -172,5 +194,45 @@ export function createBrowserSliceController({
     return { applied: true, record: applied.record };
   }
 
-  return { state, check: runCheck, applyIssue };
+  // A rewrite replaces the clause, not the finding. It goes through the same
+  // door as a correction — the field has to still hold the text the check
+  // answered for — because the failure it prevents is worse here: the
+  // candidate's offsets span a whole sentence, so applying them to text that
+  // has moved lands the rewrite mid-word.
+  function applyReword(issueID: string, replacementText: string) {
+    if (!result || !core.resultIsCurrent(document, result) || field.read() !== document.text) return { applied: false };
+    const issue = result.matches.find((match) => match.id === issueID);
+    const offered = (Array.isArray(issue?.rewordCandidates) ? issue.rewordCandidates : []) as BrowserRewordCandidate[];
+    // The chooser sends back the wording that was clicked, so the candidate
+    // that is applied is the one the writer read. A wording that matches
+    // nothing on offer is refused rather than stood in for: applying a
+    // different rewrite than the one clicked is a worse answer than applying
+    // none, and it is one the writer has no way to see.
+    const candidate = offered.find((option) => option.replacementText === replacementText);
+    if (!candidate || !candidate.edits?.length) return { applied: false };
+    // The outer bounds of the candidate's own edits are what it rewrites. Taking
+    // the whole span means a candidate with several edits applies as one thing:
+    // half a rewrite is neither the sentence the writer wrote nor the one they
+    // chose.
+    const offset = Math.min(...candidate.edits.map((edit) => edit.range.offset));
+    const range = { offset, length: Math.max(...candidate.edits.map((edit) => edit.range.offset + edit.range.length)) - offset };
+    const request: BrowserRewordRequest = {
+      documentId: document.id, revision: document.revision, text: document.text,
+      language, scope: candidate.scope, range, reason: candidate.rationale,
+    };
+    let applied: BrowserAppliedCorrection;
+    try {
+      // Core checks that the edits are in bounds, do not overlap, and still
+      // produce the wording the candidate promised.
+      applied = core.applyRewordCandidate(document, request, candidate, { confirmed: true });
+    } catch {
+      return { applied: false };
+    }
+    if (!field.replace(range, String(applied.record.replacementText ?? ''))) return { applied: false };
+    document = applied.document;
+    result = null;
+    return { applied: true, record: applied.record };
+  }
+
+  return { state, check: runCheck, applyIssue, applyReword };
 }

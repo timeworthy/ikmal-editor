@@ -64,6 +64,18 @@ test('the browser slice handles every action its issue popover renders', () => {
   assert.doesNotMatch(controller, /canAddToDictionary/);
 });
 
+// The scan above reads literals out of the compiled source, so an action
+// assembled at runtime — data-action="${candidate.action}" — is invisible to it
+// and every host check quietly stops covering that action. It stays a passing
+// test while an Apply button ships wired to nothing. These two are the ones that
+// change the writer's text, which makes them the two that must stay visible.
+test('the actions that edit the text are visible to the scan', () => {
+  const actions = renderedActions(read('packages/writing-ui/dist/issue_popover.js'));
+  for (const action of ['apply', 'reword']) {
+    assert.ok(actions.includes(action), `data-action="${action}" is not a literal in the compiled popover, so no host is checked for handling it`);
+  }
+});
+
 test('applying a suggestion uses the candidate the user chose', () => {
   for (const file of ['apps/desktop-editor/renderer.js', 'apps/browser-extension/content_module.js']) {
     assert.match(read(file), /dataset\??\.value/, `${file} must read the replacement from the clicked control`);

@@ -176,6 +176,13 @@ issuePopover.addEventListener('click', (event) => {
     issuePopover.hidden = true;
     void check();
   }
+  // A rewrite replaces the clause it carries a range for, not the words the
+  // finding underlines.
+  if (action === 'reword' && issue && value) {
+    if (!controller.applyReword(issue.id, value)?.applied) { void check(); return; }
+    issuePopover.hidden = true;
+    void check();
+  }
   if (action === 'ignore' || action === 'close') { issuePopover.hidden = true; fitWindow(); }
   if (action === 'previous') showIssue(issueIndex - 1);
   if (action === 'next') showIssue(issueIndex + 1);

@@ -81,16 +81,39 @@ function escapeHTML(value: string): string {
   return value.replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character] as string));
 }
 
-function candidatesFor(issue: IssuePopoverIssue): string[] {
+// A replacement and a rewrite are not the same offer and cannot carry the same
+// action. A replacement stands in for the words the finding underlines; a
+// rewrite replaces the clause around them and knows its own range. Rendering
+// both as "apply" put the sentence-long rewrite through the range of the verb,
+// which spliced the sentence into the middle of itself.
+function candidatesFor(issue: IssuePopoverIssue): Array<{ value: string; action: 'apply' | 'reword' }> {
   const values = [
-    ...(issue.replacements || []).map((replacement) => replacement.value),
-    ...(issue.rewordCandidates || []).map((candidate) => candidate.replacementText),
-  ].map((value) => String(value ?? '')).filter(Boolean);
-  return [...new Set(values)];
+    ...(issue.replacements || []).map((replacement) => ({ value: String(replacement.value ?? ''), action: 'apply' as const })),
+    ...(issue.rewordCandidates || []).map((candidate) => ({ value: String(candidate.replacementText ?? ''), action: 'reword' as const })),
+  ].filter((candidate) => candidate.value);
+  // Two offers with the same wording are still two offers when they carry
+  // different actions: a replacement standing in for the underlined words and a
+  // rewrite of the clause around them read alike and edit different ranges.
+  // Deduplicating on the wording alone dropped the rewrite, since replacements
+  // are listed first, and left the clause-scoped offer unreachable.
+  return values.filter((candidate, index) => values.findIndex(
+    (other) => other.value === candidate.value && other.action === candidate.action,
+  ) === index);
 }
 
-function applyButton(value: string, label: string): string {
-  return `<button class="cnt-btn" type="button" data-action="apply" data-value="${escapeHTML(value)}">${escapeHTML(label)}</button>`;
+// The action is written out on each branch rather than interpolated into one
+// template. The markup is the same either way, and the literal is what ties the
+// control to the host that has to handle it: tools/host_actions.test.mjs reads
+// the actions a host renders out of the compiled source, and an interpolated
+// one is invisible to it. Both of these edit the writer's text, and they were
+// the two the check stopped covering — an Apply button could have shipped inert
+// with nothing to catch it.
+function candidateButton(candidate: { value: string; action: 'apply' | 'reword' }, label: string): string {
+  const value = escapeHTML(candidate.value);
+  const text = escapeHTML(label);
+  return candidate.action === 'reword'
+    ? `<button class="cnt-btn" type="button" data-action="reword" data-value="${value}">${text}</button>`
+    : `<button class="cnt-btn" type="button" data-action="apply" data-value="${value}">${text}</button>`;
 }
 
 // Every rendered control carries the action a host actually implements. A
@@ -100,9 +123,9 @@ function applyButton(value: string, label: string): string {
 function primaryActionFor(issue: IssuePopoverIssue): string {
   const candidates = candidatesFor(issue);
   if (!candidates.length) return '';
-  if (issue.actionability === 'safe-apply') return applyButton(candidates[0], 'Apply');
+  if (issue.actionability === 'safe-apply') return candidateButton(candidates[0], 'Apply');
   const label = issue.rewordCandidates?.length && !issue.replacements?.length ? 'Consider rewording' : 'Review alternatives';
-  return `<details class="writing-issue-alternatives"><summary>${label}</summary>${candidates.map((value) => applyButton(value, value)).join('')}</details>`;
+  return `<details class="writing-issue-alternatives"><summary>${label}</summary>${candidates.map((candidate) => candidateButton(candidate, candidate.value)).join('')}</details>`;
 }
 
 export function renderIssuePopover(issue: IssuePopoverIssue, options: IssuePopoverOptions = {}): string {
