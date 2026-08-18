@@ -276,6 +276,72 @@ var qualityPassiveParticiples = map[string]bool{
 	"viewed": true, "written": true,
 }
 
+// Words that cannot continue a by-agent's noun phrase.
+//
+// The agent walk is greedy: it reads forward from "by" and has no way to see
+// where the phrase ends, so without this it swallows whatever follows —
+// "reviewed by the team yesterday afternoon" reads the afternoon as part of the
+// actor. A preposition or a conjunction opens something new, a relativiser
+// opens a clause, and a time word belongs to the verb rather than to the actor.
+//
+// "of" is absent on purpose: "by the team of engineers" names one actor.
+var qualityAgentBoundary = map[string]bool{
+	"about": true, "above": true, "across": true, "after": true, "again": true,
+	"against": true, "along": true, "already": true, "although": true,
+	"among": true, "and": true, "around": true, "as": true, "at": true,
+	"because": true, "before": true, "behind": true, "below": true,
+	"beneath": true, "beside": true, "between": true, "beyond": true,
+	"but": true, "despite": true, "down": true, "during": true, "earlier": true,
+	"except": true, "for": true, "from": true, "here": true, "however": true,
+	"if": true, "in": true, "inside": true, "instead": true, "into": true,
+	"later": true, "near": true, "now": true, "on": true, "once": true,
+	"onto": true, "or": true, "out": true, "outside": true, "over": true,
+	"past": true, "per": true, "recently": true, "since": true, "so": true,
+	"soon": true, "still": true, "than": true, "that": true, "then": true,
+	"there": true, "though": true, "through": true, "throughout": true,
+	"to": true, "today": true, "tomorrow": true, "tonight": true,
+	"toward": true, "towards": true, "twice": true, "under": true,
+	"underneath": true, "unless": true, "until": true, "up": true,
+	"upon": true, "via": true, "when": true, "where": true, "which": true,
+	"while": true, "who": true, "whom": true, "whose": true, "with": true,
+	"within": true, "without": true, "yesterday": true, "yet": true,
+
+	// Calendar words. A bare one after the actor is when the verb happened, not
+	// more actor: "approved by the board Monday" is the board, on Monday.
+	"afternoon": true, "evening": true, "friday": true, "monday": true,
+	"month": true, "morning": true, "night": true, "saturday": true,
+	"sunday": true, "thursday": true, "tuesday": true, "wednesday": true,
+	"week": true, "year": true,
+}
+
+// Abbreviations whose own period the sentence numbering reads as a full stop.
+//
+// The list is titles and company suffixes on purpose: those are the ones that
+// turn up inside a by-agent, where a truncated phrase names the wrong actor
+// rather than merely losing a rewrite. Anything else falls to the shape tests
+// in agentEndsAtAbbreviation.
+var qualityAbbreviations = map[string]bool{
+	"assn": true, "atty": true, "capt": true, "co": true, "col": true,
+	"corp": true, "dept": true, "dr": true, "fr": true, "gen": true,
+	"gov": true, "hon": true, "inc": true, "jr": true, "lt": true,
+	"ltd": true, "messrs": true, "mr": true, "mrs": true, "ms": true,
+	"mt": true, "prof": true, "rep": true, "rev": true, "sen": true,
+	"sgt": true, "sr": true, "st": true, "univ": true,
+}
+
+// Words that open a new phrase inside a by-agent rather than continuing it.
+//
+// A determiner heads a noun phrase, so one arriving after the agent's own head
+// has already started belongs to something else: the "last" in "approved by the
+// board last week" opens the week, and the "this" in "reviewed by the team this
+// morning" opens the morning. Neither is part of the actor.
+//
+// These only break past the first word of the agent, where the determiner is
+// the agent's own — "by this team" names an actor like any other.
+var qualityAgentPhraseBreak = map[string]bool{
+	"last": true, "next": true,
+}
+
 var qualityPassiveAdjectiveForms = map[string]bool{
 	"concerned": true, "convinced": true, "excited": true, "interested": true,
 	"married": true, "pleased": true, "related": true, "satisfied": true,
@@ -489,7 +555,7 @@ func analyzeQualityPassiveVoice(text string, tokens []qualityToken) []qualitySug
 			continue
 		}
 
-		byAgent := passiveHasByAgent(tokens, participleIndex)
+		byAgent := passiveHasByAgent(text, tokens, participleIndex)
 		// The -ed suffix alone does not distinguish a passive from a copular
 		// adjective ("the door is closed"), so that fallback is only used when
 		// an explicit by-agent makes the construction unambiguous. Known
@@ -580,10 +646,46 @@ func analyzeQualityPassiveVoice(text string, tokens []qualityToken) []qualitySug
 // correction.
 func passiveActiveRewrite(text string, tokens []qualityToken, auxIndex, participleIndex int) (start, end int, replacement string, ok bool) {
 	sentence := tokens[participleIndex].Sentence
+
+	// Only a plain past auxiliary is rewritten. The clause this builds is simple
+	// past, and everything else in front of the participle says something the
+	// active form would have to say too: "will be reviewed" is not a past
+	// obligation, "has been reviewed" is not a past event, "is reviewed" is a
+	// habit whose active form needs a subject agreement this rule cannot
+	// resolve. Rewriting any of them into "The team reviewed the report" states
+	// something the writer did not. The contracted "wasn't" is excluded by the
+	// same test, which is the point: see the negation below.
+	if tokens[auxIndex].Lower != "was" && tokens[auxIndex].Lower != "were" {
+		return 0, 0, "", false
+	}
+
+	// Adverbs between the auxiliary and the participle are carried into the
+	// active clause, where they sit in front of the verb and read the same:
+	// "were quickly reviewed by the team" becomes "the team quickly reviewed".
+	// A negation cannot be carried and cannot be dropped. The rewrite rebuilds
+	// the span from the subject to the agent, so anything not carried is
+	// deleted, and deleting "not" leaves a sentence that asserts the opposite of
+	// what the writer wrote. It declines instead.
+	adverbs := make([]string, 0, 3)
+	for index := auxIndex + 1; index < participleIndex; index++ {
+		token := tokens[index]
+		if token.Lower == "not" || token.Lower == "never" || !qualityPassiveAdverbs[token.Lower] {
+			return 0, 0, "", false
+		}
+		adverbs = append(adverbs, token.Text)
+	}
+
 	byIndex := -1
 	for index := participleIndex + 1; index < len(tokens) && index <= participleIndex+8; index++ {
 		token := tokens[index]
 		if token.Sentence != sentence || token.Text == "." || token.Text == "!" || token.Text == "?" {
+			break
+		}
+		// A "by" on the far side of a comma belongs to another clause and names
+		// another actor: in "The results were reviewed, and the report was
+		// written by Ian", Ian wrote the report and who reviewed the results is
+		// not in the sentence at all.
+		if !qualityTokensAdjoin(text, tokens[index-1], token) {
 			break
 		}
 		if token.Lower == "by" {
@@ -596,11 +698,31 @@ func passiveActiveRewrite(text string, tokens []qualityToken, auxIndex, particip
 	}
 
 	// The agent runs from "by" to the end of its noun phrase: the clause ends,
-	// or punctuation closes it.
+	// punctuation closes it, or a word arrives that cannot be part of it.
 	agentEnd := byIndex
 	for index := byIndex + 1; index < len(tokens); index++ {
 		token := tokens[index]
 		if token.Sentence != sentence || !isQualityWord(token) {
+			break
+		}
+		if !qualityTokensAdjoin(text, tokens[index-1], token) {
+			break
+		}
+		// A conjunction joins two actors — "by the team and the board" — or it
+		// opens a clause. The word is the same either way, so the phrase behind
+		// it has to look like the actor it claims to be; see
+		// coordinatedAgentEnd. Where it does not, this is the boundary the list
+		// below says it is.
+		if index > byIndex+1 && (token.Lower == "and" || token.Lower == "or") {
+			if end, ok := coordinatedAgentEnd(text, tokens, byIndex, index, sentence); ok {
+				agentEnd = end
+			}
+			break
+		}
+		if qualityAgentBoundary[token.Lower] {
+			break
+		}
+		if index > byIndex+1 && (qualityDeterminers[token.Lower] || qualityAgentPhraseBreak[token.Lower]) {
 			break
 		}
 		agentEnd = index
@@ -608,18 +730,73 @@ func passiveActiveRewrite(text string, tokens []qualityToken, auxIndex, particip
 	if agentEnd == byIndex {
 		return 0, 0, "", false
 	}
+	// The sentence the agent ends may not be a sentence. Sentences are numbered
+	// on ".!?" alone, so the period in "reviewed by Dr. Smith" ends one, and the
+	// walk above stops at a phrase that was never finished: the rewrite named Dr
+	// as the actor and left "Smith." standing behind it. The stranding guard
+	// below cannot see that — what follows the agent is the period, and the name
+	// belongs to the next sentence as far as the tokens know.
+	if agentEndsAtAbbreviation(text, tokens, agentEnd) {
+		return 0, 0, "", false
+	}
+	// The agent has to be the last thing in its sentence. The rewrite moves it
+	// to the front, and anything left standing behind it is stranded next to a
+	// phrase it was never about: "approved by the board, which met on Tuesday"
+	// would become findings that met on Tuesday, and "reviewed by the team
+	// yesterday afternoon" would leave the afternoon with nothing to attach to.
+	// Where the agent ends the sentence there is nothing to strand.
+	if agentEnd+1 < len(tokens) {
+		next := tokens[agentEnd+1]
+		if next.Sentence == sentence && isQualityWord(next) {
+			return 0, 0, "", false
+		}
+	}
 
-	// The subject is everything from the start of the sentence to the auxiliary.
-	// Anything earlier in the sentence means this is a subordinate clause whose
-	// boundaries this rule cannot see, so it declines rather than guessing.
-	subjectStart := -1
+	// The subject is the noun phrase in front of the auxiliary: back to the
+	// determiner that heads it, or to the start of the sentence. Anything left
+	// in front of it belongs to a clause this rule cannot see the boundaries of
+	// — "He said the report was reviewed by the team" is about what he said, not
+	// about the team — so it declines rather than guessing.
+	subjectStart := auxIndex
 	for index := auxIndex - 1; index >= 0; index-- {
-		if tokens[index].Sentence != sentence {
+		token := tokens[index]
+		if token.Sentence != sentence || !isQualityWord(token) {
+			break
+		}
+		if !qualityTokensAdjoin(text, token, tokens[index+1]) {
 			break
 		}
 		subjectStart = index
+		if qualityDeterminers[token.Lower] {
+			// A quantifier or a focus word sits in front of the determiner and
+			// still belongs to the phrase — "both the reports", "only the
+			// summary" — where anything else in front of it is another clause.
+			// The walk takes one such word and stops, so "Both the reports were
+			// reviewed by Ian" rewrites while "This week the report was
+			// reviewed by Ian" still declines.
+			if index > 0 && tokens[index-1].Sentence == sentence &&
+				qualityQuantifierHeads[tokens[index-1].Lower] &&
+				qualityTokensAdjoin(text, tokens[index-1], token) {
+				subjectStart = index - 1
+			}
+			break
+		}
 	}
-	if subjectStart < 0 || subjectStart >= auxIndex {
+	if subjectStart >= auxIndex {
+		return 0, 0, "", false
+	}
+	if subjectStart > 0 && tokens[subjectStart-1].Sentence == sentence {
+		return 0, 0, "", false
+	}
+	// The subject's head has to be a word that can head a noun phrase. The walk
+	// back stops at a determiner, and a subject without one has nothing to stop
+	// it: it runs through whatever opened the sentence and takes it along. "In
+	// 2024 reports were reviewed by Ian" offered "Ian reviewed in 2024 reports",
+	// and "Yesterday reports were reviewed by Ian" moved the day into the
+	// object. A determiner-headed subject already declines on the phrase in
+	// front of it — "This week the report was reviewed by Ian" — and this is
+	// that same refusal for the subjects that have no determiner to find it.
+	if qualityAgentBoundary[tokens[subjectStart].Lower] || qualityAgentPhraseBreak[tokens[subjectStart].Lower] {
 		return 0, 0, "", false
 	}
 	subject := strings.TrimSpace(text[tokens[subjectStart].Start:tokens[auxIndex-1].End])
@@ -629,18 +806,141 @@ func passiveActiveRewrite(text string, tokens []qualityToken, auxIndex, particip
 		return 0, 0, "", false
 	}
 
-	// The sentence's first word carries its capital. Moving the agent to the
-	// front moves the capital with it, and the old subject goes back to
-	// lower case unless it is a proper noun — which "I" and an already
-	// capitalised interior word both stand for here.
-	leading := subjectStart == 0 || tokens[subjectStart].Sentence != tokens[max(0, subjectStart-1)].Sentence
-	if leading {
-		agent = upperFirst(agent)
-		if !startsWithUppercase(subject[1:]) && subject != "I" {
-			subject = lowerFirst(subject)
-		}
+	// An agent headed by an object pronoun needs its subject form. Only the head
+	// changes and the rest of the phrase comes through as written, so "by them
+	// all" is "They all" rather than "They".
+	//
+	// "her" is the exception, and the reason this once looked at one-word agents
+	// only: standing alone it is the pronoun, and in front of a noun it is the
+	// possessive, so "by her team" is "Her team". The other four are never
+	// determiners, and a noun behind them changes nothing.
+	agentHead := tokens[byIndex+1]
+	if subjectForm, ok := qualitySubjectPronouns[agentHead.Lower]; ok &&
+		(agentEnd == byIndex+1 || agentHead.Lower != "her") {
+		agent = subjectForm + text[agentHead.End:tokens[agentEnd].End]
 	}
-	return tokens[subjectStart].Start, tokens[agentEnd].End, agent + " " + verb + " " + subject, true
+
+	// The subject the rewrite displaces lands in object position, where a
+	// subject pronoun is the wrong form the other way round: "The panel
+	// interviewed I" is as ungrammatical as "Him reviewed the report", and the
+	// lower-casing below made it "the panel interviewed i". None of these five
+	// is ever a determiner, so only the head changes here too and "We engineers
+	// were reviewed" becomes "us engineers".
+	subjectHead := tokens[subjectStart]
+	if objectForm, ok := qualityObjectPronouns[subjectHead.Lower]; ok {
+		subject = objectForm + text[subjectHead.End:tokens[auxIndex-1].End]
+	}
+
+	agent = upperFirst(agent)
+	if subjectTakesLowerCase(tokens[subjectStart], tokens[auxIndex]) {
+		subject = lowerFirst(subject)
+	}
+	parts := append([]string{agent}, adverbs...)
+	parts = append(parts, verb, subject)
+	return tokens[subjectStart].Start, tokens[agentEnd].End, strings.Join(parts, " "), true
+}
+
+// coordinatedAgentEnd returns the end of a second actor joined onto a by-agent
+// by "and" or "or", and whether there is one.
+//
+// "The results were reviewed by the team and the board" names two actors, and
+// the conjunction is all there is between them. "The results were reviewed by
+// the team and the board approved the plan" uses the same word to open a
+// clause, and reading that as more actor builds a sentence about a board that
+// approved the plan reviewing the results. Nothing in the word tells them
+// apart, so this asks the phrase behind it to be shaped like an actor: a
+// determiner and one word, or one word alone, ending the sentence and reading
+// as nothing that could be a verb. Anything longer or less certain declines,
+// which is what the rewrite does everywhere else it cannot see a boundary.
+//
+// Pronouns are left out of coordination entirely. "by Ian and me" is the
+// correct object form where it stands and wants "Ian and I" in front of the
+// verb, and a rule that rewrites one conjunct is not going to get the pair
+// right.
+func coordinatedAgentEnd(text string, tokens []qualityToken, byIndex, conjunction, sentence int) (int, bool) {
+	if _, pronoun := qualitySubjectPronouns[tokens[byIndex+1].Lower]; pronoun {
+		return 0, false
+	}
+	end, words := conjunction, 0
+	for index := conjunction + 1; index < len(tokens); index++ {
+		token := tokens[index]
+		if token.Sentence != sentence || !isQualityWord(token) {
+			break
+		}
+		if !qualityTokensAdjoin(text, tokens[index-1], token) {
+			break
+		}
+		if _, pronoun := qualitySubjectPronouns[token.Lower]; pronoun {
+			return 0, false
+		}
+		if qualityAgentBoundary[token.Lower] || qualityAgentPhraseBreak[token.Lower] ||
+			looksLikeQualityVerb(token.Lower) {
+			return 0, false
+		}
+		if index == conjunction+1 && qualityDeterminers[token.Lower] {
+			end = index
+			continue
+		}
+		if qualityDeterminers[token.Lower] || words == 1 {
+			return 0, false
+		}
+		words++
+		end = index
+	}
+	if words == 0 {
+		return 0, false
+	}
+	return end, true
+}
+
+// looksLikeQualityVerb reports whether a word could be the verb of the clause a
+// conjunction opened. It only has to be right about the words that turn up in
+// that position — a past tense — because the alternative reading is a noun
+// phrase, and a noun phrase does not contain one.
+func looksLikeQualityVerb(lower string) bool {
+	if qualityPassiveParticiples[lower] || qualityPassiveAuxiliaries[lower] {
+		return true
+	}
+	if _, ok := qualityPastTense[lower]; ok {
+		return true
+	}
+	return strings.HasSuffix(lower, "ed")
+}
+
+// agentEndsAtAbbreviation reports whether the period that closed the agent's
+// sentence belongs to an abbreviation rather than to the sentence.
+//
+// Three shapes say it does. The word in front of the period is a known
+// abbreviation — "by Dr." — or the period is followed with no space at all,
+// which is a letter inside one: "by the U.S. team" stops the walk at "U". A
+// lone letter is an initial when the name it belongs to continues behind the
+// period, and a name of its own when nothing does: "by team B." at the end of
+// the text is a team, and that rewrite is a good one.
+func agentEndsAtAbbreviation(text string, tokens []qualityToken, agentEnd int) bool {
+	if agentEnd+1 >= len(tokens) {
+		return false
+	}
+	period := tokens[agentEnd+1]
+	last := tokens[agentEnd]
+	if period.Text != "." || period.Start != last.End {
+		return false
+	}
+	if qualityAbbreviations[last.Lower] {
+		return true
+	}
+	if agentEnd+2 < len(tokens) && tokens[agentEnd+2].Start == period.End {
+		return true
+	}
+	if len([]rune(last.Text)) != 1 {
+		return false
+	}
+	// A lone letter is an initial — "by J. Smith", "by John F. Kennedy" — or it
+	// is the tail of a name, "by team B.". Nothing in the letter tells them
+	// apart; what follows the period does. An initial always has the rest of the
+	// name behind it on the same line, and a name that ends the text ends it.
+	// Where a name is followed by a real sentence this reads it as an initial
+	// and declines, which loses a rewrite rather than naming half an actor.
+	return agentEnd+2 < len(tokens) && qualityTokensAdjoin(text, period, tokens[agentEnd+2])
 }
 
 // The past tense of the participles that do not simply end in -ed.
@@ -686,7 +986,7 @@ func lowerFirst(value string) string {
 	return string(unicode.ToLower(runes[0])) + string(runes[1:])
 }
 
-func passiveHasByAgent(tokens []qualityToken, participleIndex int) bool {
+func passiveHasByAgent(text string, tokens []qualityToken, participleIndex int) bool {
 	for index := participleIndex + 1; index < len(tokens) && index <= participleIndex+8; index++ {
 		token := tokens[index]
 		if token.Sentence != tokens[participleIndex].Sentence {
@@ -695,11 +995,143 @@ func passiveHasByAgent(tokens []qualityToken, participleIndex int) bool {
 		if token.Text == "." || token.Text == "!" || token.Text == "?" {
 			break
 		}
+		// The by-agent is the evidence that an -ed word is a participle rather
+		// than an adjective, and evidence from the next clause is not evidence:
+		// the "by" in "The door is closed, and the letter was signed by Ian"
+		// says nothing about "closed".
+		//
+		// A single line break is not a clause boundary though, it is where the
+		// paragraph was wrapped, and reading it as one lost the finding outright
+		// for "The results were reviewed\nby the team." The rewrite still
+		// declines across the wrap; only the evidence reads through it.
+		//
+		// It reads through a wrap that lands directly in front of the "by" and
+		// no further. Sentences are numbered on ".!?" alone, so in line-oriented
+		// prose — bullets, notes, headings — the next line is the same sentence
+		// as far as the tokens know, and walking on into it let the "by" of "The
+		// letter was signed by Ian" become evidence about the "closed" of "The
+		// door is closed" a line above: a copular adjective called passive at
+		// the highest confidence this rule emits.
+		if !qualityTokensAdjoin(text, tokens[index-1], token) {
+			if token.Lower != "by" || !qualityTokensWrap(text, tokens[index-1], token) {
+				break
+			}
+		}
 		if token.Lower == "by" {
 			return true
 		}
 	}
 	return false
+}
+
+// subjectTakesLowerCase reports whether a sentence-initial subject's capital is
+// the sentence's rather than the word's.
+//
+// Moving the agent to the front of the clause moves the sentence's capital with
+// it, and the displaced subject should go back to lower case. Only where the
+// capital is the sentence's: a name keeps its own. Nothing here can tell "Ian"
+// from "Mistakes" in the abstract, so this asks for a positive reason to lower
+// the case — the word is a function word, or a plain plural — and leaves the
+// writer's capital alone otherwise. "The team reviewed Feedback" reads oddly;
+// "the team reviewed ian's report" is wrong about a person.
+func subjectTakesLowerCase(head, aux qualityToken) bool {
+	if head.Lower == "i" {
+		return false
+	}
+	// A word in capitals throughout carries its own: an acronym, or a line the
+	// writer shouted. Lowering the first rune of one produced "THE TEAM REVIEWED
+	// tHE REPORT", which is neither the sentence's capital nor the word's.
+	if isShoutedQualityWord(head.Text) {
+		return false
+	}
+	if qualityStopWords[head.Lower] || qualityDeterminers[head.Lower] ||
+		qualityIndefinitePronouns[head.Lower] || qualityQuantifierHeads[head.Lower] {
+		return true
+	}
+	// A possessive ends in "s" without being a plural, and "Ian's" is exactly
+	// the case this must not lower.
+	if strings.ContainsAny(head.Text, "'’") {
+		return false
+	}
+	// A bare word ending in "s" is a plural common noun or it is a name, and
+	// nothing in the word separates "Mistakes" from "James". The auxiliary
+	// does: "were" agrees with a plural and "was" does not, so a subject under
+	// "was" keeps the capital it came with. Without this, "James was
+	// interviewed by the panel" offered "The panel interviewed james".
+	if aux.Lower != "were" {
+		return false
+	}
+	return isPluralQualityNoun(head.Lower)
+}
+
+// isShoutedQualityWord reports whether a word is written in capitals
+// throughout. One letter is no evidence of anything — the "A" of "A report was
+// reviewed" is a determiner wearing the sentence's capital — so this asks for
+// two.
+func isShoutedQualityWord(value string) bool {
+	letters := 0
+	for _, r := range value {
+		if !unicode.IsLetter(r) {
+			continue
+		}
+		if !unicode.IsUpper(r) {
+			return false
+		}
+		letters++
+	}
+	return letters > 1
+}
+
+// Quantifiers and focus words that can head a subject without being anyone's
+// name. They are not determiners — "both the reports" puts the determiner after
+// them — but they take the sentence's capital the same way a determiner does.
+var qualityQuantifierHeads = map[string]bool{
+	"all": true, "another": true, "both": true, "either": true, "few": true,
+	"half": true, "many": true, "much": true, "neither": true, "only": true,
+	"several": true,
+}
+
+// The subject form of the pronouns that change shape in object position.
+//
+// The rewrite moves the agent into subject position, where "by him" has to
+// become "he": "Him reviewed the report" is not stiff, it is ungrammatical, and
+// the rule would rather offer nothing. "you" and "it" are the same word in both
+// positions and need no entry.
+var qualitySubjectPronouns = map[string]string{
+	"her": "she", "him": "he", "me": "I", "them": "they", "us": "we",
+}
+
+// The object form of the pronouns that change shape in subject position: the
+// same trade as qualitySubjectPronouns, made in the other direction for the
+// subject the rewrite displaces. "They were reviewed by the team" has to become
+// "The team reviewed them", never "reviewed they".
+var qualityObjectPronouns = map[string]string{
+	"he": "him", "i": "me", "she": "her", "they": "them", "we": "us",
+}
+
+// qualityTokensAdjoin reports whether two neighbouring tokens sit in the same
+// run of words, with nothing but spaces between them.
+//
+// The tokenizer emits words and terminal punctuation and nothing else, so a
+// comma, a semicolon or a dash is invisible to a walk over token indices — a
+// loop looking for the end of a clause runs straight past it and into the next
+// one. The text between two tokens is where that boundary actually is. A line
+// break counts as one too: sentences are numbered on ".!?" alone, so two
+// unpunctuated lines are otherwise read as a single clause.
+func qualityTokensAdjoin(text string, left, right qualityToken) bool {
+	gap := text[left.End:right.Start]
+	return strings.TrimSpace(gap) == "" && !strings.Contains(gap, "\n")
+}
+
+// qualityTokensWrap is qualityTokensAdjoin with one line break allowed.
+//
+// Hard-wrapped prose breaks a line wherever the column runs out, so a single
+// newline between two words says nothing about the sentence — it is the same
+// clause, seen twice. A blank line is different: that is a paragraph, and the
+// words on either side of it were never in one clause to begin with.
+func qualityTokensWrap(text string, left, right qualityToken) bool {
+	gap := text[left.End:right.Start]
+	return strings.TrimSpace(gap) == "" && strings.Count(gap, "\n") <= 1
 }
 
 // These are deliberately narrow context rules. A checker should not rewrite
