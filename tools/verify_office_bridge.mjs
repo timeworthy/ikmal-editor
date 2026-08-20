@@ -46,6 +46,9 @@ const requiredFiles = [
 ];
 const missing = requiredFiles.filter((file) => !fs.existsSync(path.join(bridge, file)));
 if (missing.length) throw new Error(`Missing Office bridge files: ${missing.join(', ')}`);
+if (!fs.existsSync(path.join(root, 'tools', 'office_host_smoke.mjs'))) {
+  throw new Error('Missing browser-host Office lifecycle smoke harness.');
+}
 
 const manifest = fs.readFileSync(path.join(bridge, 'manifest-word.xml'), 'utf8');
 for (const requiredText of [

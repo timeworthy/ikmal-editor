@@ -373,6 +373,8 @@ func (proxy qualityProxy) routes() *http.ServeMux {
 	mux.HandleFunc("/v1/style-guides", styleGuideStateHandler)
 	mux.HandleFunc("/v1/style-guide/select", styleGuideSelectHandler)
 	mux.HandleFunc("/v1/style-guide/enabled", styleGuideEnabledHandler)
+	mux.HandleFunc("/v1/rules", qualityRulesHandler)
+	mux.HandleFunc("/v1/synonyms", qualitySynonymsHandler)
 	return mux
 }
 

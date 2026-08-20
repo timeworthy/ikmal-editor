@@ -86,3 +86,32 @@ separate a passive from a copular adjective, so `the door is closed` and
 | `IKMAL_CLARITY_ASSISTANCE` | *"assistance"* | **"help"** | PlainLanguage.gov |
 | `IKMAL_CLARITY_COMMENCE` | *"commence"* | **"start"** | PlainLanguage.gov |
 | `IKMAL_CLARITY_TERMINATE` | *"terminate"* | **"end"** | PlainLanguage.gov |
+
+---
+
+### 5. Deterministic Extended Rules & Rule Management
+
+The quality sidecar supports customizable, local deterministic rules without requiring an external LLM API key.
+
+#### Extended Rule Categories
+
+- **`oxford-comma`**: Flags missing serial (Oxford) commas in lists of three or more items (e.g. *"apples, oranges and bananas"* -> **"oranges, and"**).
+- **`passive-voice`**: Detects passive voice constructions and generates active voice rewrites when an explicit actor (`by-agent`) is present in the sentence.
+- **`cliches-jargon`**: Flags overused idioms and corporate buzzwords (e.g. *"think outside the box"* -> **"be creative"**, *"at the end of the day"* -> **"ultimately"**, *"low-hanging fruit"* -> **"easy wins"**).
+- **`weak-words`**: Flags overused intensifiers and vague terms (e.g. *"really important"* -> **"crucial"**, *"very unique"* -> **"unique"**).
+- **`unnecessary-adverbs`**: Flags weak or redundant "-ly" adverbs and modifiers that dilute verb action (e.g. *"ran quickly"*).
+- **`formality-tone`**: Flags overly formal/archaic terms (e.g. *"aforementioned"* -> **"mentioned"**, *"whilst"* -> **"while"**) and overly informal/colloquial slang (e.g. *"gonna"* -> **"going to"**, *"wanna"* -> **"want to"**).
+- **`readability`**: Flags sentences over 30 words to encourage clearer, simpler sentence structures.
+- **`punctuation`**: Flags double spaces, space before punctuation, and repeated punctuation (e.g. `??`, `!!`).
+
+#### Rule Toggle API (`/v1/rules`)
+
+Rules can be enabled or disabled globally or per-request:
+
+- `GET /v1/rules`: Returns all available rules, descriptions, categories, and their enabled status.
+- `POST /v1/rules`: Accepts JSON `{"id": "oxford-comma", "enabled": false}` or `{"rules": {"passive-voice": false}}` to persist user rule preferences.
+- Per-request overrides can also be passed in `POST /v1/analyze` via `disabledRules: ["oxford-comma"]`.
+
+#### Synonym Lookup API (`/v1/synonyms`)
+
+An offline, curated thesaurus engine is served at `GET /v1/synonyms?word=<word>`. It returns clean synonym options for highlighted words in the editor selection popover.

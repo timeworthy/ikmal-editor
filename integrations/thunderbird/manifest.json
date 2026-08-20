@@ -1,0 +1,23 @@
+{
+  "manifest_version": 2,
+  "name": "ikmal editor",
+  "version": "0.1.0",
+  "description": "Local LanguageTool grammar checking for Thunderbird compose windows.",
+  "applications": {
+    "gecko": {
+      "id": "ikmal-thunderbird@timeworthy.media",
+      "strict_min_version": "115.0"
+    }
+  },
+  "permissions": [
+    "compose",
+    "storage",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "background": { "scripts": ["background.js"] },
+  "compose_action": {
+    "default_title": "Check with ikmal",
+    "default_popup": "compose.html"
+  }
+}

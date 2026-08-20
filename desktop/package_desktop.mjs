@@ -99,6 +99,7 @@ try {
       // the browser's "Load unpacked" can actually read.
       path.join(root, 'extension'),
       // Fresh desktop rewrite renderer; selected only when explicitly enabled.
+      path.join(root, 'apps', 'desktop-compact'),
       path.join(root, 'apps', 'desktop-editor'),
       // Office task-pane assets and the loopback bridge are kept outside the
       // Electron asar so a future certificate/setup flow can start the same

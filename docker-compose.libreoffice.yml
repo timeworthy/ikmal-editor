@@ -1,0 +1,9 @@
+services:
+  libreoffice-matrix:
+    build:
+      context: .
+      dockerfile: Dockerfile.libreoffice
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /root

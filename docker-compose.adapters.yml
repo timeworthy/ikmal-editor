@@ -1,0 +1,8 @@
+services:
+  adapter-matrix:
+    build:
+      context: .
+      dockerfile: Dockerfile.adapters
+    read_only: true
+    tmpfs:
+      - /tmp

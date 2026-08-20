@@ -60,12 +60,18 @@ Then load the extension:
 2. Turn on **Developer mode**
 3. Choose **Load unpacked** and select this `extension/` directory
 
-**Firefox — not currently supported.** This manifest declares a background
-service worker, which is the Chromium shape. Firefox's MV3 uses event pages
-and also expects a `browser_specific_settings.gecko.id`, so loading it there
-needs both added and tested first. Use LanguageTool's own Firefox plugin
-pointed at your local server in the meantime — the desktop app's
-**LanguageTool plugins** card sets that up.
+**Firefox** uses the separately packaged manifest produced by
+`npm run package:firefox`. It declares the required Gecko ID and uses a module
+event page instead of Chromium's service worker. Firefox 142 or newer is
+supported; load the resulting `.xpi` temporarily from `about:debugging` while
+developing. The checking runtime, local endpoint, popup, workspace, dictionary,
+focus modes, selection checks, and chunk retention are shared with Chromium.
+
+**Thunderbird is not yet supported by this browser artifact.** Mail compose
+windows need a dedicated MailExtension adapter so signatures, quoted history,
+and HTML bodies can be projected and applied safely. See
+[`docs/opensource-extension-patterns.md`](../docs/opensource-extension-patterns.md)
+for the planned host order.
 
 That is the whole setup. The extension finds the server at
 `http://127.0.0.1:8096` and starts working. If the server is not running, the

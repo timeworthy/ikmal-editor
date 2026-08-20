@@ -53,10 +53,9 @@ Run:
 ikmal-editor-windows-amd64.exe -uninstall
 ```
 On Windows, this automatically:
-1. Deletes the Windows Startup Registry Run Key (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run\IkmalEditor`) `[BETA / EXPERIMENTAL]`.
-2. Clears Chrome & Edge Managed Registry Policies (`HKCU\Software\Policies\Google\Chrome` & `HKCU\Software\Policies\Microsoft\Edge`).
-3. Terminates background `javaw.exe` / `java.exe` server processes (`taskkill`).
-4. Purges `%USERPROFILE%\.ikmal-editor` application data.
+1. Deletes the Windows Startup Registry Run Key (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run\IkmalEditor`) only when it is the value ikmal created `[BETA / EXPERIMENTAL]`.
+2. Leaves existing Chrome and Edge managed policies and unrelated Java/LanguageTool processes untouched.
+3. Purges `%USERPROFILE%\.ikmal-editor` application data.
 
 ---
 
@@ -73,4 +72,4 @@ Run:
 ```bash
 ikmal-editor -uninstall
 ```
-This unloads LaunchAgent / systemd background daemons, deletes browser policy files, stops container instances, and purges `~/.ikmal-editor`.
+This unloads ikmal-owned LaunchAgent / systemd background daemons, restores or removes only integration files ikmal changed, stops only its managed container instances, and purges `~/.ikmal-editor`. Existing LanguageTool services, browser policies, and user-edited integrations are preserved.

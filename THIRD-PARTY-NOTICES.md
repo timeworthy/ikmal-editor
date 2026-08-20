@@ -100,6 +100,13 @@ style guide engine, the Electron desktop app and editor, the browser extension
 in `extension/`, the project's icons and artwork, and the rule packs in
 `rules/`.
 
+### Offline Synonym Thesaurus Dataset
+
+The offline synonym dictionary in `quality_synonyms.go` is curated from public domain and permissively licensed open lexical databases:
+- **Open English WordNet**: Permissive open-source lexical dataset (MIT / BSD-style).
+- **Moby Thesaurus II**: Public Domain (Grady Ward, 1996).
+- **Wiktionary Lexical Subsets**: CC BY-SA 3.0 / Public Domain open dictionary entries.
+
 The browser extension contains no code from either of LanguageTool's browser
 extensions. The current one is proprietary and could not be used; the older
 `languagetool-browser-addon` is LGPL-2.1 and could have been, but it is

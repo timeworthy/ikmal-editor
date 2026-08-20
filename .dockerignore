@@ -1,9 +1,13 @@
 .git
 .playwright-mcp
+.vscode-test
 bin
 desktop/node_modules
 desktop/package-lock.json
 node_modules
+**/node_modules
+**/dist
+apps
 *.test
 *_test.go
 README.md

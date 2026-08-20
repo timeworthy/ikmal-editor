@@ -1,0 +1,7 @@
+body { min-width: 24rem; margin: 1rem; font: message-box; }
+main { display: grid; gap: .7rem; }
+label { display: grid; gap: .25rem; }
+input { min-width: 0; }
+li { margin: .6rem 0; }
+button { margin-left: .5rem; }
+#status { min-height: 1.2em; }

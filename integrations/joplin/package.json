@@ -1,0 +1,8 @@
+{
+  "name": "ikmal-editor-joplin",
+  "version": "0.1.0",
+  "description": "Local LanguageTool grammar and style checking for Joplin notes.",
+  "main": "index.js",
+  "keywords": ["plugin", "grammar", "languagetool"],
+  "license": "MIT"
+}

@@ -11,10 +11,17 @@
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present && npm run test:units",
     "pretest:units": "node tools/package_desktop_rewrite.mjs",
-    "test:units": "node --test desktop/launch_at_login.test.cjs desktop/editor_ui.test.mjs tools/*.test.mjs",
-    "verify": "node tools/verify_desktop.mjs && node tools/verify_extension.mjs && node tools/verify_vscode_extension.mjs && node tools/verify_office_bridge.mjs && node tools/verify_editor_assets.mjs && node tools/verify_browser_rewrite.mjs && node tools/verify_desktop_rewrite.mjs && node tools/verify_rewrite_final.mjs && node tools/generate_marks.mjs --check",
+    "test:units": "node --test desktop/launch_at_login.test.cjs desktop/editor_ui.test.mjs packages/writing-ui/test/matrix_controls.test.mjs tools/*.test.mjs",
+    "verify": "node tools/verify_desktop.mjs && node tools/verify_extension.mjs && node tools/verify_firefox_extension.mjs && node tools/verify_vscode_extension.mjs && node tools/verify_office_bridge.mjs && node tools/verify_integrations.mjs && node tools/verify_editor_assets.mjs && node tools/verify_browser_rewrite.mjs && node tools/verify_desktop_rewrite.mjs && node tools/verify_rewrite_final.mjs && node tools/generate_marks.mjs --check",
     "smoke:vscode": "node tools/vscode_extension_smoke.mjs",
     "smoke:gallery": "node tools/design_system_gallery_smoke.mjs",
-    "smoke:browser": "node tools/browser_extension_injection_smoke.mjs && node tools/browser_extension_unavailable_smoke.mjs && node tools/extension_chunked_check_smoke.mjs"
+    "smoke:office": "node tools/office_host_smoke.mjs",
+    "smoke:browser": "node tools/browser_extension_injection_smoke.mjs && node tools/browser_extension_unavailable_smoke.mjs && node tools/extension_chunked_check_smoke.mjs",
+    "smoke:firefox": "node tools/firefox_extension_smoke.mjs",
+    "package:firefox": "node tools/package_firefox_extension.mjs",
+    "smoke:integrations": "node tools/integration_adapter_smoke.mjs",
+    "smoke:docker:integrations": "bash tools/integration_docker_smoke.sh",
+    "smoke:docker:libreoffice": "bash tools/libreoffice_docker_smoke.sh",
+    "smoke:docker": "bash tools/docker_smoke.sh && bash tools/integration_docker_smoke.sh && bash tools/libreoffice_docker_smoke.sh"
   }
 }

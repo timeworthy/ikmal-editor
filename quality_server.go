@@ -18,9 +18,11 @@ const qualityWindowTokens = 80
 var qualityTokenPattern = regexp.MustCompile(`(?i)[\p{L}\p{M}\p{N}]+(?:['’][\p{L}\p{M}\p{N}]+)*|[.!?]`)
 
 type qualityRequest struct {
-	Text     string `json:"text"`
-	Language string `json:"language,omitempty"`
-	Mode     string `json:"mode,omitempty"`
+	Text          string          `json:"text"`
+	Language      string          `json:"language,omitempty"`
+	Mode          string          `json:"mode,omitempty"`
+	DisabledRules []string        `json:"disabledRules,omitempty"`
+	RuleOverrides map[string]bool `json:"ruleOverrides,omitempty"`
 }
 
 type qualityResponse struct {
@@ -354,6 +356,8 @@ func runQualityServer() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", qualityHealthHandler)
 	mux.HandleFunc("/v1/analyze", qualityAnalyzeHandler)
+	mux.HandleFunc("/v1/rules", qualityRulesHandler)
+	mux.HandleFunc("/v1/synonyms", qualitySynonymsHandler)
 
 	host := strings.TrimSpace(os.Getenv("IKMAL_BIND_HOST"))
 	if host == "" {
@@ -414,7 +418,7 @@ func qualityAnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := analyzeQualityText(request.Text)
+	response := analyzeQualityTextReq(request)
 	writeQualityJSON(w, http.StatusOK, response)
 }
 
@@ -442,89 +446,457 @@ func writeQualityRequestError(w http.ResponseWriter, err error, message string) 
 	writeQualityJSON(w, http.StatusBadRequest, map[string]string{"error": message})
 }
 
+var qualityClichesJargonMap = map[string]string{
+	"at the end of the day":      "ultimately",
+	"think outside the box":     "be creative",
+	"low-hanging fruit":         "easy wins",
+	"circle back":               "follow up",
+	"touch base":                "contact",
+	"paradigm shift":            "fundamental change",
+	"synergy":                   "cooperation",
+	"hit the ground running":    "start immediately",
+	"game changer":              "major innovation",
+	"move the needle":           "make progress",
+	"avoid like the plague":     "avoid",
+	"give 110 percent":          "do your best",
+	"give 110%":                 "do your best",
+	"take it to the next level": "improve",
+	"push the envelope":         "innovate",
+	"win-win situation":         "mutually beneficial outcome",
+	"in this day and age":       "today",
+	"few and far between":       "rare",
+	"read between the lines":    "look for hidden meaning",
+	"actionable insights":       "useful findings",
+}
+
+var qualityWeakWordsMap = map[string]string{
+	"very unique":      "unique",
+	"very essential":   "essential",
+	"very complete":    "complete",
+	"very main":        "main",
+	"really important": "crucial",
+	"really good":      "excellent",
+	"really big":       "huge",
+	"basically":        "essentially",
+	"literally":        "actually",
+	"stuff and things": "details",
+}
+
 func analyzeQualityText(text string) qualityResponse {
+	return analyzeQualityTextReq(qualityRequest{Text: text})
+}
+
+func analyzeQualityTextReq(request qualityRequest) qualityResponse {
+	text := request.Text
 	tokens := tokenizeQualityText(text)
 	suggestions := make([]qualitySuggestion, 0)
 	antecedents := make([]qualityAntecedent, 0)
 
-	lastContent := make(map[string]qualityToken)
-	lastFamily := make(map[string]qualityToken)
-	for i, token := range tokens {
-		if !isQualityWord(token) {
-			continue
-		}
+	ruleActive := func(ruleID string) bool {
+		return isQualityRuleEnabled(ruleID, request.RuleOverrides, request.DisabledRules)
+	}
 
-		if qualityPronouns[token.Lower] {
-			if antecedent, confidence, found := findQualityAntecedent(tokens, i); found {
-				agreement := antecedentAgreement(token.Lower, antecedent.Lower)
-				antecedents = append(antecedents, qualityAntecedent{
-					Pronoun:         token.Text,
-					Start:           qualityUTF16Offset(text, token.Start),
-					End:             qualityUTF16Offset(text, token.End),
-					Antecedent:      antecedent.Text,
-					AntecedentStart: qualityUTF16Offset(text, antecedent.Start),
-					AntecedentEnd:   qualityUTF16Offset(text, antecedent.End),
-					Confidence:      confidence,
-					Agreement:       agreement,
-				})
-				if agreement != "" {
-					antecedentLink := antecedents[len(antecedents)-1]
-					suggestions = append(suggestions, qualitySuggestion{
-						Start:       qualityUTF16Offset(text, token.Start),
-						End:         qualityUTF16Offset(text, token.End),
-						Replacement: pronounAgreementReplacement(token.Lower, antecedent.Lower),
-						Category:    "pronoun-antecedent",
-						Message:     fmt.Sprintf("The pronoun %q may not agree with the antecedent %q.", token.Text, antecedent.Text),
-						Confidence:  confidence,
-						Source:      "quality-sidecar",
-						Antecedent:  &antecedentLink,
+	if ruleActive("pronoun-antecedent") || ruleActive("repetition") || ruleActive("word-family-echo") {
+		lastContent := make(map[string]qualityToken)
+		lastFamily := make(map[string]qualityToken)
+		for i, token := range tokens {
+			if !isQualityWord(token) {
+				continue
+			}
+
+			if ruleActive("pronoun-antecedent") && qualityPronouns[token.Lower] {
+				if antecedent, confidence, found := findQualityAntecedent(tokens, i); found {
+					agreement := antecedentAgreement(token.Lower, antecedent.Lower)
+					antecedents = append(antecedents, qualityAntecedent{
+						Pronoun:         token.Text,
+						Start:           qualityUTF16Offset(text, token.Start),
+						End:             qualityUTF16Offset(text, token.End),
+						Antecedent:      antecedent.Text,
+						AntecedentStart: qualityUTF16Offset(text, antecedent.Start),
+						AntecedentEnd:   qualityUTF16Offset(text, antecedent.End),
+						Confidence:      confidence,
+						Agreement:       agreement,
 					})
+					if agreement != "" {
+						antecedentLink := antecedents[len(antecedents)-1]
+						suggestions = append(suggestions, qualitySuggestion{
+							Start:       qualityUTF16Offset(text, token.Start),
+							End:         qualityUTF16Offset(text, token.End),
+							Replacement: pronounAgreementReplacement(token.Lower, antecedent.Lower),
+							Category:    "pronoun-antecedent",
+							Message:     fmt.Sprintf("The pronoun %q may not agree with the antecedent %q.", token.Text, antecedent.Text),
+							Confidence:  confidence,
+							Source:      "quality-sidecar",
+							Antecedent:  &antecedentLink,
+						})
+					}
+				}
+			}
+
+			if ruleActive("repetition") && isQualityContentWord(token, tokens, i) {
+				if previous, ok := lastContent[token.Lower]; ok && sameQualityWindow(token, previous, i, tokens) {
+					suggestions = append(suggestions, qualitySuggestion{
+						Start:              qualityUTF16Offset(text, token.Start),
+						End:                qualityUTF16Offset(text, token.End),
+						Category:           "repetition",
+						Message:            fmt.Sprintf("The content word %q repeats nearby. Consider varying the wording if the repetition is not intentional.", token.Text),
+						Confidence:         0.86,
+						Source:             "quality-sidecar",
+						RelatedOccurrences: qualityOccurrencePair(text, previous, token),
+					})
+				}
+				lastContent[token.Lower] = token
+			}
+
+			if ruleActive("word-family-echo") {
+				if family, ok := qualityWordFamilies[token.Lower]; ok {
+					if previous, found := lastFamily[family]; found && sameQualityWindow(token, previous, i, tokens) && previous.Lower != token.Lower {
+						suggestions = append(suggestions, qualitySuggestion{
+							Start:              qualityUTF16Offset(text, token.Start),
+							End:                qualityUTF16Offset(text, token.End),
+							Category:           "word-family-echo",
+							Message:            fmt.Sprintf("%q echoes the nearby word %q. Consider varying the wording.", token.Text, previous.Text),
+							Confidence:         0.78,
+							Source:             "quality-sidecar",
+							RelatedOccurrences: qualityOccurrencePair(text, previous, token),
+						})
+					}
+					lastFamily[family] = token
 				}
 			}
 		}
-
-		if isQualityContentWord(token, tokens, i) {
-			if previous, ok := lastContent[token.Lower]; ok && sameQualityWindow(token, previous, i, tokens) {
-				suggestions = append(suggestions, qualitySuggestion{
-					Start:              qualityUTF16Offset(text, token.Start),
-					End:                qualityUTF16Offset(text, token.End),
-					Category:           "repetition",
-					Message:            fmt.Sprintf("The content word %q repeats nearby. Consider varying the wording if the repetition is not intentional.", token.Text),
-					Confidence:         0.86,
-					Source:             "quality-sidecar",
-					RelatedOccurrences: qualityOccurrencePair(text, previous, token),
-				})
-			}
-			lastContent[token.Lower] = token
-		}
-
-		if family, ok := qualityWordFamilies[token.Lower]; ok {
-			if previous, found := lastFamily[family]; found && sameQualityWindow(token, previous, i, tokens) && previous.Lower != token.Lower {
-				suggestions = append(suggestions, qualitySuggestion{
-					Start:              qualityUTF16Offset(text, token.Start),
-					End:                qualityUTF16Offset(text, token.End),
-					Category:           "word-family-echo",
-					Message:            fmt.Sprintf("%q echoes the nearby word %q. Consider varying the wording.", token.Text, previous.Text),
-					Confidence:         0.78,
-					Source:             "quality-sidecar",
-					RelatedOccurrences: qualityOccurrencePair(text, previous, token),
-				})
-			}
-			lastFamily[family] = token
-		}
 	}
 
-	suggestions = append(suggestions, analyzeQualityHomophones(text, tokens)...)
-	suggestions = append(suggestions, analyzeQualitySentenceStructure(text, tokens)...)
-	suggestions = append(suggestions, analyzeQualityMissingArticles(text, tokens)...)
-	suggestions = append(suggestions, analyzeQualityPassiveVoice(text, tokens)...)
-	suggestions = append(suggestions, analyzeQualityStyleGuide(text)...)
+	if ruleActive("homophones") {
+		suggestions = append(suggestions, analyzeQualityHomophones(text, tokens)...)
+	}
+	if ruleActive("sentence-structure") {
+		suggestions = append(suggestions, analyzeQualitySentenceStructure(text, tokens)...)
+		suggestions = append(suggestions, analyzeQualityMissingArticles(text, tokens)...)
+	}
+	if ruleActive("passive-voice") {
+		suggestions = append(suggestions, analyzeQualityPassiveVoice(text, tokens)...)
+	}
+	if ruleActive("oxford-comma") {
+		suggestions = append(suggestions, analyzeQualityOxfordComma(text, tokens)...)
+	}
+	if ruleActive("cliches-jargon") {
+		suggestions = append(suggestions, analyzeQualityClichesJargon(text)...)
+	}
+	if ruleActive("weak-words") {
+		suggestions = append(suggestions, analyzeQualityWeakWords(text)...)
+	}
+	if ruleActive("readability") {
+		suggestions = append(suggestions, analyzeQualityReadability(text, tokens)...)
+	}
+	if ruleActive("punctuation") {
+		suggestions = append(suggestions, analyzeQualityPunctuation(text)...)
+	}
+	if ruleActive("unnecessary-adverbs") {
+		suggestions = append(suggestions, analyzeQualityUnnecessaryAdverbs(text, tokens)...)
+	}
+	if ruleActive("formality-tone") {
+		suggestions = append(suggestions, analyzeQualityFormalityTone(text)...)
+	}
+	if ruleActive("style-guide") {
+		suggestions = append(suggestions, analyzeQualityStyleGuide(text)...)
+	}
 
 	return qualityResponse{
 		Backend:     "deterministic",
 		Suggestions: suggestions,
 		Antecedents: antecedents,
 	}
+}
+
+var qualityOxfordIntroWords = map[string]bool{
+	"however": true, "therefore": true, "meanwhile": true, "furthermore": true,
+	"moreover": true, "firstly": true, "secondly": true, "finally": true,
+	"currently": true, "recently": true, "today": true, "yesterday": true,
+	"tomorrow": true, "additionally": true, "consequently": true, "besides": true,
+}
+
+var qualityOxfordCommonVerbs = map[string]bool{
+	"grew": true, "fell": true, "rose": true, "increased": true, "decreased": true,
+	"expanded": true, "spoke": true, "wrote": true, "ran": true, "walked": true,
+	"said": true, "thought": true, "went": true, "came": true, "took": true,
+}
+
+func analyzeQualityOxfordComma(text string, tokens []qualityToken) []qualitySuggestion {
+	suggestions := make([]qualitySuggestion, 0)
+	re := regexp.MustCompile(`(?i)\b([a-zA-Z0-9'-]+),\s+([a-zA-Z0-9'-]+)\s+(and|or)\s+([a-zA-Z0-9'-]+)\b`)
+	matches := re.FindAllStringSubmatchIndex(text, -1)
+	for _, m := range matches {
+		item1Text := strings.ToLower(text[m[2]:m[3]])
+		item2Text := text[m[4]:m[5]]
+		conjText := text[m[6]:m[7]]
+
+		if qualityOxfordIntroWords[item1Text] || regexp.MustCompile(`^\d{4}$`).MatchString(item1Text) {
+			continue
+		}
+		if qualityOxfordCommonVerbs[strings.ToLower(item2Text)] || qualityVerbForms[strings.ToLower(item2Text)] {
+			continue
+		}
+
+		start := m[4]
+		end := m[7]
+		replacement := item2Text + ", " + conjText
+
+		suggestions = append(suggestions, qualitySuggestion{
+			Start:       qualityUTF16Offset(text, start),
+			End:         qualityUTF16Offset(text, end),
+			Replacement: replacement,
+			Category:    "oxford-comma",
+			Message:     fmt.Sprintf("In a list of three or more items, an Oxford comma is recommended before '%s'.", conjText),
+			Confidence:  0.88,
+			Source:      "quality-sidecar",
+		})
+	}
+	return suggestions
+}
+
+func analyzeQualityClichesJargon(text string) []qualitySuggestion {
+	suggestions := make([]qualitySuggestion, 0)
+	lowerText := strings.ToLower(text)
+	for phrase, replacement := range qualityClichesJargonMap {
+		for cursor := 0; cursor < len(lowerText); {
+			rel := strings.Index(lowerText[cursor:], phrase)
+			if rel < 0 {
+				break
+			}
+			start := cursor + rel
+			end := start + len(phrase)
+			if qualityStyleGuideBoundary(text, start, true) && qualityStyleGuideBoundary(text, end, false) {
+				suggestions = append(suggestions, qualitySuggestion{
+					Start:       qualityUTF16Offset(text, start),
+					End:         qualityUTF16Offset(text, end),
+					Replacement: replacement,
+					Category:    "cliches-jargon",
+					Message:     fmt.Sprintf("The phrase %q is an overused cliché or corporate jargon. Consider using %q instead.", text[start:end], replacement),
+					Confidence:  0.86,
+					Source:      "quality-sidecar",
+				})
+			}
+			cursor = end
+		}
+	}
+	return suggestions
+}
+
+func analyzeQualityWeakWords(text string) []qualitySuggestion {
+	suggestions := make([]qualitySuggestion, 0)
+	lowerText := strings.ToLower(text)
+	for phrase, replacement := range qualityWeakWordsMap {
+		for cursor := 0; cursor < len(lowerText); {
+			rel := strings.Index(lowerText[cursor:], phrase)
+			if rel < 0 {
+				break
+			}
+			start := cursor + rel
+			end := start + len(phrase)
+			if qualityStyleGuideBoundary(text, start, true) && qualityStyleGuideBoundary(text, end, false) {
+				suggestions = append(suggestions, qualitySuggestion{
+					Start:       qualityUTF16Offset(text, start),
+					End:         qualityUTF16Offset(text, end),
+					Replacement: replacement,
+					Category:    "weak-words",
+					Message:     fmt.Sprintf("%q is a weak word or filler phrase. Consider replacing it with %q.", text[start:end], replacement),
+					Confidence:  0.82,
+					Source:      "quality-sidecar",
+				})
+			}
+			cursor = end
+		}
+	}
+	return suggestions
+}
+
+func analyzeQualityReadability(text string, tokens []qualityToken) []qualitySuggestion {
+	suggestions := make([]qualitySuggestion, 0)
+	sentenceTokens := make(map[int][]qualityToken)
+	for _, tok := range tokens {
+		if isQualityWord(tok) {
+			sentenceTokens[tok.Sentence] = append(sentenceTokens[tok.Sentence], tok)
+		}
+	}
+	for _, toks := range sentenceTokens {
+		if len(toks) > 30 {
+			first := toks[0]
+			last := toks[len(toks)-1]
+			suggestions = append(suggestions, qualitySuggestion{
+				Start:      qualityUTF16Offset(text, first.Start),
+				End:        qualityUTF16Offset(text, last.End),
+				Category:   "readability",
+				Message:    fmt.Sprintf("This sentence contains %d words. Sentences longer than 30 words can be difficult to read; consider splitting it into shorter sentences.", len(toks)),
+				Confidence: 0.85,
+				Source:     "quality-sidecar",
+			})
+		}
+	}
+	return suggestions
+}
+
+func analyzeQualityPunctuation(text string) []qualitySuggestion {
+	suggestions := make([]qualitySuggestion, 0)
+	reSpaces := regexp.MustCompile(`[^\S\r\n]{2,}`)
+	for _, m := range reSpaces.FindAllStringIndex(text, -1) {
+		suggestions = append(suggestions, qualitySuggestion{
+			Start:       qualityUTF16Offset(text, m[0]),
+			End:         qualityUTF16Offset(text, m[1]),
+			Replacement: " ",
+			Category:    "punctuation",
+			Message:     "Multiple spaces detected. Use a single space between words.",
+			Confidence:  0.95,
+			Source:      "quality-sidecar",
+		})
+	}
+	reSpacePunct := regexp.MustCompile(`[^\S\r\n]+([,.\?!;:])`)
+	for _, m := range reSpacePunct.FindAllStringSubmatchIndex(text, -1) {
+		suggestions = append(suggestions, qualitySuggestion{
+			Start:       qualityUTF16Offset(text, m[0]),
+			End:         qualityUTF16Offset(text, m[1]),
+			Replacement: text[m[2]:m[3]],
+			Category:    "punctuation",
+			Message:     "Unexpected space before punctuation mark.",
+			Confidence:  0.92,
+			Source:      "quality-sidecar",
+		})
+	}
+	reRepPunct := regexp.MustCompile(`(\?\?+|!!+)`)
+	for _, m := range reRepPunct.FindAllStringIndex(text, -1) {
+		suggestions = append(suggestions, qualitySuggestion{
+			Start:       qualityUTF16Offset(text, m[0]),
+			End:         qualityUTF16Offset(text, m[1]),
+			Replacement: string(text[m[0]]),
+			Category:    "punctuation",
+			Message:     "Repeated punctuation detected. Use a single punctuation mark.",
+			Confidence:  0.90,
+			Source:      "quality-sidecar",
+		})
+	}
+	return suggestions
+}
+
+var qualityFormalityFormalMap = map[string]string{
+	"aforementioned":  "mentioned",
+	"henceforth":      "from now on",
+	"heretofore":      "previously",
+	"notwithstanding": "despite",
+	"perchance":       "perhaps",
+	"whilst":          "while",
+	"thusly":          "thus",
+	"hereto":          "to this",
+	"whereupon":       "then",
+	"inasmuch as":     "since",
+	"hitherto":        "until now",
+}
+
+var qualityFormalityInformalMap = map[string]string{
+	"gonna":      "going to",
+	"wanna":      "want to",
+	"gotta":      "got to",
+	"kinda":      "kind of",
+	"sorta":      "sort of",
+	"cuz":        "because",
+	"no worries": "no problem",
+	"bunch of":   "several",
+	"a lot of":   "many",
+	"awesome":    "excellent",
+	"kids":       "children",
+}
+
+var qualityAdverbExclusions = map[string]bool{
+	"only": true, "early": true, "daily": true, "weekly": true, "monthly": true,
+	"yearly": true, "family": true, "apply": true, "reply": true, "supply": true,
+	"rely": true, "fly": true, "ally": true, "jelly": true, "ugly": true,
+	"holy": true, "lonely": true, "silly": true, "friendly": true, "lovely": true,
+	"currently": true, "recently": true, "finally": true, "initially": true,
+	"previously": true, "specifically": true, "generally": true, "usually": true,
+	"frequently": true, "occasionally": true, "normally": true, "typically": true,
+	"similarly": true, "consequently": true, "accordingly": true, "additionally": true,
+	"merely": true, "hardly": true, "scarcely": true, "barely": true,
+}
+
+func analyzeQualityUnnecessaryAdverbs(text string, tokens []qualityToken) []qualitySuggestion {
+	suggestions := make([]qualitySuggestion, 0)
+	for _, token := range tokens {
+		if !isQualityWord(token) {
+			continue
+		}
+		lower := token.Lower
+		if qualityAdverbExclusions[lower] {
+			continue
+		}
+		isLyAdverb := strings.HasSuffix(lower, "ly") && len([]rune(lower)) > 4
+		isFillerAdverb := lower == "very" || lower == "really" || lower == "basically" || lower == "actually" || lower == "virtually" || lower == "quite"
+		if !isLyAdverb && !isFillerAdverb {
+			continue
+		}
+
+		suggestions = append(suggestions, qualitySuggestion{
+			Start:       qualityUTF16Offset(text, token.Start),
+			End:         qualityUTF16Offset(text, token.End),
+			Replacement: "",
+			Category:    "unnecessary-adverbs",
+			Message:     fmt.Sprintf("The adverb %q may be unnecessary or weak. Consider omitting it or using a stronger verb.", token.Text),
+			Confidence:  0.80,
+			Source:      "quality-sidecar",
+		})
+	}
+	return suggestions
+}
+
+func analyzeQualityFormalityTone(text string) []qualitySuggestion {
+	suggestions := make([]qualitySuggestion, 0)
+	lowerText := strings.ToLower(text)
+
+	for phrase, replacement := range qualityFormalityFormalMap {
+		for cursor := 0; cursor < len(lowerText); {
+			rel := strings.Index(lowerText[cursor:], phrase)
+			if rel < 0 {
+				break
+			}
+			start := cursor + rel
+			end := start + len(phrase)
+			if qualityStyleGuideBoundary(text, start, true) && qualityStyleGuideBoundary(text, end, false) {
+				suggestions = append(suggestions, qualitySuggestion{
+					Start:       qualityUTF16Offset(text, start),
+					End:         qualityUTF16Offset(text, end),
+					Replacement: replacement,
+					Category:    "formality-tone",
+					Message:     fmt.Sprintf("%q is overly formal or archaic. Consider using %q for more natural prose.", text[start:end], replacement),
+					Confidence:  0.88,
+					Source:      "quality-sidecar",
+				})
+			}
+			cursor = end
+		}
+	}
+
+	for phrase, replacement := range qualityFormalityInformalMap {
+		for cursor := 0; cursor < len(lowerText); {
+			rel := strings.Index(lowerText[cursor:], phrase)
+			if rel < 0 {
+				break
+			}
+			start := cursor + rel
+			end := start + len(phrase)
+			if qualityStyleGuideBoundary(text, start, true) && qualityStyleGuideBoundary(text, end, false) {
+				suggestions = append(suggestions, qualitySuggestion{
+					Start:       qualityUTF16Offset(text, start),
+					End:         qualityUTF16Offset(text, end),
+					Replacement: replacement,
+					Category:    "formality-tone",
+					Message:     fmt.Sprintf("%q is overly informal or colloquial. Consider using %q for a professional tone.", text[start:end], replacement),
+					Confidence:  0.88,
+					Source:      "quality-sidecar",
+				})
+			}
+			cursor = end
+		}
+	}
+
+	return suggestions
 }
 
 // analyzeQualityPassiveVoice reports the passive construction without trying

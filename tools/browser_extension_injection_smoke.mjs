@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { focusUntilMounted, loadChromium, resolveChromium } from './chromium_launch.mjs';
+import { extensionLaunchOptions, focusUntilMounted, loadChromium, loadUnpackedExtension, resolveChromium } from './chromium_launch.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const packageDir = path.join(root, 'bin', 'browser-extension');
@@ -69,12 +69,15 @@ async function waitForServiceWorker(browserContext) {
   throw new Error(`Timed out waiting for MV3 service worker. Known workers: ${browserContext.serviceWorkers().map((candidate) => candidate.url()).join(', ')}`);
 }
 try {
+  const extensionOptions = extensionLaunchOptions(browserPath, packageDir);
   context = await chromium.launchPersistentContext(userData, {
     executablePath: browserPath,
     headless: false,
     viewport: { width: 1200, height: 800 },
-    args: [`--disable-extensions-except=${packageDir}`, `--load-extension=${packageDir}`, '--no-first-run', '--no-default-browser-check'],
+    ...extensionOptions,
+    args: [...extensionOptions.args, '--no-first-run', '--no-default-browser-check'],
   });
+  await loadUnpackedExtension(context, browserPath, packageDir);
   const serviceWorker = await waitForServiceWorker(context);
   const manifest = await serviceWorker.evaluate(() => chrome.runtime.getManifest());
   if (manifest.name !== 'ikmal editor rewrite (browser slice)') throw new Error(`Unexpected MV3 service worker: ${manifest.name}`);

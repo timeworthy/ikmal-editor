@@ -157,11 +157,18 @@ function postCheck(endpoint, body) {
   });
 }
 
-async function checkDocument(document, diagnostics) {
-  if (!isCheckable(document)) return;
+async function checkDocument(document, diagnostics, selection = null) {
+  if (!isCheckable(document)) {
+    diagnostics.delete(document.uri);
+    matchesByDocument.delete(documentKey(document));
+    setSkippedReason(checkableReason(document));
+    return;
+  }
   const key = documentKey(document);
   const generation = nextGeneration(document);
-  const text = document.getText();
+  const fullText = document.getText();
+  const text = selection ? document.getText(selection) : fullText;
+  const selectionOffset = selection ? document.offsetAt(selection.start) : 0;
   const version = document.version;
   const currentSettings = settings();
   const minimum = Math.max(1, Number(currentSettings.get('minLength', 12)) || 12);
@@ -209,13 +216,20 @@ async function checkDocument(document, diagnostics) {
       languageHint: vscode.env.language,
       response,
       focus,
-      preferences: CORE_PREFERENCES,
+      preferences: {
+        ...CORE_PREFERENCES,
+        dictionaryWords: currentSettings.get('dictionary', []),
+        ignoredRuleIds: currentSettings.get('ignoredRules', []),
+      },
     });
-    if (generations.get(key) !== generation || document.version !== version || !normalized.current || document.getText() !== text) return;
+    if (generations.get(key) !== generation || document.version !== version || !normalized.current || document.getText() !== fullText) return;
     reportDegradedChecks(response);
     // Zen keeps checking and narrows what is reported. The indices stored here
     // must match the ones the diagnostics carry, so the core filter is applied
     // once and both diagnostics and code actions read the same array.
+    if (selectionOffset) {
+      for (const match of normalized.result.matches) match.offset += selectionOffset;
+    }
     const matches = normalized.matches;
     matchesByDocument.set(key, { version, matches, result: normalized.result });
     diagnostics.set(document.uri, matches.map((match, index) => diagnosticFor(document, match, index)));
@@ -248,12 +262,26 @@ function diagnosticFor(document, match, index) {
 const CHECKABLE_SCHEMES = new Set(['file', 'untitled']);
 
 function isCheckable(document) {
-  return Boolean(document) && CHECKABLE_SCHEMES.has(document.uri?.scheme);
+  if (!document || !CHECKABLE_SCHEMES.has(document.uri?.scheme)) return false;
+  const enabledLanguages = settings().get('enabledLanguages', ['plaintext', 'markdown', 'latex', 'tex', 'typst']);
+  return !Array.isArray(enabledLanguages) || enabledLanguages.length === 0 || enabledLanguages.includes(document.languageId);
+}
+
+function checkableReason(document) {
+  if (!document || !CHECKABLE_SCHEMES.has(document.uri?.scheme) || isCheckable(document)) return '';
+  return `ikmal is not checking ${document.languageId || 'this language'} files because that language is disabled in ikmal.enabledLanguages.`;
 }
 
 function scheduleCheck(document, diagnostics) {
-  if (!isCheckable(document)) return;
   const key = documentKey(document);
+  if (!isCheckable(document)) {
+    clearTimeout(timers.get(key));
+    timers.delete(key);
+    diagnostics.delete(document.uri);
+    matchesByDocument.delete(key);
+    setSkippedReason(checkableReason(document));
+    return;
+  }
   clearTimeout(timers.get(key));
   nextGeneration(document);
   diagnostics.delete(document.uri);
@@ -321,6 +349,16 @@ async function applyIssue(uri, expectedVersion, issueId) {
   if (!await vscode.workspace.applyEdit(edit)) vscode.window.showWarningMessage('ikmal: Could not apply that correction.');
 }
 
+async function updateStringListSetting(name, suppliedValue, prompt) {
+  let value = String(suppliedValue || '').trim();
+  if (!value) value = String(await vscode.window.showInputBox({ prompt }) || '').trim();
+  if (!value) return false;
+  const current = settings().get(name, []);
+  const values = [...new Set([...(Array.isArray(current) ? current : []), value])];
+  await settings().update(name, values, vscode.ConfigurationTarget.Global);
+  return true;
+}
+
 async function activate(context) {
   const core = await writingCore();
   const diagnostics = vscode.languages.createDiagnosticCollection('ikmal');
@@ -333,6 +371,23 @@ async function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('ikmal.checkDocument', () => {
     const document = vscode.window.activeTextEditor?.document;
     if (document) checkDocument(document, diagnostics);
+  }));
+  context.subscriptions.push(vscode.commands.registerCommand('ikmal.checkSelection', () => {
+    const editor = vscode.window.activeTextEditor;
+    if (editor && !editor.selection.isEmpty) checkDocument(editor.document, diagnostics, editor.selection);
+  }));
+  context.subscriptions.push(vscode.commands.registerCommand('ikmal.addWordToDictionary', async (word) => {
+    const editor = vscode.window.activeTextEditor;
+    const selected = editor && !editor.selection.isEmpty ? editor.document.getText(editor.selection) : '';
+    if (await updateStringListSetting('dictionary', word || selected, 'Word to add to the ikmal dictionary')) {
+      if (editor) checkDocument(editor.document, diagnostics);
+    }
+  }));
+  context.subscriptions.push(vscode.commands.registerCommand('ikmal.ignoreRule', async (ruleId) => {
+    const editor = vscode.window.activeTextEditor;
+    if (await updateStringListSetting('ignoredRules', ruleId, 'LanguageTool rule ID to ignore')) {
+      if (editor) checkDocument(editor.document, diagnostics);
+    }
   }));
 
   statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 0);

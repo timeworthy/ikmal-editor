@@ -7,8 +7,8 @@ scratch_path=${IKMAL_SWIFT_SCRATCH_PATH:-/private/tmp/ikmal-spellserver-build}
 output_dir=${IKMAL_SPELLSERVER_OUTPUT:-$root_dir/bin/macos}
 bundle_path="$output_dir/ikmal editor spell server.service"
 
-swift build --configuration release --product ikmal-spellserver --scratch-path "$scratch_path"
-binary_dir=$(swift build --configuration release --product ikmal-spellserver --scratch-path "$scratch_path" --show-bin-path)
+swift build --package-path "$project_dir" --configuration release --product ikmal-spellserver --scratch-path "$scratch_path"
+binary_dir=$(swift build --package-path "$project_dir" --configuration release --product ikmal-spellserver --scratch-path "$scratch_path" --show-bin-path)
 binary_path="$binary_dir/ikmal-spellserver"
 
 rm -rf "$bundle_path"

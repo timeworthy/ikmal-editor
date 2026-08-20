@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { focusUntilMounted, loadChromium, resolveChromium } from './chromium_launch.mjs';
+import { extensionLaunchOptions, focusUntilMounted, loadChromium, loadUnpackedExtension, resolveChromium } from './chromium_launch.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const packageDir = path.join(root, 'bin', 'browser-extension');
@@ -34,12 +34,15 @@ const fixturePort = fixtureServer.address().port;
 const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'ikmal-browser-unavailable-smoke-'));
 let context;
 try {
+  const extensionOptions = extensionLaunchOptions(browserPath, packageDir);
   context = await chromium.launchPersistentContext(userData, {
     executablePath: browserPath,
     headless: false,
     viewport: { width: 1200, height: 800 },
-    args: [`--disable-extensions-except=${packageDir}`, `--load-extension=${packageDir}`, '--no-first-run', '--no-default-browser-check'],
+    ...extensionOptions,
+    args: [...extensionOptions.args, '--no-first-run', '--no-default-browser-check'],
   });
+  await loadUnpackedExtension(context, browserPath, packageDir);
   const page = context.pages()[0] || await context.newPage();
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));

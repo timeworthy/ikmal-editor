@@ -206,6 +206,7 @@ export interface WritingPreferences {
   categories?: Partial<Record<IssueCategory, boolean>>;
   sensitivity?: number;
   dictionaryWords?: Iterable<string>;
+  ignoredRuleIds?: Iterable<string>;
 }
 
 export type LanguageResolutionStatus = 'automatic' | 'explicit' | 'detected' | 'uncertain' | 'mixed';
@@ -1186,10 +1187,12 @@ export function filterIssues(issues: Issue[], preferences: WritingPreferences = 
   if (focus.mode === 'paused') return [];
   const categories = preferences.categories ?? {};
   const dictionary = new Set([...preferences.dictionaryWords ?? []].map((word) => textValue(word).trim().toLocaleLowerCase()).filter(Boolean));
+  const ignoredRuleIds = new Set([...preferences.ignoredRuleIds ?? []].map((ruleId) => textValue(ruleId).trim().toLocaleLowerCase()).filter(Boolean));
   const threshold = focus.mode === 'zen' ? Math.max(0.8, focusConfidenceThreshold(preferences.sensitivity)) : 0;
   return (Array.isArray(issues) ? issues : []).filter((issue) => {
     if (categories[issue.category] === false) return false;
     if (issue.category === 'spelling' && dictionary.has(issue.matchedText.toLocaleLowerCase())) return false;
+    if (issue.rule?.id && ignoredRuleIds.has(issue.rule.id.toLocaleLowerCase())) return false;
     if (threshold > 0 && issue.confidence !== undefined && issue.confidence < threshold) return false;
     if (focus.mode === 'zen' && ['style', 'repetition', 'word-family', 'wordiness', 'plain-english', 'conciseness'].includes(issue.category)) return false;
     return true;

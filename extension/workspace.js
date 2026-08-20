@@ -50,10 +50,17 @@ function render() {
   meta.textContent = `${matches.length} issue${matches.length === 1 ? '' : 's'} · ${mode}`;
   if (!matches.length) {
     state.textContent = 'No issues were returned for the active editor.';
-    issues.innerHTML = '<div class="empty">Your current text is clean at this checking level.</div>';
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = 'Your current text is clean at this checking level.';
+    issues.appendChild(empty);
     return;
   }
-  state.innerHTML = `<span class="count">${matches.length}</span> issue${matches.length === 1 ? '' : 's'} found in the active editor.`;
+  state.textContent = '';
+  const count = document.createElement('span');
+  count.className = 'count';
+  count.textContent = String(matches.length);
+  state.append(count, document.createTextNode(` issue${matches.length === 1 ? '' : 's'} found in the active editor.`));
   matches.forEach((match, index) => {
     const item = document.createElement('article');
     item.className = 'issue';

@@ -5,6 +5,14 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { createLaunchAtLoginController, launchedAtLogin } = require('./launch_at_login.cjs');
 
+// Test harnesses can redirect the app's notion of the user home before any
+// per-user integration path is resolved. Production launches never set this;
+// keeping it explicit avoids a lifecycle test accidentally touching a real
+// ~/Library/Services bundle.
+if (process.env.IKMAL_DESKTOP_TEST_HOME) {
+  app.setPath('home', path.resolve(process.env.IKMAL_DESKTOP_TEST_HOME));
+}
+
 const QUALITY_PROXY_URL = process.env.IKMAL_DESKTOP_PROXY_URL || 'http://127.0.0.1:8096';
 const STYLE_GUIDE_URL = `${QUALITY_PROXY_URL}/v1/style-guides`;
 const QUALITY_HEALTH_URL = process.env.IKMAL_DESKTOP_QUALITY_URL || 'http://127.0.0.1:8098/health';

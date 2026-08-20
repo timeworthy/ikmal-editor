@@ -21,6 +21,8 @@ export interface SelectionState {
   language?: string;
   /** A safe preview of the selection, truncated by this component. */
   text?: string;
+  /** Synonym options for the highlighted word. */
+  synonyms?: string[];
 }
 
 /** Long enough to recognise the passage, short enough not to become a panel. */
@@ -32,6 +34,11 @@ export const SELECTION_POPOVER_CSS = `
 .writing-selection-preview { color: var(--fg-2); font: 400 13px/1.45 var(--font-sans); margin: 0; }
 .writing-selection-stats { display: flex; gap: var(--space-4); }
 .writing-selection-foot { align-items: center; display: flex; gap: var(--space-3); justify-content: space-between; }
+.writing-selection-synonyms { display: grid; gap: var(--space-2); margin-top: var(--space-1); border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.08)); padding-top: var(--space-2); }
+.writing-selection-synonyms-title { color: var(--fg-4); font: 600 11px/1 var(--font-mono); letter-spacing: .04em; text-transform: uppercase; }
+.writing-selection-synonyms-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.writing-synonym-btn { cursor: pointer; border: 1px solid var(--border-subtle, rgba(255,255,255,0.12)); background: var(--bg-surface, rgba(255,255,255,0.05)); color: var(--fg-1); font: 400 12px/1 var(--font-sans); padding: 4px 8px; border-radius: 4px; transition: background 0.15s, border-color 0.15s; }
+.writing-synonym-btn:hover { background: var(--bg-hover, rgba(255,255,255,0.12)); border-color: var(--accent-border, #4a72ff); }
 `;
 
 const STATUS_TEXT: Record<SelectionStatus, string> = {
@@ -69,6 +76,7 @@ export function normalizeSelectionState(value: Partial<SelectionState> = {}): Se
     ...(value.issues === undefined ? {} : { issues: count(value.issues) }),
     ...(typeof value.language === 'string' && value.language.trim() ? { language: value.language.trim() } : {}),
     ...(typeof value.text === 'string' && value.text.trim() ? { text: value.text } : {}),
+    ...(Array.isArray(value.synonyms) ? { synonyms: value.synonyms.filter((s) => typeof s === 'string' && s.trim()) } : {}),
   };
 }
 
@@ -92,6 +100,17 @@ export function renderSelectionPopover(state: Partial<SelectionState> = {}): str
     : '';
   const language = value.language ? `<span class="cnt-tag">${escapeHTML(value.language)}</span>` : '';
 
+  const synonymsHTML = Array.isArray(value.synonyms) && value.synonyms.length > 0
+    ? '<div class="writing-selection-synonyms">'
+      + '<span class="writing-selection-synonyms-title">Synonyms</span>'
+      + '<div class="writing-selection-synonyms-chips">'
+      + value.synonyms.slice(0, 6).map((syn) =>
+          `<button class="writing-synonym-btn" type="button" data-action="apply-synonym" data-synonym="${escapeHTML(syn)}">${escapeHTML(syn)}</button>`
+        ).join('')
+      + '</div>'
+      + '</div>'
+    : '';
+
   // Offered only when there is something to review — a Review action on a clean
   // or paused selection leads nowhere.
   const review = value.status === 'ready' && (value.issues ?? 0) > 0
@@ -102,6 +121,7 @@ export function renderSelectionPopover(state: Partial<SelectionState> = {}): str
     + '<span class="writing-selection-source">Selected text</span>'
     + preview
     + `<div class="writing-selection-stats">${stat(value.words, 'word', 'words')}${stat(value.characters, 'character', 'characters')}<span>${issueText}</span></div>`
+    + synonymsHTML
     + (language || review ? `<div class="writing-selection-foot">${language}${review}</div>` : '')
     + '</section>';
 }

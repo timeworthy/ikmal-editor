@@ -1,5 +1,7 @@
 import http from 'node:http';
+import https from 'node:https';
 import fs from 'node:fs';
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -141,8 +143,33 @@ async function waitForRendererState(browser, expression, predicate, label, timeo
   throw new Error(`${label}: ${JSON.stringify(latest)}`);
 }
 
+async function freePort() {
+  const server = net.createServer();
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  const port = server.address().port;
+  await new Promise((resolve) => server.close(resolve));
+  return port;
+}
+
+function getHTTPS(url) {
+  return new Promise((resolve, reject) => {
+    const request = https.get(url, { rejectUnauthorized: false }, (response) => {
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', (chunk) => { body += chunk; });
+      response.on('end', () => resolve({ status: response.statusCode, body }));
+    });
+    request.once('error', reject);
+  });
+}
+
 const fakeServices = await createFakeServices();
 const smokeUserData = fs.mkdtempSync(path.join(os.tmpdir(), 'ikmal-editor-smoke-'));
+const smokeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ikmal-editor-smoke-home-'));
+const officePort = await freePort();
 const electronPath = path.join(desktopRoot, 'node_modules', '.bin', 'electron');
 const electron = spawn(electronPath, ['.', `--remote-debugging-port=${debugPort}`, `--user-data-dir=${smokeUserData}`], {
   cwd: desktopRoot,
@@ -152,6 +179,9 @@ const electron = spawn(electronPath, ['.', `--remote-debugging-port=${debugPort}
     IKMAL_DESKTOP_QUALITY_URL: `http://127.0.0.1:${fakeServices.port}/health`,
     IKMAL_DESKTOP_LANGUAGETOOL_URL: `http://127.0.0.1:${fakeServices.port}`,
     IKMAL_MANAGER_BINARY: path.join(desktopRoot, 'missing-smoke-manager'),
+    HOME: smokeHome,
+    IKMAL_DESKTOP_TEST_HOME: smokeHome,
+    IKMAL_OFFICE_BRIDGE_PORT: String(officePort),
   },
   stdio: ['ignore', 'ignore', 'pipe'],
 });
@@ -220,6 +250,46 @@ try {
   const restoredPresenceByUI = await waitForRendererState(browser, 'window.ikmal.getDesktopPresence()', (state) => state.menubarIcon && !state.dockIcon, 'App-presence UI restore smoke failed');
   if (!restoredPresenceByUI.menubarIcon || restoredPresenceByUI.dockIcon) {
     throw new Error(`App-presence UI restore was not applied: ${JSON.stringify(restoredPresenceByUI)}`);
+  }
+
+  const officeInitial = await browser.evaluate('window.ikmal.getOfficeBridgeState()');
+  if (!officeInitial.supported || officeInitial.running || officeInitial.configured) {
+    throw new Error(`Office bridge initial state smoke failed: ${JSON.stringify(officeInitial)}`);
+  }
+  const officeConfigured = await browser.evaluate('window.ikmal.generateOfficeCertificate()');
+  if (!officeConfigured.configured || officeConfigured.running || !officeConfigured.keyPath || !officeConfigured.certificatePath) {
+    throw new Error(`Office certificate lifecycle smoke failed: ${JSON.stringify(officeConfigured)}`);
+  }
+  const officeRunning = await browser.evaluate('window.ikmal.startOfficeBridge()');
+  if (!officeRunning.running || !officeRunning.url.includes(`:${officePort}/`)) {
+    throw new Error(`Office bridge start lifecycle smoke failed: ${JSON.stringify(officeRunning)}`);
+  }
+  const officeHosts = ['word', 'excel', 'powerpoint', 'outlook', 'onenote', 'project'];
+  for (const host of officeHosts) {
+    const officePage = await getHTTPS(`https://localhost:${officePort}/office/${host}/`);
+    if (officePage.status !== 200 || !officePage.body.includes('office.js')) {
+      throw new Error(`Office bridge served an invalid ${host} task pane: ${JSON.stringify({ status: officePage.status, body: officePage.body.slice(0, 120) })}`);
+    }
+  }
+  const officeStopped = await browser.evaluate('window.ikmal.stopOfficeBridge()');
+  if (officeStopped.running) throw new Error(`Office bridge stop lifecycle smoke failed: ${JSON.stringify(officeStopped)}`);
+  const officeRemoved = await browser.evaluate('window.ikmal.removeOfficeCertificate()');
+  if (officeRemoved.configured) throw new Error(`Office certificate removal lifecycle smoke failed: ${JSON.stringify(officeRemoved)}`);
+
+  const desktopPlatform = await browser.evaluate('window.ikmal.platform');
+  if (desktopPlatform === 'darwin') {
+    const spellInitial = await browser.evaluate('window.ikmal.getSpellServerState()');
+    if (!spellInitial.supported || !spellInitial.available || spellInitial.installed) {
+      throw new Error(`Native spell-service initial state smoke failed: ${JSON.stringify(spellInitial)}`);
+    }
+    const spellInstalled = await browser.evaluate('window.ikmal.installSpellServer()');
+    if (!spellInstalled.installed || !fs.existsSync(spellInstalled.path)) {
+      throw new Error(`Native spell-service install lifecycle smoke failed: ${JSON.stringify(spellInstalled)}`);
+    }
+    const spellRemoved = await browser.evaluate('window.ikmal.removeSpellServer()');
+    if (spellRemoved.installed || fs.existsSync(spellInstalled.path)) {
+      throw new Error(`Native spell-service removal lifecycle smoke failed: ${JSON.stringify(spellRemoved)}`);
+    }
   }
   const annotationPreferences = await browser.evaluate(`window.ikmal.setAnnotationPreferences({ style: 'dash', palette: 'contrast', intensity: 85 })`);
   await wait(100);
@@ -494,6 +564,12 @@ try {
   // A long draft is checked around the caret, and the findings the check never
   // looked at are carried rather than dropped. Both halves matter: chunking
   // without retention would silently delete every finding outside the window.
+  await waitForRendererState(
+    editor,
+    'document.querySelector(\'#editor-check\').disabled',
+    (disabled) => disabled === false,
+    'Chunked-check smoke started before the previous check settled',
+  );
   const filler = Array.from({ length: 40 }, (_, index) =>
     `Middle paragraph ${index} carries enough words that a chunk window centred here cannot reach the ends of the draft.`);
   const longDraft = ['Opening paragraph where the results is wrong.', ...filler, 'Closing paragraph of the draft.'].join('\n\n');
@@ -539,7 +615,7 @@ try {
 
   editor.socket.close();
   browser.socket.close();
-  console.log('Electron smoke passed: service state, compact/full-editor presence, stale responses, status tooltips, drawer geometry, failure actions, and chunked checks with retained findings.');
+  console.log('Electron smoke passed: service state, Office bridge/certificate lifecycle, native spell-service lifecycle, compact/full-editor presence, stale responses, status tooltips, drawer geometry, failure actions, and chunked checks with retained findings.');
 } finally {
   if (electron.exitCode === null && !electron.killed) {
     electron.kill('SIGTERM');
@@ -550,4 +626,5 @@ try {
   }
   await new Promise((resolve) => fakeServices.server.close(resolve));
   fs.rmSync(smokeUserData, { recursive: true, force: true });
+  fs.rmSync(smokeHome, { recursive: true, force: true });
 }

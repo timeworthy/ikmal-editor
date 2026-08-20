@@ -56,6 +56,40 @@ export function resolveChromium(chromium) {
   throw new Error('No Chromium available. Run `npx playwright install chromium`, or set IKMAL_CHROMIUM to a browser already on this machine.');
 }
 
+function isGoogleChrome(executablePath) {
+  return executablePath.includes('/Google Chrome.app/') || executablePath.endsWith('/Google Chrome');
+}
+
+// Playwright adds --disable-extensions by default. Chromium accepts the
+// load-extension switches alongside that default, but current branded Chrome
+// does not: its extension debugging path requires the default switch removed
+// and an explicit CDP installation request. Keep the distinction here so all
+// browser smokes exercise the same packaged artifact on both browsers.
+export function extensionLaunchOptions(executablePath, packageDir) {
+  const chrome = isGoogleChrome(executablePath);
+  return {
+    ignoreDefaultArgs: ['--disable-extensions'],
+    args: chrome
+      ? ['--enable-unsafe-extension-debugging']
+      : [`--disable-extensions-except=${packageDir}`, `--load-extension=${packageDir}`],
+  };
+}
+
+export async function loadUnpackedExtension(context, executablePath, packageDir) {
+  if (!isGoogleChrome(executablePath)) return '';
+  const browser = context.browser();
+  if (!browser?.newBrowserCDPSession) {
+    throw new Error('The branded Chrome smoke needs a browser-level CDP session to load its unpacked extension.');
+  }
+  const session = await browser.newBrowserCDPSession();
+  try {
+    const result = await session.send('Extensions.loadUnpacked', { path: packageDir });
+    return result.id || '';
+  } finally {
+    await session.detach().catch(() => {});
+  }
+}
+
 /**
  * Focus a field until the content script has mounted its indicator.
  *

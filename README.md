@@ -370,14 +370,16 @@ text fields in your browser against the server on your own machine.
   written fresh against the documented HTTP API. See
   [extension/README.md](extension/README.md) for the full reasoning.
 
-It is not in the Chrome Web Store yet, so it installs unpacked. From the
-desktop app, **Settings → Browser extension → Show files** opens the folder to
-point "Load unpacked" at; `chrome://extensions` with Developer mode on does the
-rest. Firefox is not currently supported — the manifest is Chromium-shaped.
+It is not in the Chrome Web Store yet, so Chromium installs it unpacked. From
+the desktop app, **Settings → Browser extension → Show files** opens the folder
+to point "Load unpacked" at; `chrome://extensions` with Developer mode on does
+the rest. Firefox has its own signed-artifact shape: it uses a stable Gecko ID
+and a background event page, while sharing the same local browser runtime.
 Full steps, and every other surface, are in **[INSTALL.md](INSTALL.md)**.
 
 ```bash
-cd desktop && npm run package:extension   # archive for a store listing
+cd desktop && npm run package:extension   # Chromium archive
+cd .. && npm run package:firefox          # Firefox .xpi
 ```
 
 ### VS Code adapter

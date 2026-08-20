@@ -12,6 +12,9 @@
   "contributes": {
     "commands": [
       { "command": "ikmal.checkDocument", "title": "ikmal: Check Document" },
+      { "command": "ikmal.checkSelection", "title": "ikmal: Check Selection" },
+      { "command": "ikmal.addWordToDictionary", "title": "ikmal: Add Word to Dictionary" },
+      { "command": "ikmal.ignoreRule", "title": "ikmal: Ignore Rule" },
       { "command": "ikmal.pause", "title": "ikmal: Pause checking" },
       { "command": "ikmal.zen", "title": "ikmal: Zen mode (only the most confident findings)" },
       { "command": "ikmal.resume", "title": "ikmal: Resume checking" }
@@ -25,6 +28,9 @@
         "ikmal.checkDelayMs": { "type": "number", "default": 900, "minimum": 200, "maximum": 2000, "description": "Pause after typing before checking." },
         "ikmal.minLength": { "type": "number", "default": 12, "minimum": 1, "maximum": 1000, "description": "Minimum non-whitespace text length to check." },
         "ikmal.maxLength": { "type": "number", "default": 20000, "minimum": 1000, "maximum": 100000, "description": "Maximum document length sent to the local checker." }
+        ,"ikmal.enabledLanguages": { "type": "array", "items": { "type": "string" }, "default": ["plaintext", "markdown", "latex", "tex", "typst"], "description": "Language IDs that ikmal checks. An empty list checks every editable language." }
+        ,"ikmal.dictionary": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Words treated as intentional spelling, kept in VS Code settings." }
+        ,"ikmal.ignoredRules": { "type": "array", "items": { "type": "string" }, "default": [], "description": "LanguageTool rule IDs suppressed from diagnostics." }
       }
     }
   }

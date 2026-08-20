@@ -188,3 +188,43 @@ export function renderStyleGuideCard(state: Partial<StyleGuideCardState> = {}): 
     + '<button class="cnt-btn" type="button" data-action="import-guide">Import another</button>'
     + '</div>';
 }
+
+export interface WritingRuleState {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  enabled: boolean;
+}
+
+/**
+ * Quality writing rules toggle card. Renders rules grouped by category with switches.
+ */
+export function renderWritingRulesCard(rules: WritingRuleState[] = []): string {
+  if (!Array.isArray(rules) || rules.length === 0) {
+    return '<div class="cnt-panel"><div class="cnt-empty"><div class="cnt-empty-text">No rules configured.</div></div></div>';
+  }
+
+  const categories: Record<string, WritingRuleState[]> = {};
+  for (const rule of rules) {
+    const cat = rule.category || 'General';
+    if (!categories[cat]) categories[cat] = [];
+    categories[cat].push(rule);
+  }
+
+  const renderedCategories = Object.entries(categories).map(([categoryName, groupRules]) => {
+    const rows = groupRules.map((rule) =>
+      '<div class="writing-guide-row" style="margin-bottom: var(--space-2);">'
+      + '<span class="writing-setting-head" style="flex: 1;">'
+      + `<span class="writing-setting-title">${escapeHTML(rule.name)}</span>`
+      + `<span class="writing-setting-description">${escapeHTML(rule.description)}</span>`
+      + '</span>'
+      + `<label class="cnt-switch"><input type="checkbox" data-action="toggle-rule" data-rule-id="${escapeHTML(rule.id)}"${rule.enabled ? ' checked' : ''}><span class="cnt-switch-track"></span></label>`
+      + '</div>'
+    ).join('');
+
+    return `<div style="margin-bottom: var(--space-4);"><h4 style="color: var(--fg-3); font: 600 11px/1 var(--font-mono); text-transform: uppercase; letter-spacing: .05em; margin: 0 0 var(--space-2);">${escapeHTML(categoryName)}</h4>${rows}</div>`;
+  }).join('');
+
+  return `<div class="cnt-panel writing-rules">${renderedCategories}</div>`;
+}

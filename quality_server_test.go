@@ -529,3 +529,117 @@ func TestPassiveRewriteSpansTheClauseNotTheFinding(t *testing.T) {
 		}
 	}
 }
+
+func TestNewDeterministicQualityRules(t *testing.T) {
+	// 1. Oxford Comma
+	textOxford := "We bought apples, oranges and bananas."
+	respOxford := analyzeQualityText(textOxford)
+	foundOxford := false
+	for _, s := range respOxford.Suggestions {
+		if s.Category == "oxford-comma" && s.Replacement == "oranges, and" {
+			foundOxford = true
+			break
+		}
+	}
+	if !foundOxford {
+		t.Fatalf("expected oxford-comma suggestion for %q", textOxford)
+	}
+
+	// 2. Cliches and Jargon
+	textJargon := "We need to think outside the box to find low-hanging fruit."
+	respJargon := analyzeQualityText(textJargon)
+	foundBox := false
+	for _, s := range respJargon.Suggestions {
+		if s.Category == "cliches-jargon" && s.Replacement == "be creative" {
+			foundBox = true
+			break
+		}
+	}
+	if !foundBox {
+		t.Fatalf("expected cliches-jargon suggestion for %q", textJargon)
+	}
+
+	// 3. Weak Words
+	textWeak := "This solution is really important and basically ready."
+	respWeak := analyzeQualityText(textWeak)
+	foundWeak := false
+	for _, s := range respWeak.Suggestions {
+		if s.Category == "weak-words" && s.Replacement == "crucial" {
+			foundWeak = true
+			break
+		}
+	}
+	if !foundWeak {
+		t.Fatalf("expected weak-words suggestion for %q", textWeak)
+	}
+
+	// 4. Punctuation
+	textPunct := "Hello  world , what is this ??"
+	respPunct := analyzeQualityText(textPunct)
+	foundSpaces := false
+	foundSpacePunct := false
+	foundRepPunct := false
+	for _, s := range respPunct.Suggestions {
+		if s.Category == "punctuation" {
+			if s.Replacement == " " {
+				foundSpaces = true
+			}
+			if s.Replacement == "," {
+				foundSpacePunct = true
+			}
+			if s.Replacement == "?" {
+				foundRepPunct = true
+			}
+		}
+	}
+	if !foundSpaces || !foundSpacePunct || !foundRepPunct {
+		t.Fatalf("expected punctuation suggestions for double space, space before comma, and repeated question mark")
+	}
+
+	// 5. Readability
+	textLong := "This is an extremely long and overly complex sentence that goes on and on with many words and phrases without stopping or giving the reader any rest at all until it finally ends after thirty words."
+	respLong := analyzeQualityText(textLong)
+	foundReadability := false
+	for _, s := range respLong.Suggestions {
+		if s.Category == "readability" {
+			foundReadability = true
+			break
+		}
+	}
+	if !foundReadability {
+		t.Fatalf("expected readability suggestion for sentence over 30 words")
+	}
+
+	// 6. Unnecessary Adverbs
+	textAdverb := "She ran quickly to the store."
+	respAdverb := analyzeQualityText(textAdverb)
+	foundAdverb := false
+	for _, s := range respAdverb.Suggestions {
+		if s.Category == "unnecessary-adverbs" {
+			foundAdverb = true
+			break
+		}
+	}
+	if !foundAdverb {
+		t.Fatalf("expected unnecessary-adverbs suggestion for %q", textAdverb)
+	}
+
+	// 7. Formality & Register (Formal and Informal)
+	textFormality := "The aforementioned report is gonna be updated."
+	respFormality := analyzeQualityText(textFormality)
+	foundFormal := false
+	foundInformal := false
+	for _, s := range respFormality.Suggestions {
+		if s.Category == "formality-tone" {
+			if s.Replacement == "mentioned" {
+				foundFormal = true
+			}
+			if s.Replacement == "going to" {
+				foundInformal = true
+			}
+		}
+	}
+	if !foundFormal || !foundInformal {
+		t.Fatalf("expected formal and informal suggestions for %q", textFormality)
+	}
+}

@@ -25,7 +25,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { loadChromium, resolveChromium } from './chromium_launch.mjs';
+import { extensionLaunchOptions, loadChromium, loadUnpackedExtension, resolveChromium } from './chromium_launch.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const chromium = await loadChromium();
@@ -92,12 +92,15 @@ async function waitForServiceWorker(browserContext) {
 }
 
 try {
+  const extensionOptions = extensionLaunchOptions(browserPath, packageDir);
   context = await chromium.launchPersistentContext(userData, {
     executablePath: browserPath,
     headless: false,
     viewport: { width: 1200, height: 800 },
-    args: [`--disable-extensions-except=${packageDir}`, `--load-extension=${packageDir}`, '--no-first-run', '--no-default-browser-check'],
+    ...extensionOptions,
+    args: [...extensionOptions.args, '--no-first-run', '--no-default-browser-check'],
   });
+  await loadUnpackedExtension(context, browserPath, packageDir);
   const serviceWorker = await waitForServiceWorker(context);
   const manifest = await serviceWorker.evaluate(() => chrome.runtime.getManifest());
   if (manifest.name !== 'ikmal editor') throw new Error(`Unexpected service worker: ${manifest.name}`);

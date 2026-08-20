@@ -161,6 +161,24 @@ func TestAutoConfigureAppsHonorsExplicitTargetSelection(t *testing.T) {
 	t.Setenv("IKMAL_EDITOR_SERVER_URL", "http://127.0.0.1:8096/v2")
 	t.Setenv("IKMAL_EDITOR_CONFIGURE_APPS", "firefox,chrome")
 
+	// Configuration is for an extension the user already installed. These
+	// markers stand in for the two official LanguageTool extensions without
+	// downloading either one during a unit test.
+	firefoxProfile := filepath.Join(firefoxProfilesPath(home), "test")
+	if err := os.MkdirAll(firefoxProfile, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(firefoxProfile, "extensions.json"), []byte(languageToolExtensionID), 0644); err != nil {
+		t.Fatal(err)
+	}
+	chromeRoot := appSupportPath(home, "Google", "Chrome")
+	if runtime.GOOS == "linux" {
+		chromeRoot = filepath.Join(home, ".config", "google-chrome")
+	}
+	if err := os.MkdirAll(filepath.Join(chromeRoot, "Default", "Extensions", languageToolExtensionID), 0755); err != nil {
+		t.Fatal(err)
+	}
+
 	autoConfigureApps()
 
 	firefoxPath := filepath.Join(firefoxManagedPath(home), "languagetool-webextension@languagetool.org.json")
@@ -168,7 +186,7 @@ func TestAutoConfigureAppsHonorsExplicitTargetSelection(t *testing.T) {
 		t.Fatalf("expected Firefox configuration in temp home, err=%v content=%q", err, content)
 	}
 
-	chromeRoot := appSupportPath(home, "Google", "Chrome")
+	chromeRoot = appSupportPath(home, "Google", "Chrome")
 	if runtime.GOOS == "linux" {
 		chromeRoot = filepath.Join(home, ".config", "google-chrome")
 	}
@@ -179,6 +197,71 @@ func TestAutoConfigureAppsHonorsExplicitTargetSelection(t *testing.T) {
 
 	if _, err := os.Stat(appSupportPath(home, "Code", "User", "settings.json")); !os.IsNotExist(err) {
 		t.Fatalf("expected VS Code to remain untouched, err=%v", err)
+	}
+}
+
+func TestAutoConfigureAppsDoesNotCreateThirdPartyIntegrationWithoutExtension(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("IKMAL_EDITOR_SERVER_URL", "http://127.0.0.1:8096/v2")
+	t.Setenv("IKMAL_EDITOR_CONFIGURE_APPS", "firefox,chrome")
+
+	autoConfigureApps()
+
+	if _, err := os.Stat(filepath.Join(firefoxManagedPath(home), "languagetool-webextension@languagetool.org.json")); !os.IsNotExist(err) {
+		t.Fatalf("expected no Firefox managed storage without the extension, err=%v", err)
+	}
+	chromeRoot := appSupportPath(home, "Google", "Chrome")
+	if runtime.GOOS == "linux" {
+		chromeRoot = filepath.Join(home, ".config", "google-chrome")
+	}
+	if _, err := os.Stat(filepath.Join(chromeRoot, "External Extensions", languageToolExtensionID+".json")); !os.IsNotExist(err) {
+		t.Fatalf("expected no Chrome policy without the extension, err=%v", err)
+	}
+}
+
+func TestManagedIntegrationFilesRestoreExistingAndRemoveCreatedFiles(t *testing.T) {
+	home := t.TempDir()
+	target := filepath.Join(home, "config", "integration.json")
+	original := []byte(`{"existing":true}`)
+	if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(target, original, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeManagedIntegrationFile(home, target, []byte(`{"ikmal":true}`)); err != nil {
+		t.Fatal(err)
+	}
+	created := filepath.Join(home, "config", "created.json")
+	if err := writeManagedIntegrationFile(home, created, []byte(`{"created":true}`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := restoreManagedIntegrationFiles(home); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := os.ReadFile(target); err != nil || string(got) != string(original) {
+		t.Fatalf("existing integration was not restored: err=%v content=%q", err, got)
+	}
+	if _, err := os.Stat(created); !os.IsNotExist(err) {
+		t.Fatalf("created integration was not removed, err=%v", err)
+	}
+
+	changed := filepath.Join(home, "config", "changed.json")
+	if err := os.WriteFile(changed, []byte(`{"before":true}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeManagedIntegrationFile(home, changed, []byte(`{"ikmal":true}`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(changed, []byte(`{"userChanged":true}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := restoreManagedIntegrationFiles(home); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := os.ReadFile(changed); err != nil || string(got) != `{"userChanged":true}` {
+		t.Fatalf("user-edited integration was overwritten: err=%v content=%q", err, got)
 	}
 }
 

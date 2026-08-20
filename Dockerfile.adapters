@@ -1,0 +1,5 @@
+FROM node:22-bookworm-slim
+WORKDIR /app
+COPY integrations ./integrations
+COPY tools/integration_adapter_smoke.mjs ./tools/integration_adapter_smoke.mjs
+CMD ["node", "tools/integration_adapter_smoke.mjs"]

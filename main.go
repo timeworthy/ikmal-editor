@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -429,6 +430,10 @@ func findHomebrewJarPath() string {
 }
 
 func startHomebrewService(brewPath, configPath, fastTextPath, logsDir string) {
+	if !localPortAvailable(defaultPort) {
+		fmt.Printf("LanguageTool port %s is already in use; leaving the existing service untouched and not configuring Homebrew.\n", defaultPort)
+		return
+	}
 	fmt.Println("Starting Homebrew LanguageTool server with conciseness rules on port", defaultPort, "...")
 
 	jarPath := findHomebrewJarPath()
@@ -442,9 +447,23 @@ func startHomebrewService(brewPath, configPath, fastTextPath, logsDir string) {
 }
 
 func startDockerContainer(dockerPath, rulePath string) {
+	if !localPortAvailable(defaultPort) {
+		fmt.Printf("LanguageTool port %s is already in use; leaving the existing service untouched and not starting Docker.\n", defaultPort)
+		return
+	}
+	if dockerContainerExists(dockerPath, "ikmal-editor") {
+		if dockerContainerIsManaged(dockerPath, "ikmal-editor") {
+			fmt.Println("A managed ikmal-editor container already exists; starting it if needed.")
+			exec.Command(dockerPath, "start", "ikmal-editor").Run()
+		} else {
+			fmt.Println("A different Docker container already uses the name ikmal-editor; leaving it untouched.")
+		}
+		return
+	}
 	fmt.Println("Launching LanguageTool Docker container on port", defaultPort, "...")
 	cmd := exec.Command(dockerPath, "run", "-d",
 		"--name", "ikmal-editor",
+		"--label", "com.timeworthymedia.ikmal-editor.managed=true",
 		"-p", defaultPort+":8010",
 		"-v", rulePath+":/ngrams/style_conciseness.xml",
 		"erikvl87/languagetool:latest",
@@ -520,7 +539,10 @@ func installMacDaemon(binPath, configPath, fastTextPath, logsDir string) {
 </dict>
 </plist>`, binPath, defaultPort, configPath, logPath, errLogPath)
 
-	os.WriteFile(plistPath, []byte(plistContent), 0644)
+	if err := writeManagedIntegrationFile(homeDir, plistPath, []byte(plistContent)); err != nil {
+		fmt.Printf("Could not configure macOS LaunchAgent daemon: %v\n", err)
+		return
+	}
 	exec.Command("launchctl", "unload", plistPath).Run()
 	exec.Command("launchctl", "load", plistPath).Run()
 	fmt.Printf("Configured macOS background LaunchAgent daemon: %s\n", plistPath)
@@ -565,7 +587,10 @@ func installMacDaemonForJar(javaPath, jarPath, configPath, fastTextPath, logsDir
 </dict>
 </plist>`, javaPath, jarPath, defaultPort, configPath, logPath, errLogPath)
 
-	os.WriteFile(plistPath, []byte(plistContent), 0644)
+	if err := writeManagedIntegrationFile(homeDir, plistPath, []byte(plistContent)); err != nil {
+		fmt.Printf("Could not configure macOS LaunchAgent daemon: %v\n", err)
+		return
+	}
 	exec.Command("launchctl", "unload", plistPath).Run()
 	exec.Command("launchctl", "load", plistPath).Run()
 	fmt.Printf("Configured macOS background LaunchAgent daemon: %s\n", plistPath)
@@ -589,7 +614,10 @@ Restart=always
 WantedBy=default.target
 `, javaPath, jarPath, defaultPort, configPath)
 
-	os.WriteFile(servicePath, []byte(serviceContent), 0644)
+	if err := writeManagedIntegrationFile(homeDir, servicePath, []byte(serviceContent)); err != nil {
+		fmt.Printf("Could not configure Linux systemd user service: %v\n", err)
+		return
+	}
 	exec.Command("systemctl", "--user", "daemon-reload").Run()
 	exec.Command("systemctl", "--user", "enable", "--now", "ikmal-editor").Run()
 	fmt.Printf("Configured Linux systemd user service: %s\n", servicePath)
@@ -597,6 +625,18 @@ WantedBy=default.target
 
 func installWindowsDaemonForJar(javaPath, jarPath, configPath, logsDir string) {
 	cmdStr := fmt.Sprintf(`"%s" -cp "%s" org.languagetool.server.HTTPServer --port %s --allow-origin "*" --config "%s"`, javaPath, jarPath, defaultPort, configPath)
+	homeDir, _ := os.UserHomeDir()
+	if err := backupWindowsRunValue(homeDir, cmdStr); err != nil {
+		fmt.Printf("Could not record the existing Windows startup value: %v\n", err)
+		return
+	}
+	if record, err := readWindowsRunBackup(homeDir); err == nil && record.Existed && record.Value != cmdStr {
+		current, _, exists := readWindowsRunValue()
+		if exists && current != record.ManagedValue {
+			fmt.Println("Preserved an existing Windows startup value; did not overwrite it.")
+			return
+		}
+	}
 	exec.Command("reg", "add", `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, "/v", "IkmalEditor", "/t", "REG_SZ", "/d", cmdStr, "/f").Run()
 	fmt.Println("Configured Windows Startup Registry Run Key [BETA / EXPERIMENTAL]: HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\IkmalEditor")
 }
@@ -620,7 +660,10 @@ func downloadFile(filepath string, url string) error {
 
 func verifyServerHealth() {
 	fmt.Println("\nRunning health check against http://127.0.0.1:" + defaultPort + "/v2/check...")
-	time.Sleep(1 * time.Second)
+	if !waitForHTTP("http://127.0.0.1:"+defaultPort+"/v2/languages", 30*time.Second) {
+		fmt.Println("Health check note: LanguageTool did not become ready within 30 seconds.")
+		return
+	}
 
 	body := strings.NewReader("text=This+is+an+test&language=en-US")
 	resp, err := http.Post("http://127.0.0.1:"+defaultPort+"/v2/check", "application/x-www-form-urlencoded", body)
@@ -648,58 +691,86 @@ func performUninstall() {
 	}
 
 	// 1. Unload & remove macOS / Linux / Windows background daemons
-	if runtime.GOOS == "darwin" && integrationTargetEnabled("macos") {
+	if runtime.GOOS == "darwin" {
 		plistPath := filepath.Join(homeDir, "Library", "LaunchAgents", "com.ikmal.editor.plist")
-		if _, err := os.Stat(plistPath); err == nil {
+		if integrationFileTracked(homeDir, plistPath) && managedFileContains(plistPath, "com.ikmal.editor") {
 			fmt.Println("Stopping and unloading macOS LaunchAgent daemon...")
 			exec.Command("launchctl", "unload", plistPath).Run()
-			os.Remove(plistPath)
-			fmt.Printf("Removed LaunchAgent daemon file: %s\n", plistPath)
+			fmt.Printf("Restoring managed LaunchAgent daemon file: %s\n", plistPath)
 		}
 	} else if runtime.GOOS == "linux" {
 		servicePath := filepath.Join(homeDir, ".config", "systemd", "user", "ikmal-editor.service")
-		if _, err := os.Stat(servicePath); err == nil {
+		if integrationFileTracked(homeDir, servicePath) && managedFileContains(servicePath, "Description=ikmal editor LanguageTool Server") {
 			fmt.Println("Stopping and disabling Linux systemd user service...")
 			exec.Command("systemctl", "--user", "stop", "ikmal-editor").Run()
 			exec.Command("systemctl", "--user", "disable", "ikmal-editor").Run()
-			os.Remove(servicePath)
 			exec.Command("systemctl", "--user", "daemon-reload").Run()
-			fmt.Printf("Removed systemd user service file: %s\n", servicePath)
+			fmt.Printf("Restoring managed systemd user service file: %s\n", servicePath)
 		}
 	} else if runtime.GOOS == "windows" {
-		fmt.Println("Removing Windows Startup Registry Key...")
-		exec.Command("reg", "delete", `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, "/v", "IkmalEditor", "/f").Run()
-		exec.Command("reg", "delete", `HKCU\Software\Policies\Google\Chrome`, "/v", "server_url", "/f").Run()
-		exec.Command("reg", "delete", `HKCU\Software\Policies\Microsoft\Edge`, "/v", "server_url", "/f").Run()
+		fmt.Println("Restoring ikmal-owned Windows Startup Registry value...")
+		if err := restoreWindowsRunValue(homeDir); err != nil {
+			fmt.Printf("Warning: could not restore the Windows startup value: %v\n", err)
+		}
+		fmt.Println("Preserved existing Chrome and Edge policies; ikmal does not own arbitrary registry policy values.")
 	}
 
-	// 2. Terminate running LanguageTool processes
-	fmt.Println("Terminating running LanguageTool server processes...")
-	if runtime.GOOS == "windows" {
-		exec.Command("taskkill", "/F", "/IM", "javaw.exe").Run()
-		exec.Command("taskkill", "/F", "/IM", "java.exe").Run()
-	} else {
-		exec.Command("pkill", "-f", "languagetool").Run()
-	}
+	// 2. The owned daemon/container was stopped above. Never kill by a broad
+	// process name: an existing LanguageTool or Java installation may belong to
+	// another user, editor, or service manager.
+	fmt.Println("Left pre-existing LanguageTool and Java processes untouched.")
 
-	// 3. Stop & remove Docker container if present
-	if dockerPath := detectDocker(); dockerPath != "" {
+	// 3. Stop & remove only the container this launcher created. An unlabelled
+	// container with the conventional name may belong to a different setup.
+	if dockerPath := detectDocker(); dockerPath != "" && dockerContainerIsManaged(dockerPath, "ikmal-editor") {
 		exec.Command(dockerPath, "stop", "ikmal-editor").Run()
 		exec.Command(dockerPath, "rm", "ikmal-editor").Run()
 	}
 
-	// 5. Clean up app & browser configuration files
+	// 5. Restore only integration files that this installation changed. Older
+	// versions removed host-owned files unconditionally; preserving untracked
+	// files is safer than guessing whether another LanguageTool installation
+	// owns them.
 	fmt.Println("Cleaning up app & browser configuration files...")
-	if runtime.GOOS == "darwin" {
-		exec.Command("defaults", "delete", "org.languagetool.mac").Run()
-		exec.Command("defaults", "delete", "com.languagetool.word").Run()
+	if err := restoreManagedIntegrationFiles(homeDir); err != nil {
+		fmt.Printf("Warning: could not fully restore managed integration files: %v\n", err)
 	}
-	os.Remove(filepath.Join(homeDir, "Library", "Application Support", "Mozilla", "ManagedStorage", "languagetool-webextension@languagetool.org.json"))
-	os.Remove(filepath.Join(homeDir, "Library", "Application Support", "Google", "Chrome", "External Extensions", "lhgkgpnhbakdcadgobkbbkoicdikgadj.json"))
-	os.Remove(filepath.Join(homeDir, "Library", "Application Support", "Google", "Chrome", "NativeMessagingHosts", "lhgkgpnhbakdcadgobkbbkoicdikgadj.json"))
-	fmt.Println("Cleared browser policies and application defaults.")
+	if runtime.GOOS == "darwin" {
+		if err := restoreMacDefaults(homeDir); err != nil {
+			fmt.Printf("Warning: could not fully restore macOS LanguageTool defaults: %v\n", err)
+		}
+	}
+	appDir := filepath.Join(homeDir, ".ikmal-editor")
+	if err := os.RemoveAll(appDir); err != nil {
+		fmt.Printf("Warning: could not remove ikmal data directory %s: %v\n", appDir, err)
+	} else {
+		fmt.Println("Removed ikmal data directory:", appDir)
+	}
 
 	fmt.Println("\nUninstall complete! All background services and data files have been removed.")
+}
+
+func managedFileContains(path, marker string) bool {
+	data, err := os.ReadFile(path)
+	return err == nil && strings.Contains(string(data), marker)
+}
+
+func dockerContainerIsManaged(dockerPath, name string) bool {
+	output, err := exec.Command(dockerPath, "inspect", "--format", "{{index .Config.Labels \"com.timeworthymedia.ikmal-editor.managed\"}}", name).Output()
+	return err == nil && strings.TrimSpace(string(output)) == "true"
+}
+
+func dockerContainerExists(dockerPath, name string) bool {
+	return exec.Command(dockerPath, "container", "inspect", name).Run() == nil
+}
+
+func localPortAvailable(port string) bool {
+	listener, err := net.Listen("tcp", "127.0.0.1:"+port)
+	if err != nil {
+		return false
+	}
+	_ = listener.Close()
+	return true
 }
 
 func autoConfigureApps() {
@@ -723,33 +794,44 @@ func autoConfigureApps() {
 
 	// 1. LanguageTool for Mac (Safari, Apple Mail, System-wide TextEdit/Messages)
 	if runtime.GOOS == "darwin" && integrationTargetEnabled("macos") {
-		fmt.Println("Auto-configuring LanguageTool for Mac (Safari, Apple Mail, System-wide)...")
-		exec.Command("defaults", "write", "org.languagetool.mac", "apiServer", serverUrl).Run()
-		exec.Command("defaults", "write", "org.languagetool.mac", "useLocalServer", "-bool", "true").Run()
-		exec.Command("defaults", "write", "com.languagetool.word", "serverUrl", serverUrl+"/check").Run()
-		fmt.Println("  Configured macOS defaults: org.languagetool.mac & com.languagetool.word ->", serverUrl)
+		macConfigured := readMacDefaults("org.languagetool.mac", "apiServer") != "" || readMacDefaults("com.languagetool.word", "serverUrl") != ""
+		if macConfigured {
+			fmt.Println("Auto-configuring LanguageTool for Mac (Safari, Apple Mail, System-wide)...")
+			if err := backupMacDefault(homeDir, "org.languagetool.mac", "apiServer", serverUrl); err == nil {
+				exec.Command("defaults", "write", "org.languagetool.mac", "apiServer", serverUrl).Run()
+			}
+			if err := backupMacDefault(homeDir, "org.languagetool.mac", "useLocalServer", "1"); err == nil {
+				exec.Command("defaults", "write", "org.languagetool.mac", "useLocalServer", "-bool", "true").Run()
+			}
+			if err := backupMacDefault(homeDir, "com.languagetool.word", "serverUrl", serverUrl+"/check"); err == nil {
+				exec.Command("defaults", "write", "com.languagetool.word", "serverUrl", serverUrl+"/check").Run()
+			}
+			fmt.Println("  Configured macOS defaults: org.languagetool.mac & com.languagetool.word ->", serverUrl)
+		} else {
+			fmt.Println("  LanguageTool macOS integration not detected; left macOS defaults untouched.")
+		}
 	}
 
-	// 2. Mozilla Firefox Managed Storage
+	// 2. Mozilla Firefox Managed Storage. Do not create managed storage for an
+	// extension the user has not installed: managed storage is an integration
+	// setting, not an extension installer.
 	if integrationTargetEnabled("firefox") {
 		firefoxDir := filepath.Join(homeDir, "Library", "Application Support", "Mozilla", "ManagedStorage")
 		if runtime.GOOS == "linux" {
 			firefoxDir = filepath.Join(homeDir, ".mozilla", "managed-storage")
 		}
-		os.MkdirAll(firefoxDir, 0755)
 		firefoxConfigPath := filepath.Join(firefoxDir, "languagetool-webextension@languagetool.org.json")
-		firefoxJson := fmt.Sprintf(`{
-  "name": "languagetool-webextension@languagetool.org",
-  "description": "Auto-configuration for ikmal editor local server",
-  "type": "storage",
-  "data": {
-    "serverUrl": "%s/check",
-    "otherServerUrl": "%s/check",
-    "useLocalServer": true
-  }
-}`, serverUrl, serverUrl)
-		if err := os.WriteFile(firefoxConfigPath, []byte(firefoxJson), 0644); err == nil {
-			fmt.Println("  Configured Mozilla Firefox managed storage:", firefoxConfigPath)
+		firefoxTarget := detectFirefoxIntegration(homeDir, serverUrl)
+		if firefoxTarget.Detected {
+			os.MkdirAll(firefoxDir, 0755)
+			content, updateErr := updatedFirefoxIntegration(firefoxConfigPath, serverUrl)
+			if updateErr == nil && writeManagedIntegrationFile(homeDir, firefoxConfigPath, content) == nil {
+				fmt.Println("  Configured Mozilla Firefox managed storage:", firefoxConfigPath)
+			} else {
+				fmt.Println("  Firefox managed storage could not be updated; left unchanged:", firefoxConfigPath)
+			}
+		} else {
+			fmt.Println("  Firefox LanguageTool extension not detected; left managed storage untouched.")
 		}
 	}
 
@@ -765,16 +847,17 @@ func autoConfigureApps() {
 				filepath.Join(homeDir, ".config", "google-chrome", "NativeMessagingHosts"),
 			}
 		}
-		for _, dir := range chromePolicyDirs {
-			os.MkdirAll(dir, 0755)
-			chromePolicyPath := filepath.Join(dir, "lhgkgpnhbakdcadgobkbbkoicdikgadj.json")
-			chromeJson := fmt.Sprintf(`{
-  "external_update_url": "https://clients2.google.com/service/update2/crx",
-  "server_url": "%s/check"
-}`, serverUrl)
-			if err := os.WriteFile(chromePolicyPath, []byte(chromeJson), 0644); err == nil {
-				fmt.Println("  Configured Chrome & Chromium policy:", chromePolicyPath)
+		chromeTarget := detectChromeIntegration(homeDir, serverUrl)
+		if chromeTarget.Detected {
+			for _, dir := range chromePolicyDirs {
+				chromePolicyPath := filepath.Join(dir, "lhgkgpnhbakdcadgobkbbkoicdikgadj.json")
+				content, updateErr := updatedChromeIntegration(chromePolicyPath, serverUrl)
+				if updateErr == nil && writeManagedIntegrationFile(homeDir, chromePolicyPath, content) == nil {
+					fmt.Println("  Configured Chrome & Chromium policy:", chromePolicyPath)
+				}
 			}
+		} else {
+			fmt.Println("  Chrome-based LanguageTool extension not detected; left policies untouched.")
 		}
 	}
 
@@ -784,18 +867,14 @@ func autoConfigureApps() {
 		if runtime.GOOS == "linux" {
 			vscodeSettingsPath = filepath.Join(homeDir, ".config", "Code", "User", "settings.json")
 		}
-		if _, err := os.Stat(vscodeSettingsPath); err == nil {
-			content, readErr := os.ReadFile(vscodeSettingsPath)
-			if readErr == nil && !strings.Contains(string(content), "languageTool.serverUrl") {
-				str := string(content)
-				if strings.HasSuffix(strings.TrimSpace(str), "}") {
-					trimmed := strings.TrimRight(strings.TrimSpace(str), "}\n\r\t ")
-					updated := fmt.Sprintf("%s,\n  \"languageTool.serverUrl\": \"%s\"\n}", trimmed, serverUrl)
-					os.WriteFile(vscodeSettingsPath, []byte(updated), 0644)
+		if content, readErr := os.ReadFile(vscodeSettingsPath); readErr == nil {
+			target := detectVSCodeIntegration(homeDir, serverUrl)
+			if target.ConfiguredEndpoint != "" || len(globMatches(filepath.Join(homeDir, ".vscode", "extensions", "*languagetool*"))) > 0 {
+				if updated, updateErr := updatedVSCodeIntegration(string(content), serverUrl); updateErr == nil && writeManagedIntegrationFile(homeDir, vscodeSettingsPath, updated) == nil {
 					fmt.Println("  Configured VSCode user settings:", vscodeSettingsPath)
 				}
 			} else {
-				fmt.Println("  VSCode user settings already configured:", vscodeSettingsPath)
+				fmt.Println("  VSCode LanguageTool integration not detected; left settings untouched:", vscodeSettingsPath)
 			}
 		}
 	}

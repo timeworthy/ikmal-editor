@@ -537,7 +537,7 @@ settingsView.addEventListener('click', async (event) => {
 });
 
 settingsView.addEventListener('change', async (event) => {
-  const control = event.target.closest?.('[data-setting]');
+  const control = event.target.closest?.('[data-setting], [data-action="select-guide"], [data-action="enable-guide"]');
   if (!control) return;
   const name = control.dataset.setting;
   const value = control.type === 'checkbox' ? control.checked : control.value;

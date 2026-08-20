@@ -1,0 +1,7 @@
+{
+  "name": "ikmal editor LibreOffice remote-checker profile",
+  "version": "0.1.0",
+  "hosts": ["Writer", "Calc", "Impress"],
+  "checker": "http://127.0.0.1:8097/v2/check",
+  "license": "MIT"
+}

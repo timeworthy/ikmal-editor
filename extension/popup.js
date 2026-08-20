@@ -38,7 +38,18 @@ function renderHealth(health) {
   }
   statusEl.className = 'status is-down';
   statusLabel.textContent = 'Not running';
-  serverNote.innerHTML = `The local server is not answering at <code>${escapeHTML(health.endpoint)}</code> (${escapeHTML(health.reason || 'unavailable')}). Start it with <code>ikmal-editor --integrated</code>, or change the address in Settings.`;
+  serverNote.textContent = '';
+  const endpoint = document.createElement('code');
+  endpoint.textContent = health.endpoint;
+  const command = document.createElement('code');
+  command.textContent = 'ikmal-editor --integrated';
+  serverNote.append(
+    document.createTextNode('The local server is not answering at '),
+    endpoint,
+    document.createTextNode(` (${health.reason || 'unavailable'}). Start it with `),
+    command,
+    document.createTextNode(', or change the address in Settings.'),
+  );
   serverNote.classList.add('is-visible');
 }
 
@@ -117,12 +128,6 @@ document.querySelector('#support-dismiss').addEventListener('click', () => {
   support.classList.add('is-hidden');
   patch({ supportPromptSeen: true });
 });
-
-function escapeHTML(value) {
-  return String(value).replace(/[&<>'"]/g, (character) => (
-    { '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]
-  ));
-}
 
 const focusLabel = document.querySelector('#focus-label');
 const focusButton = document.querySelector('.focus-mode-button[data-mode="active"]');

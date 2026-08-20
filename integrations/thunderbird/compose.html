@@ -1,0 +1,14 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>ikmal editor</title>
+<link rel="stylesheet" href="compose.css">
+<main>
+  <h1>ikmal editor</h1>
+  <label>Endpoint <input id="endpoint" type="url" value="http://127.0.0.1:8096"></label>
+  <label>Language <input id="language" value="auto"></label>
+  <label><input id="includeQuotedText" type="checkbox"> Include quoted history</label>
+  <button id="check">Check compose body</button>
+  <p id="status" role="status"></p>
+  <ol id="matches"></ol>
+</main>
+<script src="compose.js"></script>
